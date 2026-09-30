@@ -24,6 +24,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         method: 'POST',
         body: JSON.stringify({
           identifier: identifier.trim(),
+          email: identifier.trim(),
           password,
         }),
       });

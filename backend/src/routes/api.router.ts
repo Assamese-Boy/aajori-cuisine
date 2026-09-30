@@ -40,7 +40,11 @@ apiRouter.post('/auth/verify-otp', async (req: Request, res: Response, next: Nex
 
 apiRouter.post('/auth/admin-login', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { identifier, password } = req.body;
+    const identifier = req.body.identifier || req.body.email || req.body.phone;
+    const password = req.body.password;
+    if (!identifier) {
+      return res.status(400).json({ success: false, error: { message: 'Identifier (email or phone) is required' } });
+    }
     const result = await authService.adminLogin(identifier, password);
     res.json({ success: true, data: result });
   } catch (err) {
