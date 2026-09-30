@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const API_BASE = ((import.meta as any).env?.VITE_API_BASE_URL as string) || '/api/v1';
 
 let authToken: string | null = localStorage.getItem('aajori_admin_token');
 
