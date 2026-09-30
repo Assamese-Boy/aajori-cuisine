@@ -241,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
                                 'Indigenous Assamese Flavours',
                                 style: TextStyle(
@@ -680,6 +680,7 @@ class _CartScreenState extends State<CartScreen> {
         'items': itemsPayload,
       });
 
+      if (!mounted) return;
       if (res['success'] == true) {
         CartManager.instance.items.clear();
         CartManager.instance.currentRestaurantId = null;

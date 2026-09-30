@@ -11,6 +11,21 @@ export function getAuthToken(): string | null {
   return authToken || localStorage.getItem('aajori_admin_token');
 }
 
+export function logout() {
+  authToken = null;
+  localStorage.removeItem('aajori_admin_token');
+  localStorage.removeItem('aajori_admin_user');
+}
+
+export function getCurrentStoredUser() {
+  try {
+    const raw = localStorage.getItem('aajori_admin_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {}

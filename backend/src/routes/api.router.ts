@@ -38,6 +38,16 @@ apiRouter.post('/auth/verify-otp', async (req: Request, res: Response, next: Nex
   }
 });
 
+apiRouter.post('/auth/admin-login', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { identifier, password } = req.body;
+    const result = await authService.adminLogin(identifier, password);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
 apiRouter.post('/auth/dev-login', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { role } = req.body;

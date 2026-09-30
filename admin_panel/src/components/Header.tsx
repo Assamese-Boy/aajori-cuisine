@@ -1,18 +1,22 @@
 import React from 'react';
-import { ShieldCheck, RefreshCw, UserCheck } from 'lucide-react';
+import { RefreshCw, UserCheck, LogOut } from 'lucide-react';
 import { apiRequest, setAuthToken } from '../services/api';
 
 interface HeaderProps {
+  user: any;
   currentRole: string;
   onRoleChanged: (role: string) => void;
   onRefresh: () => void;
+  onLogout: () => void;
   isLoading: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  user,
   currentRole,
   onRoleChanged,
   onRefresh,
+  onLogout,
   isLoading,
 }) => {
   const handleRoleSelect = async (role: string) => {
@@ -27,22 +31,32 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const getInitials = (name?: string) => {
+    if (!name) return 'SA';
+    return name
+      .split(' ')
+      .slice(0, 2)
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase();
+  };
+
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
           <span className="text-sm font-semibold text-slate-800">
             District: Kamrup Metropolitan (Guwahati, Assam)
           </span>
         </div>
         <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200">
-          PostGIS Ready
+          PostGIS Connected
         </span>
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Role Switcher for instant simulation */}
+        {/* Role Switcher for admin staff simulation */}
         <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
           <UserCheck className="w-4 h-4 text-slate-600" />
           <span className="text-slate-600 font-medium">Session Role:</span>
@@ -51,11 +65,9 @@ export const Header: React.FC<HeaderProps> = ({
             onChange={(e) => handleRoleSelect(e.target.value)}
             className="bg-transparent font-semibold text-brand-700 focus:outline-none cursor-pointer"
           >
-            <option value="SUPER_ADMIN">SUPER_ADMIN (Full District Control)</option>
+            <option value="SUPER_ADMIN">SUPER_ADMIN (District Control)</option>
             <option value="ADMIN">ADMIN (Ops Manager)</option>
-            <option value="RESTAURANT_OWNER">RESTAURANT_OWNER (Khorikaa Kitchen)</option>
-            <option value="DELIVERY_PARTNER">DELIVERY_PARTNER (Bipul Bora)</option>
-            <option value="CUSTOMER">CUSTOMER (Ankur Barman)</option>
+            <option value="RESTAURANT_OWNER">RESTAURANT_OWNER (Khorikaa)</option>
           </select>
         </div>
 
@@ -68,14 +80,22 @@ export const Header: React.FC<HeaderProps> = ({
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-brand-600' : ''}`} />
         </button>
 
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs">
-            MS
+        {/* User Profile Info & Sign Out */}
+        <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
+          <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-xs">
+            {getInitials(user?.fullName)}
           </div>
-          <div className="text-left text-xs leading-tight">
-            <p className="font-semibold text-slate-800">Manabendra Sarma</p>
-            <p className="text-slate-500">Super Administrator</p>
+          <div className="text-left text-xs leading-tight hidden sm:block">
+            <p className="font-semibold text-slate-800">{user?.fullName || 'Super Administrator'}</p>
+            <p className="text-slate-500 font-mono text-[10px]">{user?.role || 'SUPER_ADMIN'}</p>
           </div>
+          <button
+            onClick={onLogout}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            title="Sign Out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

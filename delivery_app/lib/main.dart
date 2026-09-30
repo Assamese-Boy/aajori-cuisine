@@ -96,6 +96,7 @@ class _RiderMainScreenState extends State<RiderMainScreen> {
   Future<void> _acceptOrder(String orderId) async {
     try {
       final res = await ApiClient.post('/delivery/orders/$orderId/accept', {});
+      if (!mounted) return;
       if (res['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Order accepted! Head to restaurant.')),
@@ -108,6 +109,7 @@ class _RiderMainScreenState extends State<RiderMainScreen> {
   Future<void> _confirmPickup(String orderId) async {
     try {
       final res = await ApiClient.post('/delivery/orders/$orderId/pickup', {});
+      if (!mounted) return;
       if (res['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Order picked up! Deliver to customer.')),
@@ -120,6 +122,7 @@ class _RiderMainScreenState extends State<RiderMainScreen> {
   Future<void> _confirmDelivery(String orderId) async {
     try {
       final res = await ApiClient.post('/delivery/orders/$orderId/deliver', {});
+      if (!mounted) return;
       if (res['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Delivery completed! Payment credited.')),
@@ -333,7 +336,7 @@ class _RiderMainScreenState extends State<RiderMainScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            Text('Pickup: GS Road (Khorikaa Kitchen)', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const Text('Pickup: GS Road (Khorikaa Kitchen)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             Text('Deliver: ${ord['deliveryAddress']?['addressLine1']}', style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
             const SizedBox(height: 12),
             Row(
