@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ShieldAlert, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { apiRequest, setAuthToken } from '../services/api';
 
 interface LoginPageProps {
-  onLoginSuccess: (user: any) => void;
+  onLoginSuccess?: (user: any) => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+  const navigate = useNavigate();
   const [identifier, setIdentifier] = useState('admin@aajori.in');
   const [password, setPassword] = useState('Aajori@Admin2026');
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         if (res.data.user) {
           localStorage.setItem('aajori_admin_user', JSON.stringify(res.data.user));
         }
-        onLoginSuccess(res.data.user);
+        if (onLoginSuccess) {
+          onLoginSuccess(res.data.user);
+        }
+        navigate('/dashboard');
       } else {
         setError(res.error?.message || 'Invalid credentials or unauthorized role.');
       }

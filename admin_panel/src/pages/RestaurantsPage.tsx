@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   Store,
   CheckCircle,
@@ -23,19 +24,39 @@ import {
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { SkeletonCards, EmptyState } from '../components/SkeletonLoaders';
+import {
+  mergeRestaurants,
+  recordCreatedRestaurant,
+  recordUpdatedRestaurant,
+  recordDeletedRestaurant,
+} from '../services/local-persistence';
 
 interface RestaurantsPageProps {
-  restaurants: any[];
-  onRefresh: () => void;
+  restaurants?: any[];
+  onRefresh?: () => void;
   isLoading?: boolean;
 }
 
-export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
-  restaurants,
-  onRefresh,
-  isLoading = false,
-}) => {
+export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
   const toast = useToast();
+  const outlet = useOutletContext<{
+    restaurants?: any[];
+    onRefresh?: () => void;
+    isLoading?: boolean;
+  } | null>();
+
+  const baseRestaurants = props.restaurants ?? outlet?.restaurants ?? [];
+  const onRefresh = props.onRefresh ?? outlet?.onRefresh ?? (() => {});
+  const isLoading = props.isLoading ?? outlet?.isLoading ?? false;
+
+  const [restaurantsList, setRestaurantsList] = useState<any[]>(() =>
+    mergeRestaurants(baseRestaurants)
+  );
+
+  useEffect(() => {
+    setRestaurantsList(mergeRestaurants(baseRestaurants));
+  }, [baseRestaurants]);
+
   const [selectedRestaurantMenu, setSelectedRestaurantMenu] = useState<any>(null);
   const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
 
@@ -168,7 +189,13 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
           body: JSON.stringify(payload),
         });
         if (res.success) {
+          const updated = res.data?.restaurant || res.data || { ...editingRest, ...payload };
+          recordUpdatedRestaurant(editingRest.id, updated);
+          setRestaurantsList((prev) =>
+            prev.map((r) => (r.id === editingRest.id ? { ...r, ...updated } : r))
+          );
           setShowRestModal(false);
+          toast.success('Restaurant Updated', `${payload.name} updated successfully.`);
           onRefresh();
         } else {
           setFormError(res.error?.message || 'Failed to update restaurant');
@@ -179,8 +206,17 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
           body: JSON.stringify(payload),
         });
         if (res.success) {
+          const newRest = res.data?.restaurant || res.data || {
+            id: `rest_${Date.now()}`,
+            ...payload,
+            createdAt: new Date().toISOString(),
+          };
+          recordCreatedRestaurant(newRest);
+          setRestaurantsList((prev) => mergeRestaurants([newRest, ...prev]));
           setShowRestModal(false);
+          toast.success('Restaurant Created', `${payload.name} onboarded successfully.`);
           onRefresh();
+
           // Show the generated merchant credentials modal
           if (res.data?.credentials) {
             setCreatedCredentials({
@@ -231,13 +267,18 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
     if (!window.confirm(`Are you sure you want to permanently delete "${name}" and all its menu items?`)) {
       return;
     }
-    const res = await apiRequest(`/admin/restaurants/${restaurantId}`, {
-      method: 'DELETE',
-    });
-    if (res.success) {
-      onRefresh();
-    } else {
-      alert(res.error?.message || 'Failed to delete restaurant');
+    recordDeletedRestaurant(restaurantId);
+    setRestaurantsList((prev) => prev.filter((r) => r.id !== restaurantId));
+    toast.success('Restaurant Removed', `"${name}" removed from network.`);
+    try {
+      const res = await apiRequest(`/admin/restaurants/${restaurantId}`, {
+        method: 'DELETE',
+      });
+      if (res.success) {
+        onRefresh();
+      }
+    } catch (e) {
+      console.error('Delete request failed on backend:', e);
     }
   };
 
@@ -352,9 +393,9 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
       </div>
 
       {/* Restaurant Grid or Skeleton / Empty State */}
-      {restaurants.length === 0 && isLoading ? (
+      {restaurantsList.length === 0 && isLoading ? (
         <SkeletonCards count={6} />
-      ) : restaurants.length === 0 ? (
+      ) : restaurantsList.length === 0 ? (
         <EmptyState
           icon={<Store className="w-8 h-8 text-slate-400" />}
           title="No Restaurants Onboarded"
@@ -364,7 +405,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
-        {restaurants.map((r) => (
+        {restaurantsList.map((r) => (
           <div
             key={r.id}
             className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow"

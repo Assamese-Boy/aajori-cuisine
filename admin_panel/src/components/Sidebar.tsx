@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -7,37 +8,19 @@ import {
   MapPin,
   Bot,
   FileText,
-  DollarSign,
-  Activity,
-  Layers,
   Users,
 } from 'lucide-react';
 
-export type AdminTab =
-  | 'dashboard'
-  | 'orders'
-  | 'live-map'
-  | 'restaurants'
-  | 'delivery-partners'
-  | 'users'
-  | 'ai-whatsapp'
-  | 'audit-logs';
-
-interface SidebarProps {
-  currentTab: AdminTab;
-  onSelectTab: (tab: AdminTab) => void;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
+export const Sidebar: React.FC = () => {
   const navItems = [
-    { id: 'dashboard', label: 'Operations Dashboard', icon: LayoutDashboard },
-    { id: 'orders', label: 'Order Control Center', icon: ShoppingBag },
-    { id: 'live-map', label: 'Live GIS Operations Map', icon: MapPin },
-    { id: 'restaurants', label: 'Restaurant Partners', icon: Store },
-    { id: 'delivery-partners', label: 'Delivery Fleet', icon: Bike },
-    { id: 'users', label: 'Users & Customers', icon: Users },
-    { id: 'ai-whatsapp', label: 'AI & WhatsApp Hub', icon: Bot },
-    { id: 'audit-logs', label: 'Enterprise Audit Trail', icon: FileText },
+    { path: '/dashboard', label: 'Operations Dashboard', icon: LayoutDashboard },
+    { path: '/orders', label: 'Order Control Center', icon: ShoppingBag },
+    { path: '/live-map', label: 'Live GIS Operations Map', icon: MapPin },
+    { path: '/restaurants', label: 'Restaurant Partners', icon: Store },
+    { path: '/delivery-partners', label: 'Delivery Fleet', icon: Bike },
+    { path: '/users', label: 'Users & Customers', icon: Users },
+    { path: '/ai-whatsapp', label: 'AI & WhatsApp Hub', icon: Bot },
+    { path: '/audit-logs', label: 'Enterprise Audit Trail', icon: FileText },
   ];
 
   return (
@@ -63,20 +46,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = currentTab === item.id;
           return (
-            <button
-              key={item.id}
-              onClick={() => onSelectTab(item.id as AdminTab)}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/70'
-              }`}
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25 font-semibold'
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/70'
+                }`
+              }
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-              <span>{item.label}</span>
-            </button>
+              {({ isActive }) => (
+                <>
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <span>{item.label}</span>
+                </>
+              )}
+            </NavLink>
           );
         })}
       </nav>
@@ -87,8 +75,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
           <span className="text-emerald-400 font-medium">Connected</span>
         </div>
         <div className="flex items-center justify-between">
-          <span>Architecture</span>
-          <span className="text-slate-300 font-mono">Unified Monolith</span>
+          <span>Routing Architecture</span>
+          <span className="text-slate-300 font-mono">Multi-Route SPA</span>
         </div>
       </div>
     </aside>

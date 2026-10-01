@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ShoppingBag,
   ArrowRight,
@@ -17,22 +18,37 @@ import { useToast } from '../context/ToastContext';
 import { SkeletonTable, EmptyState } from '../components/SkeletonLoaders';
 
 interface OrdersPageProps {
-  orders: any[];
+  orders?: any[];
   selectedOrderId?: string;
-  onRefresh: () => void;
+  onRefresh?: () => void;
   isLoading?: boolean;
 }
 
-export const OrdersPage: React.FC<OrdersPageProps> = ({
-  orders,
-  selectedOrderId,
-  onRefresh,
-  isLoading = false,
-}) => {
+export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
   const toast = useToast();
+  const { orderId } = useParams<{ orderId?: string }>();
+  const navigate = useNavigate();
+  const outlet = useOutletContext<{
+    orders?: any[];
+    onRefresh?: () => void;
+    isLoading?: boolean;
+  } | null>();
+
+  const orders = props.orders ?? outlet?.orders ?? [];
+  const onRefresh = props.onRefresh ?? outlet?.onRefresh ?? (() => {});
+  const isLoading = props.isLoading ?? outlet?.isLoading ?? false;
+
   const [activeOrderId, setActiveOrderId] = useState<string>(
-    selectedOrderId || orders[0]?.id || ''
+    props.selectedOrderId || orderId || orders[0]?.id || ''
   );
+
+  useEffect(() => {
+    if (orderId) {
+      setActiveOrderId(orderId);
+    } else if (!activeOrderId && orders.length > 0) {
+      setActiveOrderId(orders[0].id);
+    }
+  }, [orderId, orders]);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -145,7 +161,10 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
               return (
                 <div
                   key={order.id}
-                  onClick={() => setActiveOrderId(order.id)}
+                  onClick={() => {
+                    setActiveOrderId(order.id);
+                    navigate(`/orders/${order.id}`, { replace: true });
+                  }}
                   className={`p-4 cursor-pointer transition-all ${
                     isSelected
                       ? 'bg-brand-50/70 border-l-4 border-brand-600'

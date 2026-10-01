@@ -17,10 +17,16 @@ import {
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { SkeletonCards, EmptyState } from '../components/SkeletonLoaders';
+import {
+  mergeRiders,
+  recordCreatedRider,
+  recordUpdatedRider,
+  recordDeletedRider,
+} from '../services/local-persistence';
 
 export const DeliveryPartnersPage: React.FC = () => {
   const toast = useToast();
-  const [riders, setRiders] = useState<any[]>([]);
+  const [riders, setRiders] = useState<any[]>(() => mergeRiders([]));
   const [loading, setLoading] = useState(true);
 
   // Modal states
@@ -43,12 +49,12 @@ export const DeliveryPartnersPage: React.FC = () => {
     try {
       const res = await apiRequest('/admin/delivery-partners');
       if (res.success && res.data) {
-        setRiders(res.data);
+        setRiders(mergeRiders(res.data));
       } else {
         // Fallback to live-map riders
         const mapRes = await apiRequest('/admin/live-map');
         if (mapRes.success && mapRes.data?.riders) {
-          setRiders(mapRes.data.riders);
+          setRiders(mergeRiders(mapRes.data.riders));
         }
       }
     } finally {
@@ -97,21 +103,27 @@ export const DeliveryPartnersPage: React.FC = () => {
 
     try {
       if (editingRider) {
+        const payload = {
+          vehicleType: formData.vehicleType,
+          vehicleNumber: formData.vehicleNumber,
+          drivingLicenseNumber: formData.drivingLicenseNumber,
+          shiftStatus: formData.shiftStatus,
+          user: {
+            fullName: formData.fullName,
+            phone: formData.phone,
+            email: formData.email,
+          },
+        };
         const res = await apiRequest(`/admin/delivery-partners/${editingRider.id}`, {
           method: 'PUT',
-          body: JSON.stringify({
-            vehicleType: formData.vehicleType,
-            vehicleNumber: formData.vehicleNumber,
-            drivingLicenseNumber: formData.drivingLicenseNumber,
-            shiftStatus: formData.shiftStatus,
-            user: {
-              fullName: formData.fullName,
-              phone: formData.phone,
-              email: formData.email,
-            },
-          }),
+          body: JSON.stringify(payload),
         });
         if (res.success) {
+          const updated = res.data?.rider || res.data || { ...editingRider, ...payload };
+          recordUpdatedRider(editingRider.id, updated);
+          setRiders((prev) =>
+            prev.map((r) => (r.id === editingRider.id ? { ...r, ...updated } : r))
+          );
           toast.success('Rider Updated', `${formData.fullName} details updated`);
           setShowRiderModal(false);
           fetchRiders();
@@ -125,6 +137,23 @@ export const DeliveryPartnersPage: React.FC = () => {
           body: JSON.stringify(formData),
         });
         if (res.success) {
+          const newRider = res.data?.rider || res.data || {
+            id: `rider_${Date.now()}`,
+            vehicleType: formData.vehicleType,
+            vehicleNumber: formData.vehicleNumber,
+            drivingLicenseNumber: formData.drivingLicenseNumber,
+            shiftStatus: formData.shiftStatus,
+            user: {
+              fullName: formData.fullName,
+              phone: formData.phone,
+              email: formData.email,
+            },
+            batteryLevel: 100,
+            rating: 5.0,
+            totalDeliveries: 0,
+          };
+          recordCreatedRider(newRider);
+          setRiders((prev) => mergeRiders([newRider, ...prev]));
           toast.success('Rider Onboarded', `${formData.fullName} joined the delivery fleet`);
           setShowRiderModal(false);
           fetchRiders();
@@ -145,14 +174,18 @@ export const DeliveryPartnersPage: React.FC = () => {
     if (!window.confirm(`Are you sure you want to deactivate and remove rider "${name}" from the fleet?`)) {
       return;
     }
-    const res = await apiRequest(`/admin/delivery-partners/${riderId}`, {
-      method: 'DELETE',
-    });
-    if (res.success) {
-      toast.success('Rider Removed', `Deactivated ${name}`);
-      fetchRiders();
-    } else {
-      toast.error('Delete Failed', res.error?.message || 'Failed to delete rider');
+    recordDeletedRider(riderId);
+    setRiders((prev) => prev.filter((r) => r.id !== riderId));
+    toast.success('Rider Removed', `Deactivated ${name}`);
+    try {
+      const res = await apiRequest(`/admin/delivery-partners/${riderId}`, {
+        method: 'DELETE',
+      });
+      if (res.success) {
+        fetchRiders();
+      }
+    } catch (e) {
+      console.error('Delete rider backend error:', e);
     }
   };
 

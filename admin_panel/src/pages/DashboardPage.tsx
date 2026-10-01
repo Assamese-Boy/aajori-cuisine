@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ShoppingBag,
   Users,
@@ -15,18 +16,31 @@ import {
 import { SkeletonMetrics, SkeletonTable } from '../components/SkeletonLoaders';
 
 interface DashboardPageProps {
-  metrics: any;
-  orders: any[];
-  onViewOrder: (orderId: string) => void;
+  metrics?: any;
+  orders?: any[];
+  onViewOrder?: (orderId: string) => void;
   isLoading?: boolean;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({
-  metrics,
-  orders,
-  onViewOrder,
-  isLoading = false,
-}) => {
+export const DashboardPage: React.FC<DashboardPageProps> = (props) => {
+  const navigate = useNavigate();
+  const outlet = useOutletContext<{
+    metrics?: any;
+    orders?: any[];
+    isLoading?: boolean;
+  } | null>();
+
+  const metrics = props.metrics ?? outlet?.metrics;
+  const orders = props.orders ?? outlet?.orders ?? [];
+  const isLoading = props.isLoading ?? outlet?.isLoading ?? false;
+
+  const handleManageOrder = (orderId: string) => {
+    if (props.onViewOrder) {
+      props.onViewOrder(orderId);
+    } else {
+      navigate(`/orders/${orderId}`);
+    }
+  };
   if (!metrics && isLoading) {
     return (
       <div className="space-y-6">
@@ -190,7 +204,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </td>
                     <td className="py-3.5 px-6 text-right">
                       <button
-                        onClick={() => onViewOrder(order.id)}
+                        onClick={() => handleManageOrder(order.id)}
                         className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center justify-end gap-1 ml-auto"
                       >
                         <span>Manage</span>

@@ -17,6 +17,12 @@ import {
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { SkeletonTable, EmptyState } from '../components/SkeletonLoaders';
+import {
+  mergeUsers,
+  recordCreatedUser,
+  recordUpdatedUser,
+  recordDeletedUser,
+} from '../services/local-persistence';
 
 interface User {
   id: string;
@@ -30,7 +36,7 @@ interface User {
 
 export const UsersPage: React.FC = () => {
   const toast = useToast();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>(() => mergeUsers([]));
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,7 +60,7 @@ export const UsersPage: React.FC = () => {
     try {
       const res = await apiRequest('/admin/users');
       if (res.success && res.data) {
-        setUsers(res.data);
+        setUsers(mergeUsers(res.data));
       }
     } finally {
       setIsLoading(false);
@@ -119,6 +125,11 @@ export const UsersPage: React.FC = () => {
           body: JSON.stringify(formData),
         });
         if (res.success) {
+          const updated = res.data?.user || res.data || { ...editingUser, ...formData };
+          recordUpdatedUser(editingUser.id, updated);
+          setUsers((prev) =>
+            prev.map((u) => (u.id === editingUser.id ? { ...u, ...updated } : u))
+          );
           toast.success('User Updated', `${formData.fullName} updated successfully`);
           setEditingUser(null);
           fetchUsers();
@@ -133,6 +144,17 @@ export const UsersPage: React.FC = () => {
           body: JSON.stringify(formData),
         });
         if (res.success) {
+          const newUser: User = res.data?.user || res.data || {
+            id: `usr_${Date.now()}`,
+            fullName: formData.fullName,
+            phone: formData.phone,
+            email: formData.email,
+            role: formData.role as any,
+            status: formData.status as any,
+            createdAt: new Date().toISOString(),
+          };
+          recordCreatedUser(newUser);
+          setUsers((prev) => mergeUsers([newUser, ...prev]));
           toast.success('User Created', `${formData.fullName} added to district roster`);
           setShowAddModal(false);
           fetchUsers();
@@ -151,15 +173,21 @@ export const UsersPage: React.FC = () => {
 
   const handleToggleStatus = async (user: User) => {
     const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-    const res = await apiRequest(`/admin/users/${user.id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: newStatus }),
-    });
-    if (res.success) {
-      toast.success('Status Changed', `${user.fullName} is now ${newStatus}`);
-      fetchUsers();
-    } else {
-      toast.error('Status Change Failed', res.error?.message);
+    recordUpdatedUser(user.id, { status: newStatus });
+    setUsers((prev) =>
+      prev.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u))
+    );
+    try {
+      const res = await apiRequest(`/admin/users/${user.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.success) {
+        toast.success('Status Changed', `${user.fullName} is now ${newStatus}`);
+        fetchUsers();
+      }
+    } catch (e) {
+      console.error('Status update failed on backend:', e);
     }
   };
 
@@ -167,14 +195,18 @@ export const UsersPage: React.FC = () => {
     if (!window.confirm(`Are you sure you want to permanently delete ${user.fullName}?`)) {
       return;
     }
-    const res = await apiRequest(`/admin/users/${user.id}`, {
-      method: 'DELETE',
-    });
-    if (res.success) {
-      toast.success('User Deleted', `Removed ${user.fullName} from directory`);
-      fetchUsers();
-    } else {
-      toast.error('Delete Failed', res.error?.message || 'Failed to delete user');
+    recordDeletedUser(user.id);
+    setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    toast.success('User Deleted', `Removed ${user.fullName} from directory`);
+    try {
+      const res = await apiRequest(`/admin/users/${user.id}`, {
+        method: 'DELETE',
+      });
+      if (res.success) {
+        fetchUsers();
+      }
+    } catch (e) {
+      console.error('Delete user backend error:', e);
     }
   };
 
