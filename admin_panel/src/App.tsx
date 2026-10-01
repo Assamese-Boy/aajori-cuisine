@@ -11,8 +11,10 @@ import { UsersPage } from './pages/UsersPage';
 import { AiWhatsAppPage } from './pages/AiWhatsAppPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import { apiRequest, getAuthToken, logout, getCurrentStoredUser } from './services/api';
+import { ToastProvider } from './context/ToastContext';
+import { TopProgressBar } from './components/SkeletonLoaders';
 
-export const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(getAuthToken()));
   const [currentUser, setCurrentUser] = useState<any>(() => getCurrentStoredUser());
   const [currentTab, setCurrentTab] = useState<AdminTab>('dashboard');
@@ -71,7 +73,8 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans relative">
+      <TopProgressBar isLoading={isLoading} />
       <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -90,6 +93,7 @@ export const App: React.FC = () => {
               metrics={metrics}
               orders={orders}
               onViewOrder={handleViewOrder}
+              isLoading={isLoading}
             />
           )}
 
@@ -98,6 +102,7 @@ export const App: React.FC = () => {
               orders={orders}
               selectedOrderId={selectedOrderId}
               onRefresh={fetchGlobalData}
+              isLoading={isLoading}
             />
           )}
 
@@ -107,6 +112,7 @@ export const App: React.FC = () => {
             <RestaurantsPage
               restaurants={restaurants}
               onRefresh={fetchGlobalData}
+              isLoading={isLoading}
             />
           )}
 
@@ -120,6 +126,14 @@ export const App: React.FC = () => {
         </main>
       </div>
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 };
 

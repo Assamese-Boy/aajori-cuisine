@@ -9,19 +9,41 @@ import {
   AlertTriangle,
   Clock,
   ArrowUpRight,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
+import { SkeletonMetrics, SkeletonTable } from '../components/SkeletonLoaders';
 
 interface DashboardPageProps {
   metrics: any;
   orders: any[];
   onViewOrder: (orderId: string) => void;
+  isLoading?: boolean;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   metrics,
   orders,
   onViewOrder,
+  isLoading = false,
 }) => {
+  if (!metrics && isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Operational Overview</h2>
+          <p className="text-sm text-slate-500">
+            Real-time telemetry and commercial health for Kamrup Metropolitan District
+          </p>
+        </div>
+        <SkeletonMetrics />
+        <div className="pt-4">
+          <SkeletonTable rows={4} />
+        </div>
+      </div>
+    );
+  }
+
   const statCards = [
     {
       title: 'Active Orders',
@@ -58,12 +80,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">Operational Overview</h2>
-        <p className="text-sm text-slate-500">
-          Real-time telemetry and commercial health for Kamrup Metropolitan District
-        </p>
+    <div className="space-y-6 animate-fadeIn">
+      {/* Top Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Operational Overview</h2>
+          <p className="text-sm text-slate-500">
+            Real-time telemetry and commercial health for Kamrup Metropolitan District
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm shrink-0">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Live Operations Active</span>
+        </div>
       </div>
 
       {/* Operational Stat Cards */}
@@ -73,16 +102,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           return (
             <div
               key={i}
-              className={`p-5 rounded-xl border bg-white shadow-sm flex items-start justify-between`}
+              className="p-5 rounded-xl border border-slate-200/80 bg-white shadow-sm flex items-start justify-between hover:shadow-md transition-shadow"
             >
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   {card.title}
                 </p>
-                <p className="text-2xl font-bold text-slate-800 mt-1">{card.value}</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">{card.value}</p>
                 <p className="text-xs text-slate-500 mt-1 font-medium">{card.sub}</p>
               </div>
-              <div className={`p-3 rounded-xl ${card.bg}`}>
+              <div className={`p-3 rounded-xl border ${card.bg}`}>
                 <Icon className={`w-5 h-5 ${card.color}`} />
               </div>
             </div>
@@ -91,22 +120,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       </div>
 
       {/* Operational Attention Alerts */}
-      <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl p-4.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-amber-100 text-amber-800">
+          <div className="p-2.5 rounded-xl bg-amber-100/80 text-amber-800">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-amber-900">
-              Operations Alert: Peak Dinner Rush Approaching (Kamrup Central)
+            <h4 className="text-sm font-bold text-amber-900">
+              Operations Notice: Hyperlocal Dispatch Readiness (Kamrup Central)
             </h4>
-            <p className="text-xs text-amber-700">
-              2 online riders currently handling active orders. High order probability in GS Road & Ulubari corridor.
+            <p className="text-xs text-amber-700 mt-0.5">
+              Online riders active. High order demand in GS Road, Ulubari & Uzan Bazar corridors.
             </p>
           </div>
         </div>
-        <span className="text-xs font-semibold px-3 py-1 bg-amber-200/70 text-amber-900 rounded-full">
-          Healthy Shift
+        <span className="text-xs font-semibold px-3 py-1 bg-amber-200/60 text-amber-900 rounded-full border border-amber-300/40">
+          Healthy Dispatch
         </span>
       </div>
 
@@ -117,83 +146,63 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <Clock className="w-4 h-4 text-slate-500" />
             <h3 className="font-bold text-slate-800 text-base">Live Order Stream</h3>
           </div>
-          <span className="text-xs text-slate-500">Auto-synced</span>
+          <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
+            Auto-synced
+          </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-6">Order ID</th>
-                <th className="py-3 px-6">Restaurant</th>
-                <th className="py-3 px-6">Customer & Area</th>
-                <th className="py-3 px-6">Amount</th>
-                <th className="py-3 px-6">Status</th>
-                <th className="py-3 px-6">Payment</th>
-                <th className="py-3 px-6 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {orders.slice(0, 5).map((order) => {
-                const statusColors: Record<string, string> = {
-                  CREATED: 'bg-slate-100 text-slate-700',
-                  PAYMENT_PENDING: 'bg-yellow-100 text-yellow-800',
-                  PAYMENT_CONFIRMED: 'bg-blue-100 text-blue-800',
-                  RESTAURANT_ACCEPTED: 'bg-indigo-100 text-indigo-800',
-                  PREPARING: 'bg-orange-100 text-orange-800',
-                  READY_FOR_PICKUP: 'bg-amber-100 text-amber-800',
-                  RIDER_ASSIGNED: 'bg-cyan-100 text-cyan-800',
-                  PICKED_UP: 'bg-purple-100 text-purple-800',
-                  OUT_FOR_DELIVERY: 'bg-teal-100 text-teal-800',
-                  DELIVERED: 'bg-emerald-100 text-emerald-800',
-                  CANCELLED: 'bg-red-100 text-red-800',
-                };
-
-                return (
-                  <tr key={order.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-6 font-mono text-xs font-bold text-slate-800">
-                      {order.orderNumber}
+        {orders.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 text-sm">
+            No orders created in district today yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wider font-semibold">
+                <tr>
+                  <th className="py-3 px-6">Order ID</th>
+                  <th className="py-3 px-6">Restaurant</th>
+                  <th className="py-3 px-6">Customer</th>
+                  <th className="py-3 px-6">Amount</th>
+                  <th className="py-3 px-6">Status</th>
+                  <th className="py-3 px-6 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {orders.slice(0, 5).map((order) => (
+                  <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-3.5 px-6 font-mono font-semibold text-slate-900 text-xs">
+                      {order.id.slice(0, 14)}...
                     </td>
-                    <td className="py-3.5 px-6 text-slate-700">
-                      {order.restaurantId === 'd0000000-0000-0000-0000-000000000001'
-                        ? 'Khorikaa Ethnic Kitchen'
-                        : order.restaurantId === 'd0000000-0000-0000-0000-000000000002'
-                        ? 'Paradise Heritage Diner'
-                        : 'Brahmaputra Spice Bistro'}
+                    <td className="py-3.5 px-6 font-medium text-slate-800">
+                      {order.restaurant?.name || 'Restaurant'}
                     </td>
                     <td className="py-3.5 px-6 text-slate-600 text-xs">
-                      {order.deliveryAddress?.city || 'Guwahati'} • {order.deliveryDistanceKm} km
+                      {order.customer?.fullName || 'Customer'}
                     </td>
-                    <td className="py-3.5 px-6 font-bold text-slate-800">
-                      ₹{order.pricing?.totalCustomerPrice}
+                    <td className="py-3.5 px-6 font-mono font-bold text-slate-900">
+                      ₹{order.pricing?.totalCustomerPrice || 0}
                     </td>
                     <td className="py-3.5 px-6">
-                      <span
-                        className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                          statusColors[order.status] || 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        {order.status.replace(/_/g, ' ')}
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                        {order.status}
                       </span>
-                    </td>
-                    <td className="py-3.5 px-6 text-xs text-slate-600">
-                      <span className="font-semibold text-emerald-600">{order.paymentMethod}</span> (
-                      {order.paymentStatus})
                     </td>
                     <td className="py-3.5 px-6 text-right">
                       <button
                         onClick={() => onViewOrder(order.id)}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                        className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center justify-end gap-1 ml-auto"
                       >
-                        Inspect <ArrowUpRight className="w-3.5 h-3.5" />
+                        <span>Manage</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
                       </button>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

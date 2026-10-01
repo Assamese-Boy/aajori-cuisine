@@ -13,18 +13,23 @@ import {
   MapPin,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { useToast } from '../context/ToastContext';
+import { SkeletonTable, EmptyState } from '../components/SkeletonLoaders';
 
 interface OrdersPageProps {
   orders: any[];
   selectedOrderId?: string;
   onRefresh: () => void;
+  isLoading?: boolean;
 }
 
 export const OrdersPage: React.FC<OrdersPageProps> = ({
   orders,
   selectedOrderId,
   onRefresh,
+  isLoading = false,
 }) => {
+  const toast = useToast();
   const [activeOrderId, setActiveOrderId] = useState<string>(
     selectedOrderId || orders[0]?.id || ''
   );
@@ -62,10 +67,13 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
         }),
       });
       if (res.success) {
+        toast.success('Order Updated', `Moved to ${toStatus.replace(/_/g, ' ')}`);
         onRefresh();
       } else {
-        alert(res.error?.message || 'Transition failed');
+        toast.error('Update Failed', res.error?.message || 'Could not transition order');
       }
+    } catch (err: any) {
+      toast.error('Error', err.message || 'Transition operation failed');
     } finally {
       setIsUpdating(false);
     }
@@ -127,7 +135,12 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-            {filteredOrders.map((order) => {
+            {filteredOrders.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 text-xs">
+                No orders found matching "{filterStatus}" status.
+              </div>
+            ) : (
+              filteredOrders.map((order) => {
               const isSelected = order.id === activeOrderId;
               return (
                 <div
@@ -168,7 +181,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
 

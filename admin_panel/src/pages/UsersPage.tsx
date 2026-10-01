@@ -15,6 +15,8 @@ import {
   UserX,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { useToast } from '../context/ToastContext';
+import { SkeletonTable, EmptyState } from '../components/SkeletonLoaders';
 
 interface User {
   id: string;
@@ -27,6 +29,7 @@ interface User {
 }
 
 export const UsersPage: React.FC = () => {
+  const toast = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,10 +119,12 @@ export const UsersPage: React.FC = () => {
           body: JSON.stringify(formData),
         });
         if (res.success) {
+          toast.success('User Updated', `${formData.fullName} updated successfully`);
           setEditingUser(null);
           fetchUsers();
         } else {
           setFormError(res.error?.message || 'Failed to update user');
+          toast.error('Update Failed', res.error?.message);
         }
       } else {
         // Create user
@@ -128,14 +133,17 @@ export const UsersPage: React.FC = () => {
           body: JSON.stringify(formData),
         });
         if (res.success) {
+          toast.success('User Created', `${formData.fullName} added to district roster`);
           setShowAddModal(false);
           fetchUsers();
         } else {
           setFormError(res.error?.message || 'Failed to create user');
+          toast.error('Creation Failed', res.error?.message);
         }
       }
     } catch (err: any) {
       setFormError(err.message || 'Operation failed');
+      toast.error('Error', err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -148,7 +156,10 @@ export const UsersPage: React.FC = () => {
       body: JSON.stringify({ status: newStatus }),
     });
     if (res.success) {
+      toast.success('Status Changed', `${user.fullName} is now ${newStatus}`);
       fetchUsers();
+    } else {
+      toast.error('Status Change Failed', res.error?.message);
     }
   };
 
@@ -160,9 +171,10 @@ export const UsersPage: React.FC = () => {
       method: 'DELETE',
     });
     if (res.success) {
+      toast.success('User Deleted', `Removed ${user.fullName} from directory`);
       fetchUsers();
     } else {
-      alert(res.error?.message || 'Failed to delete user');
+      toast.error('Delete Failed', res.error?.message || 'Failed to delete user');
     }
   };
 

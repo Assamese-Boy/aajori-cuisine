@@ -21,16 +21,21 @@ import {
   Lock,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { useToast } from '../context/ToastContext';
+import { SkeletonCards, EmptyState } from '../components/SkeletonLoaders';
 
 interface RestaurantsPageProps {
   restaurants: any[];
   onRefresh: () => void;
+  isLoading?: boolean;
 }
 
 export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
   restaurants,
   onRefresh,
+  isLoading = false,
 }) => {
+  const toast = useToast();
   const [selectedRestaurantMenu, setSelectedRestaurantMenu] = useState<any>(null);
   const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
 
@@ -346,8 +351,19 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
         </button>
       </div>
 
-      {/* Restaurant Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Restaurant Grid or Skeleton / Empty State */}
+      {restaurants.length === 0 && isLoading ? (
+        <SkeletonCards count={6} />
+      ) : restaurants.length === 0 ? (
+        <EmptyState
+          icon={<Store className="w-8 h-8 text-slate-400" />}
+          title="No Restaurants Onboarded"
+          description="Get started by onboarding your first restaurant partner into the district network."
+          actionText="Add Restaurant"
+          onAction={handleOpenAddRest}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
         {restaurants.map((r) => (
           <div
             key={r.id}
@@ -454,6 +470,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
           </div>
         ))}
       </div>
+      )}
 
       {/* Restaurant Add / Edit Modal */}
       {showRestModal && (

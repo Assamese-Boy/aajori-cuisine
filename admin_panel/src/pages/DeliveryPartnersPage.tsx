@@ -15,8 +15,11 @@ import {
   Power,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { useToast } from '../context/ToastContext';
+import { SkeletonCards, EmptyState } from '../components/SkeletonLoaders';
 
 export const DeliveryPartnersPage: React.FC = () => {
+  const toast = useToast();
   const [riders, setRiders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -109,10 +112,12 @@ export const DeliveryPartnersPage: React.FC = () => {
           }),
         });
         if (res.success) {
+          toast.success('Rider Updated', `${formData.fullName} details updated`);
           setShowRiderModal(false);
           fetchRiders();
         } else {
           setFormError(res.error?.message || 'Failed to update rider');
+          toast.error('Update Failed', res.error?.message);
         }
       } else {
         const res = await apiRequest('/admin/delivery-partners', {
@@ -120,14 +125,17 @@ export const DeliveryPartnersPage: React.FC = () => {
           body: JSON.stringify(formData),
         });
         if (res.success) {
+          toast.success('Rider Onboarded', `${formData.fullName} joined the delivery fleet`);
           setShowRiderModal(false);
           fetchRiders();
         } else {
           setFormError(res.error?.message || 'Failed to onboard rider');
+          toast.error('Onboarding Failed', res.error?.message);
         }
       }
     } catch (err: any) {
       setFormError(err.message || 'Operation failed');
+      toast.error('Error', err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -141,9 +149,10 @@ export const DeliveryPartnersPage: React.FC = () => {
       method: 'DELETE',
     });
     if (res.success) {
+      toast.success('Rider Removed', `Deactivated ${name}`);
       fetchRiders();
     } else {
-      alert(res.error?.message || 'Failed to delete rider');
+      toast.error('Delete Failed', res.error?.message || 'Failed to delete rider');
     }
   };
 
@@ -154,7 +163,10 @@ export const DeliveryPartnersPage: React.FC = () => {
       body: JSON.stringify({ shiftStatus: nextStatus }),
     });
     if (res.success) {
+      toast.success('Shift Updated', `${rider.user?.fullName} is now ${nextStatus.replace(/_/g, ' ')}`);
       fetchRiders();
+    } else {
+      toast.error('Shift Update Failed', res.error?.message);
     }
   };
 
@@ -181,8 +193,19 @@ export const DeliveryPartnersPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Rider Fleet Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Rider Fleet Grid or Skeleton / Empty State */}
+      {loading && riders.length === 0 ? (
+        <SkeletonCards count={4} />
+      ) : riders.length === 0 ? (
+        <EmptyState
+          icon={<Bike className="w-8 h-8 text-slate-400" />}
+          title="No Delivery Partners Found"
+          description="Onboard riders to start receiving and dispatching district orders."
+          actionText="Onboard Rider"
+          onAction={handleOpenAddRider}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
         {riders.map((rider) => (
           <div
             key={rider.id}
@@ -273,6 +296,7 @@ export const DeliveryPartnersPage: React.FC = () => {
           </div>
         ))}
       </div>
+      )}
 
       {/* Onboard / Edit Rider Modal */}
       {showRiderModal && (
