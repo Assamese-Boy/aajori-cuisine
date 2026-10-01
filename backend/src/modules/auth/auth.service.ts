@@ -96,8 +96,15 @@ export class AuthService {
       throw new UnauthorizedError('Your account has been suspended or deactivated');
     }
 
-    // Validate password (default initial admin password: Aajori@Admin2026)
-    if (password && password !== 'Aajori@Admin2026' && password !== 'admin123') {
+    // Validate password:
+    // 1. Check user-specific password if set
+    // 2. Or allow platform initial defaults (Aajori@Admin2026, Aajori@Merchant2026, admin123)
+    const validDefaultPasswords = ['Aajori@Admin2026', 'Aajori@Merchant2026', 'admin123'];
+    const isPasswordValid = user.password
+      ? password === user.password || validDefaultPasswords.includes(password || '')
+      : validDefaultPasswords.includes(password || '');
+
+    if (!isPasswordValid) {
       throw new UnauthorizedError('Invalid credentials provided');
     }
 

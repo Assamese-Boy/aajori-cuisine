@@ -11,8 +11,14 @@ import {
   X,
   AlertTriangle,
   Utensils,
-  Flame,
-  DollarSign,
+  Key,
+  Copy,
+  Share2,
+  Check,
+  User,
+  Phone,
+  Mail,
+  Lock,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 
@@ -39,9 +45,16 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
     avgPrepTimeMinutes: 25,
     minOrderAmount: 150,
     coverUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-    phone: '+919864000000',
+    ownerName: '',
+    ownerPhone: '+919864',
+    ownerEmail: '',
+    initialPassword: 'Aajori@Merchant2026',
     isActive: true,
   });
+
+  // Success credentials modal
+  const [createdCredentials, setCreatedCredentials] = useState<any | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Menu Item Add/Edit Modal
   const [showItemModal, setShowItemModal] = useState(false);
@@ -91,7 +104,10 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
       avgPrepTimeMinutes: 25,
       minOrderAmount: 150,
       coverUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-      phone: '+919864000099',
+      ownerName: '',
+      ownerPhone: '+919864000000',
+      ownerEmail: '',
+      initialPassword: 'Aajori@Merchant2026',
       isActive: true,
     });
     setFormError(null);
@@ -108,7 +124,10 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
       avgPrepTimeMinutes: r.avgPrepTimeMinutes,
       minOrderAmount: r.minOrderAmount,
       coverUrl: r.coverUrl,
-      phone: r.phone || '+919864000000',
+      ownerName: r.ownerName || '',
+      ownerPhone: r.phone || '+919864000000',
+      ownerEmail: r.email || '',
+      initialPassword: '',
       isActive: r.isActive,
     });
     setFormError(null);
@@ -133,6 +152,8 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
       postalCode: '781005',
       location: { latitude: 26.1555, longitude: 91.7766 },
       isAcceptingOrders: true,
+      phone: restFormData.ownerPhone,
+      email: restFormData.ownerEmail,
     };
 
     try {
@@ -155,6 +176,17 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
         if (res.success) {
           setShowRestModal(false);
           onRefresh();
+          // Show the generated merchant credentials modal
+          if (res.data?.credentials) {
+            setCreatedCredentials({
+              restaurantName: res.data.name,
+              ownerName: restFormData.ownerName || res.data.name,
+              email: res.data.credentials.email || res.data.email,
+              phone: res.data.credentials.phone || res.data.phone,
+              password: res.data.credentials.password || restFormData.initialPassword,
+              loginUrl: window.location.origin,
+            });
+          }
         } else {
           setFormError(res.error?.message || 'Failed to create restaurant');
         }
@@ -164,6 +196,30 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const copyCredentialsText = () => {
+    if (!createdCredentials) return;
+    const text = `🍽️ Aajori Cuisine Merchant Portal Access\n\nRestaurant: ${createdCredentials.restaurantName}\nLogin Portal: ${createdCredentials.loginUrl}\nUsername / Email: ${createdCredentials.email}\nMobile Phone: ${createdCredentials.phone}\nInitial Password: ${createdCredentials.password}\nRole: RESTAURANT_OWNER\n\nPlease log in to accept incoming orders and update your menu.`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareViaWhatsApp = () => {
+    if (!createdCredentials) return;
+    const text = encodeURIComponent(
+      `🍽️ *Aajori Cuisine Merchant Portal Access*\n\n` +
+      `Hello ${createdCredentials.ownerName}!\n` +
+      `Your restaurant *${createdCredentials.restaurantName}* has been successfully registered on the Aajori Cuisine platform.\n\n` +
+      `🔗 *Login Portal:* ${createdCredentials.loginUrl}\n` +
+      `👤 *Username / Phone:* ${createdCredentials.phone}\n` +
+      `📧 *Email:* ${createdCredentials.email}\n` +
+      `🔑 *Initial Password:* ${createdCredentials.password}\n\n` +
+      `Log in now to view orders and manage your dishes!`
+    );
+    const cleanPhone = createdCredentials.phone.replace(/[^0-9]/g, '');
+    window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${text}`, '_blank');
   };
 
   const handleDeleteRestaurant = async (restaurantId: string, name: string) => {
@@ -322,6 +378,12 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
                   <div>
                     <h3 className="font-bold text-lg text-slate-900 leading-tight">{r.name}</h3>
                     <p className="text-xs text-slate-500 mt-0.5">{r.addressLine}</p>
+                    {r.ownerName && (
+                      <p className="text-[11px] text-amber-600 font-medium mt-0.5 flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        Manager: {r.ownerName}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -396,14 +458,14 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
       {/* Restaurant Add / Edit Modal */}
       {showRestModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden border border-slate-200">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  {editingRest ? 'Edit Restaurant Partner' : 'Onboard New Restaurant'}
+                  {editingRest ? 'Edit Restaurant Partner' : 'Onboard New Restaurant & Merchant'}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Configure merchant credentials, operational fees and location
+                  Configure store profile, merchant login credentials, and fees
                 </p>
               </div>
               <button
@@ -422,88 +484,155 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Restaurant Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={restFormData.name}
-                  onChange={(e) => setRestFormData({ ...restFormData, name: e.target.value })}
-                  placeholder="e.g. Khorikaa Traditional Kitchen"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
-                />
-              </div>
+              {/* 1. Restaurant Information */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Store Profile
+                </h4>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Address Line *</label>
-                <input
-                  type="text"
-                  required
-                  value={restFormData.addressLine}
-                  onChange={(e) => setRestFormData({ ...restFormData, addressLine: e.target.value })}
-                  placeholder="e.g. GS Road, Christian Basti, Guwahati"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Cuisine Types (Comma separated) *</label>
-                <input
-                  type="text"
-                  required
-                  value={restFormData.cuisineTypes}
-                  onChange={(e) => setRestFormData({ ...restFormData, cuisineTypes: e.target.value })}
-                  placeholder="e.g. Assamese, Traditional, Pork Special, Thali"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Commission %</label>
+                  <label className="text-xs font-semibold text-slate-700">Restaurant Name *</label>
                   <input
-                    type="number"
-                    min="0"
-                    max="50"
-                    value={restFormData.commissionRate}
-                    onChange={(e) => setRestFormData({ ...restFormData, commissionRate: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 font-mono"
+                    type="text"
+                    required
+                    value={restFormData.name}
+                    onChange={(e) => setRestFormData({ ...restFormData, name: e.target.value })}
+                    placeholder="e.g. Gam's Delicacy"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Avg Prep (min)</label>
+                  <label className="text-xs font-semibold text-slate-700">Address Line *</label>
                   <input
-                    type="number"
-                    min="5"
-                    max="120"
-                    value={restFormData.avgPrepTimeMinutes}
-                    onChange={(e) => setRestFormData({ ...restFormData, avgPrepTimeMinutes: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 font-mono"
+                    type="text"
+                    required
+                    value={restFormData.addressLine}
+                    onChange={(e) => setRestFormData({ ...restFormData, addressLine: e.target.value })}
+                    placeholder="e.g. Uzan Bazar, Riverside Road, Guwahati"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Min Order (₹)</label>
+                  <label className="text-xs font-semibold text-slate-700">Cuisine Types *</label>
                   <input
-                    type="number"
-                    min="0"
-                    value={restFormData.minOrderAmount}
-                    onChange={(e) => setRestFormData({ ...restFormData, minOrderAmount: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 font-mono"
+                    type="text"
+                    required
+                    value={restFormData.cuisineTypes}
+                    onChange={(e) => setRestFormData({ ...restFormData, cuisineTypes: e.target.value })}
+                    placeholder="e.g. Assamese, Fish Special, Thali"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Commission %</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={restFormData.commissionRate}
+                      onChange={(e) => setRestFormData({ ...restFormData, commissionRate: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Avg Prep (min)</label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="120"
+                      value={restFormData.avgPrepTimeMinutes}
+                      onChange={(e) => setRestFormData({ ...restFormData, avgPrepTimeMinutes: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Min Order (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={restFormData.minOrderAmount}
+                      onChange={(e) => setRestFormData({ ...restFormData, minOrderAmount: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Cover Photo URL</label>
+                  <input
+                    type="url"
+                    value={restFormData.coverUrl}
+                    onChange={(e) => setRestFormData({ ...restFormData, coverUrl: e.target.value })}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-xs focus:outline-none focus:border-brand-500"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Cover Image URL</label>
-                <input
-                  type="url"
-                  value={restFormData.coverUrl}
-                  onChange={(e) => setRestFormData({ ...restFormData, coverUrl: e.target.value })}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 font-mono text-xs"
-                />
+              {/* 2. Merchant Login Credentials Section */}
+              <div className="pt-3 border-t border-slate-200 space-y-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 uppercase tracking-wider">
+                  <Key className="w-3.5 h-3.5" />
+                  <span>Merchant Login Credentials (For Restaurant Portal Access)</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Owner / Manager Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={restFormData.ownerName}
+                      onChange={(e) => setRestFormData({ ...restFormData, ownerName: e.target.value })}
+                      placeholder="e.g. Bhaskar Gam"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Merchant Mobile Phone *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={restFormData.ownerPhone}
+                      onChange={(e) => setRestFormData({ ...restFormData, ownerPhone: e.target.value })}
+                      placeholder="+919864000000"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Merchant Login Email</label>
+                    <input
+                      type="email"
+                      value={restFormData.ownerEmail}
+                      onChange={(e) => setRestFormData({ ...restFormData, ownerEmail: e.target.value })}
+                      placeholder="merchant@gam.in"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Initial Password</label>
+                    <input
+                      type="text"
+                      value={restFormData.initialPassword}
+                      onChange={(e) => setRestFormData({ ...restFormData, initialPassword: e.target.value })}
+                      placeholder="Aajori@Merchant2026"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  The restaurant owner can use either their Email or Phone number along with this password to log in.
+                </p>
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
@@ -519,10 +648,82 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = ({
                   disabled={isSubmitting}
                   className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-brand-600/20 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Saving...' : editingRest ? 'Update Restaurant' : 'Onboard Restaurant'}
+                  {isSubmitting ? 'Saving...' : editingRest ? 'Update Restaurant' : 'Onboard & Generate Login'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Generated Merchant Credentials Success Modal */}
+      {createdCredentials && (
+        <div className="fixed inset-0 z-[70] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-emerald-200">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white text-center space-y-2">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold">Restaurant Onboarded!</h3>
+              <p className="text-xs text-emerald-100">
+                Merchant account created for <strong>{createdCredentials.restaurantName}</strong>
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5 text-xs font-mono">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <span className="text-slate-500 font-sans">Role</span>
+                  <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-bold">RESTAURANT_OWNER</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-sans">Login Portal:</span>
+                  <span className="text-slate-800 truncate max-w-[200px]">{createdCredentials.loginUrl}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-sans">Phone / ID:</span>
+                  <span className="font-bold text-slate-900">{createdCredentials.phone}</span>
+                </div>
+                {createdCredentials.email && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-sans">Email:</span>
+                    <span className="text-slate-800">{createdCredentials.email}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-slate-500 font-sans">Password:</span>
+                  <span className="font-bold text-brand-600 text-sm">{createdCredentials.password}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={copyCredentialsText}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? 'Copied!' : 'Copy Credentials'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={shareViaWhatsApp}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Send via WhatsApp</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCreatedCredentials(null)}
+                className="w-full py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold"
+              >
+                Close & Return to Dashboard
+              </button>
+            </div>
           </div>
         </div>
       )}

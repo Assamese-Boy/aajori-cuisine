@@ -62,6 +62,7 @@ export interface User {
   fullName: string;
   role: UserRole;
   status: AccountStatus;
+  password?: string;
   avatarUrl?: string;
   fcmToken?: string;
   createdAt: string;
@@ -90,6 +91,8 @@ export interface Restaurant {
   description?: string;
   phone: string;
   email?: string;
+  ownerId?: string;
+  ownerName?: string;
   commissionRate: number;
   isActive: boolean;
   isAcceptingOrders: boolean;

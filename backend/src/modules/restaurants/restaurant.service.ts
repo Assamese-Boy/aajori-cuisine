@@ -79,14 +79,71 @@ export class RestaurantService {
     };
   }
 
-  public createRestaurant(data: Omit<Restaurant, 'id'>): Restaurant {
+  public createRestaurant(data: Omit<Restaurant, 'id'> & {
+    ownerName?: string;
+    ownerPhone?: string;
+    ownerEmail?: string;
+    initialPassword?: string;
+  }): Restaurant & { credentials: { email?: string; phone: string; password: string; role: string } } {
     const id = uuidv4();
+    const tempPassword = data.initialPassword || 'Aajori@Merchant2026';
+    const ownerPhone = (data.ownerPhone || data.phone || '+919864000000').trim();
+    const ownerEmail = (data.ownerEmail || data.email || `merchant.${data.slug || id.slice(0, 5)}@aajori.in`).trim().toLowerCase();
+    const ownerName = data.ownerName || `${data.name} Manager`;
+
+    // 1. Provision or find Restaurant Owner User
+    let ownerUser = Array.from(db.users.values()).find(
+      (u) => u.phone === ownerPhone || (u.email && u.email.toLowerCase() === ownerEmail)
+    );
+
+    if (!ownerUser) {
+      ownerUser = {
+        id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        phone: ownerPhone,
+        email: ownerEmail,
+        fullName: ownerName,
+        role: 'RESTAURANT_OWNER',
+        status: 'ACTIVE',
+        password: tempPassword,
+        createdAt: new Date().toISOString(),
+      };
+      db.users.set(ownerUser.id, ownerUser);
+    } else {
+      ownerUser.role = 'RESTAURANT_OWNER';
+      ownerUser.password = tempPassword;
+      db.users.set(ownerUser.id, ownerUser);
+    }
+
+    // 2. Create Restaurant Record
     const newRestaurant: Restaurant = {
       ...data,
       id,
+      phone: ownerPhone,
+      email: ownerEmail,
+      ownerId: ownerUser.id,
+      ownerName: ownerUser.fullName,
     };
     db.restaurants.set(id, newRestaurant);
-    return newRestaurant;
+
+    // 3. Create default Menu Category
+    const defaultCat = {
+      id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      restaurantId: id,
+      name: 'Signature Dishes',
+      displayOrder: 1,
+      isActive: true,
+    };
+    db.menuCategories.set(defaultCat.id, defaultCat);
+
+    return {
+      ...newRestaurant,
+      credentials: {
+        email: ownerUser.email,
+        phone: ownerUser.phone,
+        password: tempPassword,
+        role: 'RESTAURANT_OWNER',
+      },
+    };
   }
 
   public updateRestaurant(id: string, updates: Partial<Restaurant>): Restaurant {
