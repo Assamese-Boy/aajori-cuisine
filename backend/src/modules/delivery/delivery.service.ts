@@ -188,6 +188,83 @@ export class DeliveryService {
       totalOrders: rider.totalCompletedOrders,
     };
   }
+
+  public listDeliveryPartners(): DeliveryPartner[] {
+    return Array.from(db.deliveryPartners.values());
+  }
+
+  public createDeliveryPartner(data: {
+    fullName: string;
+    phone: string;
+    email?: string;
+    vehicleType: string;
+    vehicleNumber: string;
+    drivingLicenseNumber: string;
+    zoneId?: string;
+  }): DeliveryPartner {
+    if (!data.fullName || !data.phone || !data.vehicleNumber) {
+      throw new BadRequestError('Full name, phone number, and vehicle number are required');
+    }
+
+    // 1. Create User account with role DELIVERY_PARTNER
+    const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const user = {
+      id: userId,
+      phone: data.phone.trim(),
+      email: data.email?.trim().toLowerCase() || undefined,
+      fullName: data.fullName.trim(),
+      role: 'DELIVERY_PARTNER' as const,
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+    };
+    db.users.set(userId, user);
+
+    // 2. Create DeliveryPartner profile
+    const riderId = `rider_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newRider: DeliveryPartner = {
+      id: riderId,
+      user,
+      vehicleType: data.vehicleType || 'Two Wheeler (Motorcycle)',
+      vehicleNumber: data.vehicleNumber.trim().toUpperCase(),
+      drivingLicenseNumber: data.drivingLicenseNumber || 'DL-AS01-PENDING',
+      shiftStatus: 'ONLINE_IDLE',
+      currentLocation: { latitude: 26.1445, longitude: 91.7362 }, // Guwahati default
+      lastLocationTime: new Date().toISOString(),
+      batteryPercentage: 95,
+      totalCompletedOrders: 0,
+      rating: 5.0,
+    };
+
+    db.deliveryPartners.set(riderId, newRider);
+    return newRider;
+  }
+
+  public updateDeliveryPartner(id: string, updates: Partial<DeliveryPartner>): DeliveryPartner {
+    const rider = db.deliveryPartners.get(id);
+    if (!rider) {
+      throw new NotFoundError('Delivery partner not found');
+    }
+    const updated: DeliveryPartner = {
+      ...rider,
+      ...updates,
+      id: rider.id,
+      user: updates.user ? { ...rider.user, ...updates.user } : rider.user,
+    };
+    if (updates.user) {
+      db.users.set(rider.user.id, updated.user);
+    }
+    db.deliveryPartners.set(id, updated);
+    return updated;
+  }
+
+  public deleteDeliveryPartner(id: string): boolean {
+    const rider = db.deliveryPartners.get(id);
+    if (!rider) {
+      throw new NotFoundError('Delivery partner not found');
+    }
+    db.users.delete(rider.user.id);
+    return db.deliveryPartners.delete(id);
+  }
 }
 
 export const deliveryService = new DeliveryService();

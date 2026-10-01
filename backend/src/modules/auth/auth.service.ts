@@ -144,6 +144,86 @@ export class AuthService {
     }
     return user;
   }
+
+  public listUsers(filter?: { role?: UserRole; search?: string }): User[] {
+    let users = Array.from(db.users.values());
+    if (filter?.role) {
+      users = users.filter((u) => u.role === filter.role);
+    }
+    if (filter?.search) {
+      const q = filter.search.toLowerCase();
+      users = users.filter(
+        (u) =>
+          u.fullName.toLowerCase().includes(q) ||
+          u.phone.includes(q) ||
+          u.email?.toLowerCase().includes(q)
+      );
+    }
+    return users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public createUser(data: {
+    fullName: string;
+    phone: string;
+    email?: string;
+    role: UserRole;
+    status?: 'ACTIVE' | 'SUSPENDED';
+  }): User {
+    if (!data.fullName || !data.phone) {
+      throw new BadRequestError('Full name and phone number are required');
+    }
+    const cleanPhone = data.phone.trim();
+    const existing = Array.from(db.users.values()).find((u) => u.phone === cleanPhone);
+    if (existing) {
+      throw new BadRequestError(`User with phone ${cleanPhone} already exists`);
+    }
+
+    const newUser: User = {
+      id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      fullName: data.fullName.trim(),
+      phone: cleanPhone,
+      email: data.email?.trim().toLowerCase() || undefined,
+      role: data.role || 'CUSTOMER',
+      status: data.status || 'ACTIVE',
+      createdAt: new Date().toISOString(),
+    };
+
+    db.users.set(newUser.id, newUser);
+    return newUser;
+  }
+
+  public updateUser(id: string, updates: Partial<User>): User {
+    const user = db.users.get(id);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+    const updated: User = {
+      ...user,
+      ...updates,
+      id: user.id, // protect immutable id
+      createdAt: user.createdAt,
+    };
+    db.users.set(id, updated);
+    return updated;
+  }
+
+  public deleteUser(id: string): boolean {
+    if (!db.users.has(id)) {
+      throw new NotFoundError('User not found');
+    }
+    return db.users.delete(id);
+  }
+
+  public toggleUserStatus(id: string, status?: 'ACTIVE' | 'SUSPENDED'): User {
+    const user = db.users.get(id);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+    const newStatus = status || (user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
+    user.status = newStatus;
+    db.users.set(id, user);
+    return user;
+  }
 }
 
 export const authService = new AuthService();

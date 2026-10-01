@@ -375,15 +375,151 @@ apiRouter.get('/admin/restaurants', (req: Request, res: Response) => {
   res.json({ success: true, data: restaurants });
 });
 
-apiRouter.post('/admin/restaurants', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
-  const restaurant = restaurantService.createRestaurant(req.body);
-  res.status(201).json({ success: true, data: restaurant });
+apiRouter.post('/admin/restaurants', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const restaurant = restaurantService.createRestaurant(req.body);
+    res.status(201).json({ success: true, data: restaurant });
+  } catch (err) {
+    next(err);
+  }
 });
 
-apiRouter.patch('/admin/restaurants/:id/toggle', authenticate, requireRole('SUPER_ADMIN', 'ADMIN', 'RESTAURANT_OWNER'), (req: AuthenticatedRequest, res: Response) => {
-  const { isAcceptingOrders } = req.body;
-  const updated = restaurantService.toggleAcceptingOrders(req.params.id, Boolean(isAcceptingOrders));
-  res.json({ success: true, data: updated });
+apiRouter.put('/admin/restaurants/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN', 'RESTAURANT_OWNER'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const updated = restaurantService.updateRestaurant(req.params.id, req.body);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.delete('/admin/restaurants/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    restaurantService.deleteRestaurant(req.params.id);
+    res.json({ success: true, message: 'Restaurant deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.patch('/admin/restaurants/:id/toggle', authenticate, requireRole('SUPER_ADMIN', 'ADMIN', 'RESTAURANT_OWNER'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { isAcceptingOrders } = req.body;
+    const updated = restaurantService.toggleAcceptingOrders(req.params.id, Boolean(isAcceptingOrders));
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Menu item management
+apiRouter.post('/admin/restaurants/:id/menu/items', authenticate, requireRole('SUPER_ADMIN', 'ADMIN', 'RESTAURANT_OWNER'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const item = restaurantService.createMenuItem(req.params.id, req.body);
+    res.status(201).json({ success: true, data: item });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.put('/admin/restaurants/:id/menu/items/:itemId', authenticate, requireRole('SUPER_ADMIN', 'ADMIN', 'RESTAURANT_OWNER'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const updated = restaurantService.updateMenuItem(req.params.itemId, req.body);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.delete('/admin/restaurants/:id/menu/items/:itemId', authenticate, requireRole('SUPER_ADMIN', 'ADMIN', 'RESTAURANT_OWNER'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    restaurantService.deleteMenuItem(req.params.itemId);
+    res.json({ success: true, message: 'Menu item deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ----------------------------------------------------------------------------
+// Delivery Partner CRUD
+// ----------------------------------------------------------------------------
+apiRouter.get('/admin/delivery-partners', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  const riders = deliveryService.listDeliveryPartners();
+  res.json({ success: true, data: riders });
+});
+
+apiRouter.post('/admin/delivery-partners', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const rider = deliveryService.createDeliveryPartner(req.body);
+    res.status(201).json({ success: true, data: rider });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.put('/admin/delivery-partners/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const updated = deliveryService.updateDeliveryPartner(req.params.id, req.body);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.delete('/admin/delivery-partners/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    deliveryService.deleteDeliveryPartner(req.params.id);
+    res.json({ success: true, message: 'Delivery partner removed successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ----------------------------------------------------------------------------
+// Users & Customers CRUD
+// ----------------------------------------------------------------------------
+apiRouter.get('/admin/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  const role = req.query.role as any;
+  const search = req.query.search as string;
+  const users = authService.listUsers({ role, search });
+  res.json({ success: true, data: users });
+});
+
+apiRouter.post('/admin/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const user = authService.createUser(req.body);
+    res.status(201).json({ success: true, data: user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.put('/admin/users/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const updated = authService.updateUser(req.params.id, req.body);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.patch('/admin/users/:id/status', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { status } = req.body;
+    const updated = authService.toggleUserStatus(req.params.id, status);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.delete('/admin/users/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    authService.deleteUser(req.params.id);
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
 });
 
 apiRouter.get('/admin/audit-logs', (req: Request, res: Response) => {

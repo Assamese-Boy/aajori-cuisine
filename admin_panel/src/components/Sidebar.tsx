@@ -10,6 +10,7 @@ import {
   DollarSign,
   Activity,
   Layers,
+  Users,
 } from 'lucide-react';
 
 export type AdminTab =
@@ -18,6 +19,7 @@ export type AdminTab =
   | 'live-map'
   | 'restaurants'
   | 'delivery-partners'
+  | 'users'
   | 'ai-whatsapp'
   | 'audit-logs';
 
@@ -33,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     { id: 'live-map', label: 'Live GIS Operations Map', icon: MapPin },
     { id: 'restaurants', label: 'Restaurant Partners', icon: Store },
     { id: 'delivery-partners', label: 'Delivery Fleet', icon: Bike },
+    { id: 'users', label: 'Users & Customers', icon: Users },
     { id: 'ai-whatsapp', label: 'AI & WhatsApp Hub', icon: Bot },
     { id: 'audit-logs', label: 'Enterprise Audit Trail', icon: FileText },
   ];

@@ -7,6 +7,7 @@ import { OrdersPage } from './pages/OrdersPage';
 import { LiveMapPage } from './pages/LiveMapPage';
 import { RestaurantsPage } from './pages/RestaurantsPage';
 import { DeliveryPartnersPage } from './pages/DeliveryPartnersPage';
+import { UsersPage } from './pages/UsersPage';
 import { AiWhatsAppPage } from './pages/AiWhatsAppPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import { apiRequest, getAuthToken, logout, getCurrentStoredUser } from './services/api';
@@ -110,6 +111,8 @@ export const App: React.FC = () => {
           )}
 
           {currentTab === 'delivery-partners' && <DeliveryPartnersPage />}
+
+          {currentTab === 'users' && <UsersPage />}
 
           {currentTab === 'ai-whatsapp' && <AiWhatsAppPage />}
 
