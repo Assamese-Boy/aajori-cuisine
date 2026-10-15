@@ -64,8 +64,53 @@ apiRouter.post('/auth/dev-login', async (req: Request, res: Response, next: Next
   }
 });
 
+apiRouter.post('/auth/signup', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await authService.customerSignup(req.body);
+    res.status(201).json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.post('/auth/login', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const identifier = req.body.identifier || req.body.email || req.body.phone;
+    const password = req.body.password;
+    const result = await authService.customerLogin(identifier, password);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.post('/auth/customer-login', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const identifier = req.body.identifier || req.body.email || req.body.phone;
+    const password = req.body.password;
+    const result = await authService.customerLogin(identifier, password);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
 apiRouter.get('/auth/me', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   res.json({ success: true, data: req.user });
+});
+
+apiRouter.patch('/auth/profile', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { fullName, email, phone } = req.body;
+    const updated = authService.updateUser(req.user!.id, {
+      fullName: fullName ?? req.user!.fullName,
+      email: email ?? req.user!.email,
+      phone: phone ?? req.user!.phone,
+    });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ============================================================================
@@ -82,7 +127,7 @@ apiRouter.post('/addresses', authenticate, async (req: AuthenticatedRequest, res
   try {
     const { label, addressLine1, addressLine2, landmark, city, postalCode, latitude, longitude } = req.body;
     const newAddress = {
-      id: `addr_${Date.now()}`,
+      id: `addr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       customerId: req.user!.id,
       label: label || 'Home',
       addressLine1,
@@ -91,11 +136,27 @@ apiRouter.post('/addresses', authenticate, async (req: AuthenticatedRequest, res
       city: city || 'Guwahati',
       district: 'Kamrup Metropolitan',
       postalCode: postalCode || '781001',
-      location: { latitude: Number(latitude), longitude: Number(longitude) },
+      location: { latitude: Number(latitude || 26.182), longitude: Number(longitude || 91.751) },
       isDefault: true,
     };
     db.customerAddresses.set(newAddress.id, newAddress);
     res.status(201).json({ success: true, data: newAddress });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.delete('/addresses/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const address = db.customerAddresses.get(req.params.id);
+    if (!address) {
+      return res.status(404).json({ success: false, error: { message: 'Address not found' } });
+    }
+    if (address.customerId !== req.user!.id) {
+      return res.status(403).json({ success: false, error: { message: 'Unauthorized address deletion' } });
+    }
+    db.customerAddresses.delete(req.params.id);
+    res.json({ success: true, message: 'Address removed successfully' });
   } catch (err) {
     next(err);
   }
@@ -196,7 +257,8 @@ apiRouter.get('/orders/:id', optionalAuthenticate, async (req: AuthenticatedRequ
 
 apiRouter.patch('/orders/:id/status', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { toStatus, reason, metadata } = req.body;
+    const toStatus = req.body.toStatus || req.body.newStatus;
+    const { reason, metadata } = req.body;
     const updated = await orderService.transitionOrderStatus(
       req.params.id,
       toStatus,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, UserCheck, LogOut } from 'lucide-react';
+import { RefreshCw, UserCheck, LogOut, ShoppingBag, ExternalLink } from 'lucide-react';
 import { apiRequest, setAuthToken } from '../services/api';
 
 interface HeaderProps {
@@ -55,7 +55,19 @@ export const Header: React.FC<HeaderProps> = ({
         </span>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Customer Web Storefront Link */}
+        <a
+          href="http://localhost:5174"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition-colors"
+          title="Open Customer Web Storefront"
+        >
+          <ShoppingBag className="w-3.5 h-3.5 text-brand-600" />
+          <span>Customer Web Storefront</span>
+          <ExternalLink className="w-3 h-3 text-amber-600" />
+        </a>
         {/* Role Switcher for admin staff simulation */}
         <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
           <UserCheck className="w-4 h-4 text-slate-600" />

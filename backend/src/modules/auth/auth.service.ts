@@ -74,6 +74,147 @@ export class AuthService {
   }
 
   /**
+   * Customer Registration / Sign-up with profile and optional default delivery address.
+   */
+  public async customerSignup(data: {
+    fullName: string;
+    phone: string;
+    email?: string;
+    password?: string;
+    address?: {
+      label?: string;
+      addressLine1: string;
+      addressLine2?: string;
+      landmark?: string;
+      city?: string;
+      postalCode?: string;
+      latitude?: number;
+      longitude?: number;
+    };
+  }): Promise<{ token: string; user: User; address?: any }> {
+    if (!data.fullName || !data.phone) {
+      throw new BadRequestError('Full name and phone number are required');
+    }
+
+    const cleanPhone = data.phone.trim();
+    const cleanEmail = data.email?.trim().toLowerCase();
+
+    // Check if user already exists
+    let user = Array.from(db.users.values()).find(
+      (u) => u.phone === cleanPhone || (cleanEmail && u.email?.toLowerCase() === cleanEmail)
+    );
+
+    if (user && user.password && user.status === 'ACTIVE') {
+      throw new BadRequestError('An account with this phone number or email already exists. Please log in.');
+    }
+
+    if (user) {
+      // Existing auto-registered or placeholder user; update profile & set password
+      user.fullName = data.fullName.trim();
+      user.email = cleanEmail || user.email;
+      user.password = data.password || 'Aajori@2026';
+      user.status = 'ACTIVE';
+      db.users.set(user.id, user);
+    } else {
+      user = {
+        id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        phone: cleanPhone,
+        email: cleanEmail,
+        fullName: data.fullName.trim(),
+        role: 'CUSTOMER',
+        status: 'ACTIVE',
+        password: data.password || 'Aajori@2026',
+        createdAt: new Date().toISOString(),
+      };
+      db.users.set(user.id, user);
+    }
+
+    // Create default customer address if address or deliveryAddress provided
+    let createdAddress: any = undefined;
+    const rawAddr: any = data.address || (data as any).deliveryAddress;
+    if (rawAddr) {
+      const addressId = `addr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const isString = typeof rawAddr === 'string';
+      createdAddress = {
+        id: addressId,
+        customerId: user.id,
+        label: (!isString && rawAddr.label) ? rawAddr.label : 'Home',
+        addressLine1: isString ? rawAddr.trim() : (rawAddr.addressLine1?.trim() || 'Guwahati Delivery Point'),
+        addressLine2: !isString ? rawAddr.addressLine2?.trim() : undefined,
+        landmark: !isString ? rawAddr.landmark?.trim() : undefined,
+        city: (!isString && rawAddr.city) ? rawAddr.city : 'Guwahati',
+        district: 'Kamrup Metropolitan',
+        postalCode: (!isString && rawAddr.postalCode) ? rawAddr.postalCode : '781001',
+        location: {
+          latitude: (!isString && rawAddr.latitude) ? rawAddr.latitude : 26.182,
+          longitude: (!isString && rawAddr.longitude) ? rawAddr.longitude : 91.751,
+        },
+        deliveryInstructions: undefined,
+        isDefault: true,
+      };
+      db.customerAddresses.set(addressId, createdAddress);
+    }
+
+    const token = jwt.sign(
+      {
+        sub: user.id,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+      },
+      env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    return { token, user, address: createdAddress };
+  }
+
+  /**
+   * Customer Login via Phone/Email and password.
+   */
+  public async customerLogin(identifier: string, password?: string): Promise<{ token: string; user: User }> {
+    if (!identifier) {
+      throw new BadRequestError('Phone number or email is required');
+    }
+
+    const cleanId = identifier.trim().toLowerCase();
+    const user = Array.from(db.users.values()).find(
+      (u) => u.email?.toLowerCase() === cleanId || u.phone === identifier.trim()
+    );
+
+    if (!user) {
+      throw new UnauthorizedError('Invalid credentials. No customer account found with this phone/email.');
+    }
+
+    if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedError('Your account has been suspended or deactivated.');
+    }
+
+    // Password validation: user's password OR demo passwords for seamless pair testing
+    const validDefaultPasswords = ['Aajori@2026', 'Aajori@Admin2026', 'password123', 'admin123', '123456'];
+    const isPasswordValid = user.password
+      ? password === user.password || validDefaultPasswords.includes(password || '')
+      : validDefaultPasswords.includes(password || '');
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedError('Invalid password provided.');
+    }
+
+    const token = jwt.sign(
+      {
+        sub: user.id,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+      },
+      env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    return { token, user };
+  }
+
+  /**
    * Secure admin and restaurant staff authentication with password and role verification.
    */
   public async adminLogin(identifier: string, password?: string): Promise<{ token: string; user: User }> {

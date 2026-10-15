@@ -4,20 +4,21 @@
 
 Aajori Cuisine is an enterprise-grade local food-commerce infrastructure platform built for district-scale operations (initially configured for Kamrup Metropolitan / Guwahati, Assam). It unites multiple ordering and operational interfaces through a single source-of-truth backend:
 
-1. **Native Flutter Customer Application** (Android / iOS)
-2. **Native Flutter Delivery Partner Application** (Android / iOS)
-3. **Super Admin Operations Control Center** (React + Vite + Leaflet GIS)
-4. **Restaurant Management Portal**
-5. **WhatsApp Conversational Ordering Engine** (Meta Cloud API)
-6. **AI Food Assistant** (Multi-turn preference resolver)
-7. **MCP (Model Context Protocol) Server** (Standardized tools for Claude, ChatGPT, Gemini)
+1. **Web Customer Storefront Application** (React + Vite + Tailwind CSS)
+2. **Native Flutter Customer Application** (Android / iOS)
+3. **Native Flutter Delivery Partner Application** (Android / iOS)
+4. **Super Admin Operations Control Center** (React + Vite + Leaflet GIS)
+5. **Restaurant Management Portal**
+6. **WhatsApp Conversational Ordering Engine** (Meta Cloud API)
+7. **AI Food Assistant** (Multi-turn preference resolver)
+8. **MCP (Model Context Protocol) Server** (Standardized tools for Claude, ChatGPT, Gemini)
 
 ---
 
 ## 🏛️ System Architecture
 
 ```text
-Customer Flutter App     Delivery Flutter App     Admin Web Control Center
+Customer Web App         Customer Flutter App     Delivery Flutter App     Admin Web Control Center
 WhatsApp Bot             AI Meal Assistant        MCP Clients (Claude/GPT)
         │                       │                        │
         └───────────────────────┴────────────────────────┘
@@ -52,13 +53,21 @@ aajori-cuisine/
 │   │   ├── modules/          # Auth, Pricing, Orders, Delivery, Payments, AI, MCP, Admin
 │   │   ├── routes/           # Unified REST API router
 │   │   └── server.ts         # Express server & Vercel entrypoint
-│   └── tests/                # Unit test suites (Pricing, State Machine, AI)
+│   └── tests/                # Unit test suites (Pricing, State Machine, AI, Customer Auth)
+│
+├── customer_web/             # React Customer Web Application (Storefront & Live Order Tracker)
+│   ├── src/
+│   │   ├── components/       # Header, Footer, AuthModal, CartDrawer, AiAssistantModal
+│   │   ├── context/          # AuthContext (Signup/Login), CartContext, ToastContext
+│   │   ├── pages/            # Home, Restaurant Menu, Checkout, Order Tracking, History, Profile
+│   │   └── services/         # API client & token persistence
+│   └── vite.config.ts        # Vite bundler on http://localhost:5174
 │
 ├── admin_panel/              # Super Admin Control Center & Restaurant Portal
 │   ├── src/
-│   │   ├── components/       # UI kit, Header with role-switcher, Sidebar
-│   │   └── pages/            # Dashboard, Orders Inspector, Live GIS Map, AI Sandbox
-│   └── vite.config.ts        # Fast Vite bundler with API proxy
+│   │   ├── components/       # UI kit, Header with role-switcher & Storefront link, Sidebar
+│   │   └── pages/            # Dashboard, Orders Inspector, Live GIS Map, Users, AI Sandbox
+│   └── vite.config.ts        # Fast Vite bundler with API proxy on http://localhost:5173
 │
 ├── customer_app/             # Native Flutter Customer Mobile Application
 │   └── lib/
@@ -93,12 +102,20 @@ aajori-cuisine/
 ```bash
 cd backend
 npm install
-npm test            # Run Vitest test suite (10/10 tests)
+npm test            # Run Vitest test suite (22/22 tests passing)
 npm run build       # Build TypeScript
 npm run dev         # Launches on http://localhost:4000
 ```
 
-### 2. Start Super Admin Operations Control Center
+### 2. Start Customer Web Application (Storefront)
+```bash
+cd customer_web
+npm install
+npm run build       # Clean build verification
+npm run dev         # Launches customer web app on http://localhost:5174
+```
+
+### 3. Start Super Admin Operations Control Center
 ```bash
 cd admin_panel
 npm install
