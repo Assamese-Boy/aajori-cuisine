@@ -24,6 +24,7 @@ import {
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { SkeletonCards, EmptyState } from '../components/SkeletonLoaders';
+import { MediaUploadInput } from '../components/MediaUploadInput';
 import {
   mergeRestaurants,
   recordCreatedRestaurant,
@@ -91,6 +92,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     price: 180,
     isVeg: false,
     categoryName: 'Signature Dishes',
+    imageUrl: '',
     prepTimeMinutes: 20,
     isAvailable: true,
   });
@@ -291,6 +293,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       price: 150,
       isVeg: false,
       categoryName: 'Signature Dishes',
+      imageUrl: '',
       prepTimeMinutes: 20,
       isAvailable: true,
     });
@@ -306,6 +309,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       price: item.price,
       isVeg: item.isVeg,
       categoryName: 'Signature Dishes',
+      imageUrl: item.imageUrl || '',
       prepTimeMinutes: item.prepTimeMinutes || 20,
       isAvailable: item.isAvailable,
     });
@@ -416,6 +420,10 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                   src={r.coverUrl}
                   alt={r.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      'https://images.unsplash.com/photo-1544025162-d76694265947?w=700';
+                  }}
                 />
                 <div className="absolute top-3 right-3 flex items-center gap-2">
                   <span
@@ -621,15 +629,13 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Cover Photo URL</label>
-                  <input
-                    type="url"
-                    value={restFormData.coverUrl}
-                    onChange={(e) => setRestFormData({ ...restFormData, coverUrl: e.target.value })}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-xs focus:outline-none focus:border-brand-500"
-                  />
-                </div>
+                <MediaUploadInput
+                  label="Restaurant Cover Photo (Upload or URL)"
+                  value={restFormData.coverUrl}
+                  onChange={(url) => setRestFormData({ ...restFormData, coverUrl: url })}
+                  placeholder="https://..."
+                  helperText="Upload official storefront facade or dining hall photo"
+                />
               </div>
 
               {/* 2. Merchant Login Credentials Section */}
@@ -831,29 +837,44 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                     {cat.items.map((item: any) => (
                       <div
                         key={item.id}
-                        className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between gap-3 text-xs"
+                        className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between gap-3 text-xs hover:border-slate-300 transition-colors"
                       >
-                        <div className="space-y-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={`w-2 h-2 rounded-full shrink-0 ${
-                                  item.isVeg ? 'bg-emerald-500' : 'bg-rose-500'
-                                }`}
-                              ></span>
-                              <span className="font-semibold text-slate-900 text-sm">
-                                {item.name}
+                        <div className="flex gap-3">
+                          {item.imageUrl && (
+                            <div className="w-14 h-14 rounded-xl bg-stone-100 overflow-hidden shrink-0 border border-slate-200">
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200';
+                                }}
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`w-2 h-2 rounded-full shrink-0 ${
+                                    item.isVeg ? 'bg-emerald-500' : 'bg-rose-500'
+                                  }`}
+                                ></span>
+                                <span className="font-semibold text-slate-900 text-sm truncate">
+                                  {item.name}
+                                </span>
+                              </div>
+                              <span className="font-mono font-bold text-slate-900 text-sm shrink-0">
+                                ₹{item.price}
                               </span>
                             </div>
-                            <span className="font-mono font-bold text-slate-900 text-sm">
-                              ₹{item.price}
-                            </span>
+                            {item.description && (
+                              <p className="text-slate-500 text-[11px] line-clamp-2">
+                                {item.description}
+                              </p>
+                            )}
                           </div>
-                          {item.description && (
-                            <p className="text-slate-500 text-[11px] line-clamp-2">
-                              {item.description}
-                            </p>
-                          )}
                         </div>
 
                         <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
@@ -964,6 +985,14 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                   />
                 </div>
               </div>
+
+              <MediaUploadInput
+                label="Dish Photograph (Upload File or URL)"
+                value={itemFormData.imageUrl}
+                onChange={(url) => setItemFormData({ ...itemFormData, imageUrl: url })}
+                placeholder="https://..."
+                helperText="Upload appetizing photograph of the prepared dish"
+              />
 
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <label className="flex items-center gap-2 cursor-pointer bg-slate-50 p-2.5 rounded-xl border border-slate-200">

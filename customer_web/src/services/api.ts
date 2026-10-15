@@ -1,6 +1,7 @@
 const CANDIDATE_API_BASES = [
   '/api/v1',
   'http://localhost:4000/api/v1',
+  'https://aajori-cuisine-admin-ecru.vercel.app/api/v1',
   'https://aajori-cuisine-git-main-pallab-jyoti-gohains-projects.vercel.app/api/v1',
 ];
 

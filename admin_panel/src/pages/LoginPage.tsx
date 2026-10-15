@@ -9,8 +9,9 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
-  const [identifier, setIdentifier] = useState('admin@aajori.in');
-  const [password, setPassword] = useState('Aajori@Admin2026');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,12 +51,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const fillQuickCredentials = (email: string, pass: string) => {
-    setIdentifier(email);
-    setPassword(pass);
-    setError(null);
-  };
-
   return (
     <div className="min-h-screen w-screen bg-slate-950 flex flex-col justify-center items-center p-4 selection:bg-brand-500 selection:text-white relative overflow-hidden">
       {/* Background ambient lighting */}
@@ -65,35 +60,35 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       <div className="w-full max-w-md relative z-10 space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-amber-500 mx-auto flex items-center justify-center font-bold text-white text-2xl shadow-xl shadow-brand-600/40">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-amber-500 mx-auto flex items-center justify-center font-black text-white text-2xl shadow-xl shadow-brand-600/40">
             AJ
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Aajori Cuisine</h1>
-          <p className="text-xs text-amber-400 font-medium uppercase tracking-wider">
+          <h1 className="text-2xl font-black text-white tracking-tight">Aajori Cuisine</h1>
+          <p className="text-xs text-amber-400 font-bold uppercase tracking-wider">
             Operational Control Center • Kamrup Metro, Assam
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-7 shadow-2xl backdrop-blur-xl space-y-5">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl space-y-6">
           <div>
-            <h2 className="text-lg font-bold text-white">Staff Sign In</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Enter your authorized administrative or merchant credentials
+            <h2 className="text-lg font-black text-white">Staff Sign In</h2>
+            <p className="text-xs text-slate-400 mt-1 font-medium">
+              Enter your authorized enterprise staff credentials to access operations
             </p>
           </div>
 
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-start gap-2.5">
+            <div className="p-3.5 rounded-2xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-start gap-2.5">
               <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-              <span>{error}</span>
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">
-                Email or Phone Number
+              <label className="text-xs font-bold text-slate-300">
+                Email or Authorized Phone
               </label>
               <div className="relative">
                 <input
@@ -101,94 +96,60 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   required
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="admin@aajori.in or +919864000001"
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all font-mono"
+                  placeholder="admin@aajori.in or +919864..."
+                  className="w-full pl-10 pr-3.5 py-3 bg-slate-950/80 border border-slate-800 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 transition-all font-medium"
                 />
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                <Mail className="w-4.5 h-4.5 text-slate-500 absolute left-3.5 top-3.5" />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="text-xs font-bold text-slate-300">
                 Security Password
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
+                  placeholder="Enter your password"
+                  className="w-full pl-10 pr-10 py-3 bg-slate-950/80 border border-slate-800 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 transition-all font-medium"
                 />
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                <Lock className="w-4.5 h-4.5 text-slate-500 absolute left-3.5 top-3.5" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-3.5 text-slate-500 hover:text-slate-300 text-xs font-bold"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
               </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 px-4 bg-gradient-to-r from-brand-600 to-amber-600 hover:from-brand-500 hover:to-amber-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3 px-4 bg-gradient-to-r from-brand-600 to-amber-600 hover:from-brand-500 hover:to-amber-500 text-white font-black text-sm rounded-2xl shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isLoading ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>
                   <span>Sign In to Control Center</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4.5 h-4.5" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Quick Demo Credentials Autofill */}
-          <div className="pt-4 border-t border-slate-800/80 space-y-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Quick Authorized Access (Click to autofill):
+          {/* Enterprise Security Footer */}
+          <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <span>TLS 1.3 Encrypted</span>
             </span>
-            <div className="grid grid-cols-1 gap-1.5 text-xs">
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('admin@aajori.in', 'Aajori@Admin2026')}
-                className="text-left p-2 rounded-lg bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800/60 transition-colors flex items-center justify-between group"
-              >
-                <div>
-                  <span className="text-slate-200 font-semibold block">Super Administrator</span>
-                  <span className="text-slate-400 text-[11px] font-mono">admin@aajori.in</span>
-                </div>
-                <span className="text-[10px] bg-brand-950 text-brand-400 border border-brand-800 px-2 py-0.5 rounded font-mono">
-                  SUPER_ADMIN
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('ops@aajori.in', 'Aajori@Admin2026')}
-                className="text-left p-2 rounded-lg bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800/60 transition-colors flex items-center justify-between group"
-              >
-                <div>
-                  <span className="text-slate-200 font-semibold block">District Operations</span>
-                  <span className="text-slate-400 text-[11px] font-mono">ops@aajori.in</span>
-                </div>
-                <span className="text-[10px] bg-blue-950 text-blue-400 border border-blue-800 px-2 py-0.5 rounded font-mono">
-                  ADMIN
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('khorikaa.owner@gmail.com', 'Aajori@Admin2026')}
-                className="text-left p-2 rounded-lg bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800/60 transition-colors flex items-center justify-between group"
-              >
-                <div>
-                  <span className="text-slate-200 font-semibold block">Khorikaa Kitchen Partner</span>
-                  <span className="text-slate-400 text-[11px] font-mono">khorikaa.owner@gmail.com</span>
-                </div>
-                <span className="text-[10px] bg-purple-950 text-purple-400 border border-purple-800 px-2 py-0.5 rounded font-mono">
-                  MERCHANT
-                </span>
-              </button>
-            </div>
+            <span className="font-mono text-[11px]">RBAC Protected</span>
           </div>
         </div>
 

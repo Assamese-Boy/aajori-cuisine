@@ -14,6 +14,8 @@ const getEffectiveApiBase = (): string => {
 const CANDIDATE_API_BASES = [
   getEffectiveApiBase(),
   '/api/v1',
+  'http://localhost:4000/api/v1',
+  'https://aajori-cuisine-admin-ecru.vercel.app/api/v1',
   'https://aajori-cuisine-git-main-pallab-jyoti-gohains-projects.vercel.app/api/v1',
 ].filter((url, index, self) => url && self.indexOf(url) === index);
 

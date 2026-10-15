@@ -9,6 +9,7 @@ import {
   Bot,
   FileText,
   Users,
+  Image,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -17,6 +18,7 @@ export const Sidebar: React.FC = () => {
     { path: '/orders', label: 'Order Control Center', icon: ShoppingBag },
     { path: '/live-map', label: 'Live GIS Operations Map', icon: MapPin },
     { path: '/restaurants', label: 'Restaurant Partners', icon: Store },
+    { path: '/media', label: 'Media & Asset Library', icon: Image },
     { path: '/delivery-partners', label: 'Delivery Fleet', icon: Bike },
     { path: '/users', label: 'Users & Customers', icon: Users },
     { path: '/ai-whatsapp', label: 'AI & WhatsApp Hub', icon: Bot },
@@ -71,12 +73,12 @@ export const Sidebar: React.FC = () => {
 
       <div className="p-4 border-t border-slate-800 text-xs text-slate-400 flex flex-col gap-1">
         <div className="flex items-center justify-between">
-          <span>Backend Status</span>
-          <span className="text-emerald-400 font-medium">Connected</span>
+          <span>Platform Status</span>
+          <span className="text-emerald-400 font-medium">Operational</span>
         </div>
         <div className="flex items-center justify-between">
-          <span>Routing Architecture</span>
-          <span className="text-slate-300 font-mono">Multi-Route SPA</span>
+          <span>District Control</span>
+          <span className="text-slate-300 font-mono">Kamrup Metro</span>
         </div>
       </div>
     </aside>

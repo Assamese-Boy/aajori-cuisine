@@ -156,6 +156,10 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
             }
             alt={restaurant.name}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                'https://images.unsplash.com/photo-1544025162-d76694265947?w=700';
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent"></div>
 
@@ -257,7 +261,7 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
             return (
               <div
                 key={dish.id}
-                className="p-4 bg-white rounded-2xl border border-stone-200/90 shadow-2xs flex items-center justify-between gap-3.5"
+                className="p-4 bg-white rounded-3xl border border-stone-200/90 shadow-2xs flex items-center justify-between gap-3.5"
               >
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
@@ -287,41 +291,54 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
                   <p className="text-sm font-black text-slate-900">₹{dish.price}</p>
 
                   {dish.description && (
-                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-medium">
                       {dish.description}
                     </p>
                   )}
                 </div>
 
-                {/* Right Action: ADD / Stepper */}
-                <div className="shrink-0">
-                  {qty > 0 ? (
-                    <div className="flex items-center bg-stone-100 border border-stone-300 rounded-xl p-1">
+                {/* Right Action: Dish Photo + Overlapping ADD / Stepper */}
+                <div className="relative shrink-0 flex flex-col items-center">
+                  <div className="w-24 h-24 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200/80 shadow-2xs">
+                    <img
+                      src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300'}
+                      alt={dish.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300';
+                      }}
+                    />
+                  </div>
+                  <div className="-mt-3.5 z-10">
+                    {qty > 0 ? (
+                      <div className="flex items-center bg-white border border-brand-500 rounded-xl px-1.5 py-0.5 shadow-md">
+                        <button
+                          onClick={() => updateQuantity(dish.id, qty - 1)}
+                          className="w-6 h-6 flex items-center justify-center text-brand-700 font-bold hover:bg-stone-50 rounded-lg transition-colors"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-6 text-center text-xs font-black text-brand-900">
+                          {qty}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(dish.id, qty + 1)}
+                          className="w-6 h-6 flex items-center justify-center text-brand-700 font-bold hover:bg-stone-50 rounded-lg transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => updateQuantity(dish.id, qty - 1)}
-                        className="w-7 h-7 flex items-center justify-center text-slate-700 font-bold hover:bg-white rounded-lg transition-colors"
+                        onClick={() => addItem(restaurant, dish, 1)}
+                        disabled={!restaurant.isAcceptingOrders}
+                        className="px-5 py-1.5 bg-white border border-brand-600 hover:bg-brand-50 disabled:bg-slate-200 disabled:border-slate-300 disabled:text-slate-400 text-brand-700 rounded-xl text-xs font-black btn-press shadow-md cursor-pointer tracking-wide"
                       >
-                        <Minus className="w-3.5 h-3.5" />
+                        ADD
                       </button>
-                      <span className="w-7 text-center text-xs font-black text-slate-900">
-                        {qty}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(dish.id, qty + 1)}
-                        className="w-7 h-7 flex items-center justify-center text-slate-700 font-bold hover:bg-white rounded-lg transition-colors"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => addItem(restaurant, dish, 1)}
-                      disabled={!restaurant.isAcceptingOrders}
-                      className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl text-xs font-black btn-press shadow-2xs cursor-pointer tracking-wide"
-                    >
-                      + ADD
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             );

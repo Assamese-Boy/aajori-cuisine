@@ -237,6 +237,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                 src={MOBILE_PROMO_SLIDES[currentSlide].image}
                 alt=""
                 className="w-full h-full object-cover filter blur-[0.5px] transition-opacity duration-500"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    'https://images.unsplash.com/photo-1544025162-d76694265947?w=600';
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-stone-900 to-transparent"></div>
             </div>
@@ -339,6 +343,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                     alt={restaurant.name}
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                     loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1544025162-d76694265947?w=700';
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent"></div>
 
@@ -425,7 +433,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               return (
                 <div
                   key={dish.id}
-                  className="p-3.5 bg-white rounded-3xl border border-stone-200/90 flex items-center justify-between gap-3.5 shadow-sm card-smooth"
+                  className="p-3.5 bg-white rounded-3xl border border-stone-200/90 flex items-center justify-between gap-3 shadow-sm card-smooth"
                 >
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
@@ -454,34 +462,47 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </p>
                   </div>
 
-                  {/* Add / Stepper Button with enlarged touch targets */}
-                  <div className="shrink-0">
-                    {qty > 0 ? (
-                      <div className="flex items-center bg-stone-100 border border-stone-300 rounded-2xl p-1 shadow-2xs">
+                  {/* Dish Thumbnail and Add/Stepper button */}
+                  <div className="relative shrink-0 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200/80 shadow-2xs">
+                      <img
+                        src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'}
+                        alt={dish.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200';
+                        }}
+                      />
+                    </div>
+                    <div className="-mt-3.5 z-10">
+                      {qty > 0 ? (
+                        <div className="flex items-center bg-white border border-brand-500 rounded-xl px-1 py-0.5 shadow-md">
+                          <button
+                            onClick={() => updateQuantity(dish.id, qty - 1)}
+                            className="w-6 h-6 flex items-center justify-center text-brand-700 font-black hover:bg-stone-50 rounded-lg transition-all btn-press"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center text-xs font-black text-brand-900">
+                            {qty}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(dish.id, qty + 1)}
+                            className="w-6 h-6 flex items-center justify-center text-brand-700 font-black hover:bg-stone-50 rounded-lg transition-all btn-press"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
                         <button
-                          onClick={() => updateQuantity(dish.id, qty - 1)}
-                          className="w-7 h-7 flex items-center justify-center text-slate-800 font-black hover:bg-white rounded-xl transition-all btn-press"
+                          onClick={() => addItem(rest, dish, 1)}
+                          className="px-4 py-1.5 bg-white border border-brand-600 hover:bg-brand-50 text-brand-700 rounded-xl text-xs font-black transition-all btn-press shadow-md"
                         >
-                          <Minus className="w-3.5 h-3.5" />
+                          ADD
                         </button>
-                        <span className="w-7 text-center text-xs font-black text-slate-900">
-                          {qty}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(dish.id, qty + 1)}
-                          className="w-7 h-7 flex items-center justify-center text-slate-800 font-black hover:bg-white rounded-xl transition-all btn-press"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => addItem(rest, dish, 1)}
-                        className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl text-xs font-black transition-all btn-press shadow-sm"
-                      >
-                        + ADD
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               );

@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "https://aajori-cuisine-git-main-pallab-jyoti-gohains-projects.vercel.app/api/:match*"
+      "destination": "https://aajori-cuisine-admin-ecru.vercel.app/api/:match*"
     },
     {
       "source": "/(.*)",

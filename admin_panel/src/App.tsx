@@ -12,6 +12,7 @@ import { DeliveryPartnersPage } from './pages/DeliveryPartnersPage';
 import { UsersPage } from './pages/UsersPage';
 import { AiWhatsAppPage } from './pages/AiWhatsAppPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
+import { MediaLibraryPage } from './pages/MediaLibraryPage';
 
 export const App: React.FC = () => {
   return (
@@ -36,6 +37,7 @@ export const App: React.FC = () => {
             <Route path="orders/:orderId" element={<OrdersPage />} />
             <Route path="live-map" element={<LiveMapPage />} />
             <Route path="restaurants" element={<RestaurantsPage />} />
+            <Route path="media" element={<MediaLibraryPage />} />
             <Route path="delivery-partners" element={<DeliveryPartnersPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="ai-whatsapp" element={<AiWhatsAppPage />} />

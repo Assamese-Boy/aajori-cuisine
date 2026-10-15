@@ -1,0 +1,233 @@
+{
+  "info": {
+    "_postman_id": "7d4c5f91-6a5e-4e7f-a8e4-2a6e9d7c1b30",
+    "name": "PHP Media Storage API",
+    "description": "Tests the media.php API: health, upload, public media delivery, metadata, listing, and deletion. Set baseUrl to the full URL of media.php. Keep apiSecret private. Upload uses multipart form field 'file'.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://YOUR-DOMAIN.com/media.php",
+      "type": "string"
+    },
+    {
+      "key": "apiSecret",
+      "value": "this_coded_by_testing_service_754",
+      "type": "string"
+    },
+    {
+      "key": "fileId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mediaUrl",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Health Check (public)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}?action=health",
+        "description": "Public endpoint. Confirms that media.php responds."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Health response is successful', function () {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.success).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Upload File",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{apiSecret}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "",
+              "description": "Select a local file to upload"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}?action=upload",
+        "description": "Select a file in the form-data field named 'file'. Postman will set the multipart Content-Type automatically. Successful upload saves fileId and mediaUrl collection variables."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Upload returns HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "pm.test('Upload response contains ID and URL', function () {",
+              "  pm.expect(body.success).to.eql(true);",
+              "  pm.expect(body.id).to.be.a('string');",
+              "  pm.expect(body.url).to.be.a('string');",
+              "});",
+              "if (body.success && body.id && body.url) {",
+              "  pm.collectionVariables.set('fileId', body.id);",
+              "  pm.collectionVariables.set('mediaUrl', body.url);",
+              "  console.log('Uploaded media URL:', body.url);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Get File Metadata",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{apiSecret}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}?action=info&id={{fileId}}",
+        "description": "Requires a successful upload first, or set fileId manually."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Metadata request returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "pm.test('Metadata is returned', function () {",
+              "  pm.expect(body.success).to.eql(true);",
+              "  pm.expect(body.metadata.id).to.eql(pm.collectionVariables.get('fileId'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - List Files",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{apiSecret}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}?action=list&page=1&limit=20",
+        "description": "Returns up to 20 metadata records. Change page and limit as needed (limit maximum 100)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('List request returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "pm.test('List response has files array', function () {",
+              "  pm.expect(body.success).to.eql(true);",
+              "  pm.expect(body.files).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Render / Download Media (public)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{mediaUrl}}",
+        "description": "Public media URL. No API secret is sent. Use Send to inspect the binary response, or open mediaUrl in a browser. For a video, browser playback/seek can be tested using the returned URL."
+      }
+    },
+    {
+      "name": "06 - Delete File",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{apiSecret}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}?action=delete&id={{fileId}}",
+        "description": "DESTRUCTIVE: permanently deletes the uploaded file and its metadata. Run only when you intend to delete fileId."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Delete request returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "pm.test('Deletion succeeded', function () { pm.expect(body.success).to.eql(true); });",
+              "if (body.success) {",
+              "  pm.collectionVariables.unset('fileId');",
+              "  pm.collectionVariables.unset('mediaUrl');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Unauthorized Test",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer definitely-wrong-key",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}?action=list&page=1&limit=5",
+        "description": "Expected result: HTTP 401 Unauthorized. This verifies that protected endpoints reject an invalid secret."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Invalid secret is rejected with HTTP 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

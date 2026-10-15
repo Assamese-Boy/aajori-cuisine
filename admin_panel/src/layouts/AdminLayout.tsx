@@ -58,6 +58,8 @@ export const AdminLayout: React.FC = () => {
         return 'Live GIS Operations Map';
       case 'restaurants':
         return 'Restaurant Partners';
+      case 'media':
+        return 'Media & Asset Library';
       case 'delivery-partners':
         return 'Delivery Fleet';
       case 'users':
