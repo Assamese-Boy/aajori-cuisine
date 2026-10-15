@@ -6,6 +6,8 @@ import { orderService } from '../orders/order.service';
 import { paymentService } from '../payments/payment.service';
 import { pricingEngineService } from '../pricing/pricing.service';
 import { whatsAppClientService, WhatsAppButton } from './whatsapp-client.service';
+import { whatsAppStorageService } from './whatsapp-storage.service';
+import { cloudflareAiService } from '../ai/cloudflare-ai.service';
 import { Order, OrderStatus, PaymentMethod, User, CustomerAddress, GeoLocation } from '../../common/types';
 
 export interface WhatsAppCartItem {
@@ -64,7 +66,7 @@ export class WhatsAppOrderingService {
    */
   public getSession(phone: string, customerName?: string): WhatsAppSession {
     const cleanPhone = phone.trim();
-    let session = db.whatsappConversations.get(cleanPhone) as WhatsAppSession | undefined;
+    let session = whatsAppStorageService.getConversation(cleanPhone) as WhatsAppSession | undefined;
 
     if (!session) {
       session = {
@@ -74,20 +76,21 @@ export class WhatsAppOrderingService {
         cart: [],
         updatedAt: new Date().toISOString(),
       };
-      db.whatsappConversations.set(cleanPhone, session);
+      whatsAppStorageService.saveConversation(cleanPhone, session);
     } else if (customerName && session.customerName !== customerName) {
       session.customerName = customerName;
+      whatsAppStorageService.saveConversation(cleanPhone, session);
     }
 
     return session;
   }
 
   /**
-   * Saves updated session to the database map.
+   * Saves updated session to the database map and disk storage.
    */
   public saveSession(session: WhatsAppSession): void {
     session.updatedAt = new Date().toISOString();
-    db.whatsappConversations.set(session.phone, session);
+    whatsAppStorageService.saveConversation(session.phone, session);
   }
 
   /**
@@ -129,8 +132,44 @@ export class WhatsAppOrderingService {
 
   /**
    * Primary entry point for handling inbound WhatsApp messages & interactive actions.
+   * Automatically records both inbound message and outbound bot reply in database and disk.
    */
   public async handleInboundMessage(input: InboundMessagePayload): Promise<WhatsAppInboundResult> {
+    const phone = input.fromPhone.trim();
+    const rawText = (input.interactiveReplyId || input.messageText || '').trim();
+
+    // 1. Record inbound message in DB
+    whatsAppStorageService.recordMessage({
+      id: uuidv4(),
+      phone,
+      direction: 'INBOUND',
+      type: input.messageType || 'text',
+      rawPayload: input,
+      text: rawText,
+      createdAt: new Date().toISOString(),
+    });
+
+    // 2. Process message through state machine
+    const result = await this.processInboundMessage(input);
+
+    // 3. Record outbound reply in DB
+    whatsAppStorageService.recordMessage({
+      id: uuidv4(),
+      phone,
+      direction: 'OUTBOUND',
+      type: result.buttons && result.buttons.length > 0 ? 'interactive' : 'text',
+      rawPayload: { reply: result.reply, buttons: result.buttons, orderId: result.orderCreated?.id },
+      text: result.reply,
+      createdAt: new Date().toISOString(),
+    });
+
+    return result;
+  }
+
+  /**
+   * Internal conversational state machine processor.
+   */
+  private async processInboundMessage(input: InboundMessagePayload): Promise<WhatsAppInboundResult> {
     const phone = input.fromPhone.trim();
     const session = this.getSession(phone, input.customerName);
     const customer = this.ensureCustomer(phone, input.customerName);
@@ -653,7 +692,89 @@ export class WhatsAppOrderingService {
     }
 
     // ------------------------------------------------------------------------
-    // 11. NATURAL LANGUAGE AI FOOD ASSISTANT
+    // 11. CLOUDFLARE WORKERS AI CONVERSATIONAL CONCIERGE & ORDERING
+    // ------------------------------------------------------------------------
+    const cartSummary = session.cart.length > 0
+      ? session.cart.map((c) => `${c.quantity}x ${c.name} (₹${c.unitPrice})`).join(', ')
+      : 'Cart is empty';
+
+    const cfResult = await cloudflareAiService.processCustomerMessage(rawText, [], cartSummary);
+
+    // Case A: Cloudflare AI detected customer wants to add dishes to cart
+    if (cfResult.intent === 'ADD_TO_CART' && cfResult.items && cfResult.items.length > 0) {
+      let addedAny = false;
+      for (const item of cfResult.items) {
+        const itemLower = item.name.toLowerCase();
+        const matched = Array.from(db.menuItems.values()).find(
+          (m) => m.name.toLowerCase().includes(itemLower) || itemLower.includes(m.name.toLowerCase())
+        );
+
+        if (matched) {
+          session.currentRestaurantId = matched.restaurantId;
+          const existing = session.cart.find((ci) => ci.menuItemId === matched.id);
+          if (existing) {
+            existing.quantity += item.quantity || 1;
+          } else {
+            session.cart.push({
+              menuItemId: matched.id,
+              name: matched.name,
+              unitPrice: matched.price,
+              quantity: item.quantity || 1,
+            });
+          }
+          addedAny = true;
+        }
+      }
+
+      if (addedAny) {
+        if (cfResult.deliveryAddress) {
+          session.deliveryAddressText = cfResult.deliveryAddress;
+        }
+        session.stage = 'CART_REVIEW';
+        this.saveSession(session);
+
+        return {
+          reply: cfResult.reply,
+          session,
+          buttons: [
+            { id: 'btn_checkout', title: 'Proceed to Checkout' },
+            { id: 'btn_cart', title: 'View Cart' },
+          ],
+        };
+      }
+    }
+
+    // Case B: Cloudflare AI natural conversational response
+    if (cfResult.reply && cfResult.intent !== 'CHAT') {
+      if (cfResult.intent === 'TRACK_ORDER') {
+        const orders = await orderService.listOrders({ customerId: customer.id, limit: 1 });
+        if (orders.length > 0) {
+          const latest = orders[0];
+          return {
+            reply: `📦 *Order #${latest.orderNumber}* (${latest.status.replace(/_/g, ' ')})\n` +
+              `Total: ₹${latest.pricing.totalCustomerPrice}\n` +
+              `Estimated Delivery: 25-35 mins.`,
+            session,
+            buttons: [{ id: 'btn_menu', title: 'Order Again' }],
+          };
+        }
+      }
+    }
+
+    if (cfResult.reply && cfResult.reply.length > 10 && !cfResult.reply.startsWith('Namaskar! Welcome to *Aajori Cuisine*')) {
+      return {
+        reply: cfResult.reply,
+        session,
+        buttons: [
+          { id: 'btn_menu', title: 'Browse Menu' },
+          { id: 'btn_cart', title: 'View Cart' },
+          { id: 'btn_track', title: 'Track Order' },
+        ],
+      };
+    }
+
+    // ------------------------------------------------------------------------
+    // 12. FALLBACK GROUNDED AI COMBO RECOMMENDATION
     // ------------------------------------------------------------------------
     const aiResult = aiFoodAssistantService.recommendMealCombos(rawText);
     if (aiResult.suggestions.length > 0) {
@@ -673,9 +794,7 @@ export class WhatsAppOrderingService {
       };
     }
 
-    // ------------------------------------------------------------------------
-    // 12. FALLBACK DEFAULT RESPONSE
-    // ------------------------------------------------------------------------
+    // Default Fallback
     return {
       reply: `I received: "${rawText}".\n\nType *Menu* to browse restaurants, *Cart* to view current items, or *Track* to see order status!`,
       session,
@@ -720,6 +839,14 @@ export class WhatsAppOrderingService {
     }
 
     await whatsAppClientService.sendTextMessage(phone, message);
+  }
+
+  public getStoredMessages(phone?: string) {
+    return whatsAppStorageService.getAllMessages(phone);
+  }
+
+  public getStoredConversations() {
+    return whatsAppStorageService.getAllConversations();
   }
 }
 

@@ -27,6 +27,9 @@ export class WhatsAppClientService {
   private baseUrl = 'https://graph.facebook.com/v20.0';
 
   private isConfigured(): boolean {
+    if (env.NODE_ENV === 'test') {
+      return false;
+    }
     return Boolean(env.WHATSAPP_PHONE_NUMBER_ID && env.WHATSAPP_ACCESS_TOKEN);
   }
 

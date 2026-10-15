@@ -314,23 +314,26 @@ apiRouter.post('/ai/recommend', (req: Request, res: Response) => {
 // ============================================================================
 // 9. WHATSAPP BUSINESS WEBHOOK & SIMULATOR
 // ============================================================================
-apiRouter.get('/whatsapp/webhook', (req: Request, res: Response) => {
+export const handleWhatsAppWebhookGet = (req: Request, res: Response) => {
   // Meta webhook verification handshake
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
+  console.log(`[Meta Webhook Handshake] mode=${mode}, token=${token}`);
+
   if (mode === 'subscribe' && token === env.WHATSAPP_VERIFY_TOKEN) {
+    console.log(`[Meta Webhook Handshake] Verified successfully! Responding with challenge.`);
     return res.status(200).send(challenge);
   }
+  console.warn(`[Meta Webhook Handshake Failed] Token mismatch. Expected: ${env.WHATSAPP_VERIFY_TOKEN}, Received: ${token}`);
   return res.sendStatus(403);
-});
+};
 
-apiRouter.post('/whatsapp/webhook', async (req: Request, res: Response, next: NextFunction) => {
+export const handleWhatsAppWebhookPost = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // 1. Meta WhatsApp Cloud API Official Inbound Payload
     if (req.body.object === 'whatsapp_business_account' && Array.isArray(req.body.entry)) {
-      // Process entries in background to respond with 200 within Meta timeout
       const entries = req.body.entry;
       for (const entry of entries) {
         for (const change of entry.changes || []) {
@@ -364,6 +367,8 @@ apiRouter.post('/whatsapp/webhook', async (req: Request, res: Response, next: Ne
               };
             }
 
+            console.log(`[Meta Webhook Inbound] Received message from ${fromPhone}: "${messageText || '[location]'}"`);
+
             const result = await whatsAppOrderingService.handleInboundMessage({
               fromPhone,
               messageText,
@@ -372,6 +377,8 @@ apiRouter.post('/whatsapp/webhook', async (req: Request, res: Response, next: Ne
               interactiveReplyId,
               location: locationData,
             });
+
+            console.log(`[Meta Webhook Reply Generated] Reply: "${result.reply.slice(0, 80)}..."`);
 
             // Dispatch outbound reply via Meta Cloud API
             if (result.buttons && result.buttons.length > 0) {
@@ -410,6 +417,20 @@ apiRouter.post('/whatsapp/webhook', async (req: Request, res: Response, next: Ne
   } catch (err) {
     next(err);
   }
+};
+
+apiRouter.get('/whatsapp/webhook', handleWhatsAppWebhookGet);
+apiRouter.post('/whatsapp/webhook', handleWhatsAppWebhookPost);
+
+apiRouter.get('/whatsapp/messages', (req: Request, res: Response) => {
+  const phone = req.query.phone as string | undefined;
+  const messages = whatsAppOrderingService.getStoredMessages(phone);
+  res.json({ success: true, count: messages.length, data: messages });
+});
+
+apiRouter.get('/whatsapp/conversations', (req: Request, res: Response) => {
+  const conversations = whatsAppOrderingService.getStoredConversations();
+  res.json({ success: true, count: conversations.length, data: conversations });
 });
 
 apiRouter.post('/whatsapp/session/reset', (req: Request, res: Response) => {

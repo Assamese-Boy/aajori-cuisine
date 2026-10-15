@@ -26,6 +26,15 @@ export class MockDatabase {
   public auditLogs: AuditLogEntry[] = [];
   public idempotencyKeys: Map<string, string> = new Map(); // key -> orderId
   public whatsappConversations: Map<string, any> = new Map(); // phone -> session state
+  public whatsappMessages: Array<{
+    id: string;
+    phone: string;
+    direction: 'INBOUND' | 'OUTBOUND';
+    type: string;
+    rawPayload: any;
+    text?: string;
+    createdAt: string;
+  }> = [];
 
   constructor() {
     this.seed();

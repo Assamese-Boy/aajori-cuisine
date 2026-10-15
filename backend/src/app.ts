@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { apiRouter } from './routes/api.router';
+import { apiRouter, handleWhatsAppWebhookGet, handleWhatsAppWebhookPost } from './routes/api.router';
 import { AppError } from './common/errors';
 
 export const app = express();
@@ -22,6 +22,11 @@ app.get('/', (req: Request, res: Response) => {
     district: 'Kamrup Metropolitan, Assam, India',
     version: '1.0.0',
     status: 'OPERATIONAL',
+    whatsappWebhookEndpoints: [
+      '/api/v1/whatsapp/webhook',
+      '/whatsapp/webhook',
+      '/webhook',
+    ],
     documentation: '/docs',
   });
 });
@@ -29,6 +34,13 @@ app.get('/', (req: Request, res: Response) => {
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Dedicated Universal Meta WhatsApp Webhook endpoints
+app.get('/webhook', handleWhatsAppWebhookGet);
+app.post('/webhook', handleWhatsAppWebhookPost);
+
+app.get('/whatsapp/webhook', handleWhatsAppWebhookGet);
+app.post('/whatsapp/webhook', handleWhatsAppWebhookPost);
 
 // Mount platform API under /api/v1
 app.use('/api/v1', apiRouter);
