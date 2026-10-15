@@ -55,18 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Use code <strong>AAJORI50</strong> for ₹50 off</span>
         </div>
 
-        {/* Link to Admin Panel */}
-        <a
-          href="http://localhost:5173"
-          target="_blank"
-          rel="noreferrer"
-          className="ml-auto flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 hover:text-white transition-colors text-[10px] font-semibold tracking-wider uppercase border border-amber-500/30"
-          title="Open Super Admin Operations Control Center"
-        >
-          <Shield className="w-3 h-3 text-amber-400" />
-          <span>Admin Operations Control Center</span>
-          <ExternalLink className="w-2.5 h-2.5" />
-        </a>
+
       </div>
 
       {/* Main navigation header */}

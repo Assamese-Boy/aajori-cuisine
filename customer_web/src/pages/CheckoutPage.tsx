@@ -361,88 +361,99 @@ export const CheckoutPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Address Selection Bottom Sheet */}
-      {isAddressSheetOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center animate-fade-in">
-          <div className="w-full max-w-[480px] bg-white rounded-t-3xl p-5 space-y-4 animate-slide-up shadow-2xl safe-bottom">
-            <div className="w-12 h-1 bg-stone-300 rounded-full mx-auto"></div>
+      {/* Address Selection Bottom Sheet with Smooth Spring Slide */}
+      <div
+        className={`fixed inset-0 z-50 flex items-end justify-center transition-opacity duration-350 ease-out ${
+          isAddressSheetOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <div
+          onClick={() => setIsAddressSheetOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+        />
 
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-sm text-slate-900">Select Delivery Location</h3>
-              <button
-                onClick={() => setIsAddressSheetOpen(false)}
-                className="text-xs font-bold text-slate-400"
+        <div
+          className={`w-full max-w-[480px] bg-white rounded-t-3xl p-5 space-y-4 shadow-2xl safe-bottom relative z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+            isAddressSheetOpen ? 'translate-y-0' : 'translate-y-full'
+          }`}
+        >
+          <div className="w-12 h-1.5 bg-stone-300 rounded-full mx-auto"></div>
+
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-base text-slate-900">Select Delivery Location</h3>
+            <button
+              onClick={() => setIsAddressSheetOpen(false)}
+              className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-slate-500 hover:text-slate-700 btn-press"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* List addresses */}
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+            {addresses.map((a) => (
+              <div
+                key={a.id}
+                onClick={() => {
+                  setSelectedAddress(a);
+                  setIsAddressSheetOpen(false);
+                }}
+                className={`p-3.5 rounded-2xl border text-sm cursor-pointer transition-all ${
+                  selectedAddress?.id === a.id
+                    ? 'border-brand-500 bg-brand-50 text-brand-900 font-bold'
+                    : 'border-stone-200 bg-stone-50 hover:bg-stone-100'
+                }`}
               >
-                ✕
-              </button>
-            </div>
+                <p className="font-extrabold text-slate-900">{a.label}</p>
+                <p className="text-xs text-slate-600 mt-0.5">{a.addressLine1}</p>
+              </div>
+            ))}
+          </div>
 
-            {/* List addresses */}
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {addresses.map((a) => (
-                <div
-                  key={a.id}
-                  onClick={() => {
-                    setSelectedAddress(a);
-                    setIsAddressSheetOpen(false);
-                  }}
-                  className={`p-3 rounded-2xl border text-xs cursor-pointer ${
-                    selectedAddress?.id === a.id
-                      ? 'border-brand-600 bg-brand-50 text-brand-900 font-bold'
-                      : 'border-stone-200 bg-stone-50'
-                  }`}
-                >
-                  <p className="font-bold">{a.label}</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{a.addressLine1}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* New address toggle */}
-            {!showNewAddrInput ? (
-              <button
-                onClick={() => setShowNewAddrInput(true)}
-                className="w-full py-2.5 border border-dashed border-brand-400 rounded-xl text-xs font-bold text-brand-700 bg-brand-50"
-              >
-                + Add New Delivery Location
-              </button>
-            ) : (
-              <form onSubmit={handleAddNewAddress} className="space-y-2 pt-2 border-t border-stone-100">
+          {/* New address toggle */}
+          {!showNewAddrInput ? (
+            <button
+              onClick={() => setShowNewAddrInput(true)}
+              className="w-full py-3 border-2 border-dashed border-brand-400 rounded-2xl text-xs font-black text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors btn-press"
+            >
+              + Add New Delivery Location
+            </button>
+          ) : (
+            <form onSubmit={handleAddNewAddress} className="space-y-2.5 pt-2 border-t border-stone-100">
+              <input
+                type="text"
+                required
+                value={newAddr.addressLine1}
+                onChange={(e) => setNewAddr({ ...newAddr, addressLine1: e.target.value })}
+                placeholder="Flat/House No, Road"
+                className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium"
+              />
+              <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
-                  required
-                  value={newAddr.addressLine1}
-                  onChange={(e) => setNewAddr({ ...newAddr, addressLine1: e.target.value })}
-                  placeholder="Flat/House No, Road"
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs"
+                  value={newAddr.landmark}
+                  onChange={(e) => setNewAddr({ ...newAddr, landmark: e.target.value })}
+                  placeholder="Landmark (Near GMCH)"
+                  className="px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium"
                 />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={newAddr.landmark}
-                    onChange={(e) => setNewAddr({ ...newAddr, landmark: e.target.value })}
-                    placeholder="Landmark (Near GMCH)"
-                    className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs"
-                  />
-                  <input
-                    type="text"
-                    value={newAddr.postalCode}
-                    onChange={(e) => setNewAddr({ ...newAddr, postalCode: e.target.value })}
-                    placeholder="Pin (781001)"
-                    className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-brand-600 text-white rounded-xl text-xs font-bold"
-                >
-                  Save & Select
-                </button>
-              </form>
-            )}
-          </div>
+                <input
+                  type="text"
+                  value={newAddr.postalCode}
+                  onChange={(e) => setNewAddr({ ...newAddr, postalCode: e.target.value })}
+                  placeholder="Pin (781001)"
+                  className="px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-black tracking-wide btn-press shadow-xs"
+              >
+                Save & Select Address
+              </button>
+            </form>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

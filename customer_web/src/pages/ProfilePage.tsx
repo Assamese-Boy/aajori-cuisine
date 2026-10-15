@@ -266,28 +266,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenDrawer }) => {
           </div>
         </div>
 
-        {/* 5. Admin Operations Center Link */}
-        <a
-          href="http://localhost:5173"
-          target="_blank"
-          rel="noreferrer"
-          className="p-3.5 bg-white rounded-2xl border border-stone-200 shadow-2xs flex items-center justify-between text-xs btn-press"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-brand-600" />
-            </div>
-            <div>
-              <span className="font-bold text-slate-900 block leading-tight">
-                Super Admin Operations
-              </span>
-              <span className="text-[10px] text-slate-400 leading-tight">
-                Inspect live orders, maps & fleet
-              </span>
-            </div>
-          </div>
-          <ExternalLink className="w-4 h-4 text-slate-400" />
-        </a>
+
 
         {/* 6. Sign Out Button */}
         <button

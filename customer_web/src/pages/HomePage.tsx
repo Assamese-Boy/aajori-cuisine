@@ -194,27 +194,27 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       {/* 1. Horizontal Circular Category Stories (Native App Pattern) */}
       <section className="px-4 stagger-1">
-        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+        <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar py-2">
           {STORY_CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.name;
             return (
               <button
                 key={cat.name}
                 onClick={() => setSelectedCategory(cat.name)}
-                className="flex flex-col items-center shrink-0 space-y-1 btn-press group"
+                className="flex flex-col items-center shrink-0 space-y-1.5 btn-press group"
               >
                 <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-xs transition-all duration-200 ${
+                  className={`w-16 h-16 rounded-3xl flex items-center justify-center text-2xl shadow-sm transition-all duration-200 ${
                     isSelected
-                      ? 'bg-gradient-to-tr from-brand-600 to-amber-500 text-white ring-2 ring-brand-500 ring-offset-2 scale-105'
+                      ? 'bg-gradient-to-tr from-brand-600 to-amber-500 text-white ring-2 ring-brand-500 ring-offset-2 scale-105 shadow-md shadow-brand-500/20'
                       : 'bg-white border border-stone-200 text-slate-800 group-hover:border-brand-300'
                   }`}
                 >
                   <span>{cat.icon}</span>
                 </div>
                 <span
-                  className={`text-[10px] tracking-tight font-bold transition-colors ${
-                    isSelected ? 'text-brand-700' : 'text-slate-600'
+                  className={`text-xs tracking-tight font-black transition-colors ${
+                    isSelected ? 'text-brand-700' : 'text-slate-700'
                   }`}
                 >
                   {cat.name}
@@ -227,12 +227,12 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       {/* 2. Mobile Swipeable Promo Banners (Like Swiggy / Zomato native banners) */}
       <section className="px-4 stagger-2">
-        <div className="relative rounded-3xl overflow-hidden shadow-lg border border-stone-800">
+        <div className="relative rounded-3xl overflow-hidden shadow-md border border-stone-800">
           <div
-            className={`p-4 min-h-[160px] flex flex-col justify-between bg-gradient-to-br ${MOBILE_PROMO_SLIDES[currentSlide].bg} text-white relative transition-all duration-500`}
+            className={`p-5 min-h-[175px] flex flex-col justify-between bg-gradient-to-br ${MOBILE_PROMO_SLIDES[currentSlide].bg} text-white relative transition-all duration-500`}
           >
             {/* Background image overlay */}
-            <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-30 overflow-hidden pointer-events-none">
+            <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-35 overflow-hidden pointer-events-none">
               <img
                 src={MOBILE_PROMO_SLIDES[currentSlide].image}
                 alt=""
@@ -241,36 +241,36 @@ export const HomePage: React.FC<HomePageProps> = ({
               <div className="absolute inset-0 bg-gradient-to-r from-stone-900 to-transparent"></div>
             </div>
 
-            <div className="relative z-10 space-y-1 max-w-[70%]">
-              <span className="inline-block px-2 py-0.5 rounded-full bg-white/20 text-[9px] font-extrabold uppercase tracking-widest text-amber-300">
+            <div className="relative z-10 space-y-1.5 max-w-[72%]">
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-black uppercase tracking-wider text-amber-300">
                 {MOBILE_PROMO_SLIDES[currentSlide].tag}
               </span>
-              <h3 className="text-base font-black font-serif-culinary leading-tight">
+              <h3 className="text-lg font-black font-serif-culinary leading-tight">
                 {MOBILE_PROMO_SLIDES[currentSlide].title}
               </h3>
-              <p className="text-[11px] text-stone-300 leading-snug line-clamp-1">
+              <p className="text-xs text-stone-200 leading-snug line-clamp-1 font-medium">
                 {MOBILE_PROMO_SLIDES[currentSlide].subtitle}
               </p>
             </div>
 
             {/* Bottom promo action */}
-            <div className="relative z-10 flex items-center justify-between pt-2">
+            <div className="relative z-10 flex items-center justify-between pt-3">
               <button
                 onClick={() => handleApplyPromo(MOBILE_PROMO_SLIDES[currentSlide].code)}
-                className="px-3 py-1 bg-white text-slate-900 rounded-xl text-[10px] font-extrabold flex items-center gap-1 shadow-xs btn-press"
+                className="px-3.5 py-2 bg-white text-slate-900 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm btn-press"
               >
-                <Tag className="w-3 h-3 text-brand-600" />
+                <Tag className="w-3.5 h-3.5 text-brand-600" />
                 <span>Use {MOBILE_PROMO_SLIDES[currentSlide].code}</span>
               </button>
 
               {/* Dots */}
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 {MOBILE_PROMO_SLIDES.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setCurrentSlide(i)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      currentSlide === i ? 'w-5 bg-amber-400' : 'w-1.5 bg-white/40'
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      currentSlide === i ? 'w-6 bg-amber-400' : 'w-2 bg-white/40'
                     }`}
                   ></button>
                 ))}
@@ -284,53 +284,53 @@ export const HomePage: React.FC<HomePageProps> = ({
       <section className="px-4 stagger-3">
         <button
           onClick={onOpenAiAssistant}
-          className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-brand-500/15 to-amber-500/10 border border-brand-200/80 flex items-center justify-between gap-3 text-left btn-press shadow-2xs hover:border-brand-400 transition-all"
+          className="w-full p-4 rounded-3xl bg-gradient-to-r from-amber-500/10 via-brand-500/15 to-amber-500/10 border border-brand-200/90 flex items-center justify-between gap-3.5 text-left btn-press shadow-2xs hover:border-brand-400 transition-all"
         >
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-xs shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-md shrink-0">
               <Sparkles className="w-5 h-5 text-amber-200" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-slate-900 leading-tight">
-                Not sure what to eat? Ask Aajori AI
+              <h4 className="text-sm font-black text-slate-900 leading-tight">
+                Not sure what to order? Ask Aajori AI
               </h4>
-              <p className="text-[10px] text-slate-500 leading-tight">
+              <p className="text-xs text-slate-500 leading-tight mt-0.5">
                 Resolves budget, headcounts & cravings into real kitchen items
               </p>
             </div>
           </div>
-          <span className="text-xs font-black text-brand-600 shrink-0">&rarr;</span>
+          <span className="text-sm font-black text-brand-600 shrink-0">&rarr;</span>
         </button>
       </section>
 
-      {/* 4. Native Restaurant Listing */}
-      <section className="px-4 space-y-3 stagger-4">
+      {/* 4. Native Restaurant Listing with Enhanced Card Designs */}
+      <section className="px-4 space-y-3.5 stagger-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
             Institutions Near You
           </h2>
-          <span className="text-[11px] font-bold text-brand-600">
-            {filteredRestaurants.length} Places Live
+          <span className="text-xs font-extrabold text-brand-600">
+            {filteredRestaurants.length} Kitchens Live
           </span>
         </div>
 
         {isLoading ? (
           <SkeletonRestaurantGrid count={3} />
         ) : filteredRestaurants.length === 0 ? (
-          <div className="p-8 text-center bg-white rounded-2xl border border-stone-200 space-y-1">
-            <p className="text-xs font-bold text-slate-800">No restaurants match your filter</p>
-            <p className="text-[10px] text-slate-400">Try selecting &quot;All&quot; category</p>
+          <div className="p-8 text-center bg-white rounded-3xl border border-stone-200 space-y-2">
+            <p className="text-sm font-bold text-slate-800">No restaurants match your filter</p>
+            <p className="text-xs text-slate-400">Try selecting &quot;All&quot; category</p>
           </div>
         ) : (
-          <div className="space-y-3.5">
+          <div className="space-y-4">
             {filteredRestaurants.map((restaurant) => (
               <Link
                 key={restaurant.id}
                 to={`/restaurant/${restaurant.id}`}
-                className="block bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-2xs card-smooth btn-press hover:border-brand-300"
+                className="block bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-sm hover:shadow-md card-smooth btn-press transition-all"
               >
                 {/* Full-bleed mobile card image */}
-                <div className="relative h-44 bg-stone-100 overflow-hidden">
+                <div className="relative h-52 bg-stone-100 overflow-hidden">
                   <img
                     src={
                       restaurant.coverUrl ||
@@ -340,30 +340,30 @@ export const HomePage: React.FC<HomePageProps> = ({
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent"></div>
 
-                  {/* Delivery time pill overlay (Native Swiggy/Zomato pattern) */}
-                  <div className="absolute bottom-2.5 left-3 px-2.5 py-1 rounded-xl bg-slate-950/90 text-white text-[10px] font-extrabold flex items-center gap-1.5 backdrop-blur-md shadow-xs">
-                    <Clock className="w-3 h-3 text-amber-400" />
+                  {/* Delivery time & distance pill overlay */}
+                  <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl bg-slate-950/90 text-white text-xs font-black flex items-center gap-1.5 backdrop-blur-md shadow-md border border-white/10">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
                     <span>{restaurant.avgPrepTimeMinutes} MINS</span>
                     <span className="text-stone-500">•</span>
                     <span>2.1 KM</span>
                   </div>
 
                   {/* Rating badge */}
-                  <div className="absolute bottom-2.5 right-3 px-2 py-0.5 rounded-lg bg-emerald-600 text-white text-[11px] font-black flex items-center gap-0.5 shadow-xs">
+                  <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-xl bg-emerald-600 text-white text-xs font-black flex items-center gap-1 shadow-md">
                     <span>{restaurant.rating || '4.8'}</span>
-                    <Star className="w-3 h-3 fill-white" />
+                    <Star className="w-3.5 h-3.5 fill-white" />
                   </div>
 
                   {/* Kitchen status tag */}
-                  <div className="absolute top-2.5 left-2.5">
+                  <div className="absolute top-3 left-3">
                     {restaurant.isAcceptingOrders ? (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white text-[9px] font-extrabold tracking-wider uppercase">
-                        Active
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-xs font-black tracking-wider uppercase shadow-xs">
+                        Accepting Orders
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-md bg-slate-800 text-stone-300 text-[9px] font-extrabold tracking-wider uppercase">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-stone-300 text-xs font-black tracking-wider uppercase">
                         Closed
                       </span>
                     )}
@@ -371,22 +371,22 @@ export const HomePage: React.FC<HomePageProps> = ({
                 </div>
 
                 {/* Restaurant card text */}
-                <div className="p-3.5 space-y-1">
+                <div className="p-4 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-extrabold text-slate-900 text-sm leading-tight truncate">
+                    <h3 className="font-black text-slate-900 text-base leading-tight truncate">
                       {restaurant.name}
                     </h3>
                   </div>
 
-                  <p className="text-[11px] text-slate-500 truncate leading-tight">
-                    {restaurant.cuisineTypes.join(', ')}
+                  <p className="text-xs text-slate-500 truncate leading-tight font-medium">
+                    {restaurant.cuisineTypes.join(' • ')}
                   </p>
 
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-stone-100">
-                    <span className="truncate max-w-[180px]">
-                      {restaurant.addressLine}
+                  <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-stone-100 font-medium">
+                    <span className="truncate max-w-[200px]">
+                      📍 {restaurant.addressLine}
                     </span>
-                    <span className="font-bold text-slate-700 shrink-0">
+                    <span className="font-extrabold text-slate-800 shrink-0">
                       Min ₹{restaurant.minOrderAmount}
                     </span>
                   </div>
@@ -401,20 +401,20 @@ export const HomePage: React.FC<HomePageProps> = ({
       {displayDishes.length > 0 && (
         <section className="px-4 space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Flame className="w-4 h-4 text-amber-500" />
+            <div className="flex items-center gap-2">
+              <Flame className="w-5 h-5 text-amber-500" />
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
                 Trending in Guwahati
               </h2>
             </div>
             {isPureVeg && (
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                 100% Veg
               </span>
             )}
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {displayDishes.map((dish) => {
               const qty = getItemQuantity(dish.id);
               const rest = restaurants.find((r) => r.id === dish.restaurantId) || {
@@ -425,53 +425,59 @@ export const HomePage: React.FC<HomePageProps> = ({
               return (
                 <div
                   key={dish.id}
-                  className="p-3 bg-white rounded-2xl border border-stone-200 flex items-center justify-between gap-3 shadow-2xs card-smooth"
+                  className="p-3.5 bg-white rounded-3xl border border-stone-200/90 flex items-center justify-between gap-3.5 shadow-sm card-smooth"
                 >
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          dish.isVeg ? 'bg-emerald-600' : 'bg-rose-600'
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-4 h-4 rounded-md border-2 flex items-center justify-center p-0.5 shrink-0 ${
+                          dish.isVeg ? 'border-emerald-600' : 'border-rose-600'
                         }`}
-                      ></span>
-                      <h4 className="text-xs font-bold text-slate-900 truncate">
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            dish.isVeg ? 'bg-emerald-600' : 'bg-rose-600'
+                          }`}
+                        />
+                      </div>
+                      <h4 className="text-sm font-black text-slate-900 truncate">
                         {dish.name}
                       </h4>
                     </div>
 
-                    <p className="text-xs font-black text-slate-900">
+                    <p className="text-sm font-black text-slate-900">
                       ₹{dish.price}
                     </p>
 
-                    <p className="text-[10px] text-brand-700 font-semibold truncate">
+                    <p className="text-xs text-brand-700 font-extrabold truncate">
                       {rest.name}
                     </p>
                   </div>
 
-                  {/* Add / Stepper Button */}
+                  {/* Add / Stepper Button with enlarged touch targets */}
                   <div className="shrink-0">
                     {qty > 0 ? (
-                      <div className="flex items-center bg-stone-100 border border-stone-300 rounded-xl p-0.5">
+                      <div className="flex items-center bg-stone-100 border border-stone-300 rounded-2xl p-1 shadow-2xs">
                         <button
                           onClick={() => updateQuantity(dish.id, qty - 1)}
-                          className="w-6 h-6 flex items-center justify-center text-slate-700 font-bold hover:bg-white rounded-lg transition-all btn-press"
+                          className="w-7 h-7 flex items-center justify-center text-slate-800 font-black hover:bg-white rounded-xl transition-all btn-press"
                         >
-                          <Minus className="w-3 h-3" />
+                          <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="w-6 text-center text-xs font-black text-slate-900">
+                        <span className="w-7 text-center text-xs font-black text-slate-900">
                           {qty}
                         </span>
                         <button
                           onClick={() => updateQuantity(dish.id, qty + 1)}
-                          className="w-6 h-6 flex items-center justify-center text-slate-700 font-bold hover:bg-white rounded-lg transition-all btn-press"
+                          className="w-7 h-7 flex items-center justify-center text-slate-800 font-black hover:bg-white rounded-xl transition-all btn-press"
                         >
-                          <Plus className="w-3 h-3" />
+                          <Plus className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ) : (
                       <button
                         onClick={() => addItem(rest, dish, 1)}
-                        className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition-all btn-press shadow-2xs"
+                        className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl text-xs font-black transition-all btn-press shadow-sm"
                       >
                         + ADD
                       </button>

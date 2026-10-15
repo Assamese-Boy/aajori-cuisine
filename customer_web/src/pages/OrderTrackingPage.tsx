@@ -177,24 +177,7 @@ export const OrderTrackingPage: React.FC = () => {
       </div>
 
       <div className="p-4 space-y-4">
-        {/* 2. Admin Operations Notice */}
-        <div className="p-3 bg-gradient-to-r from-amber-50 to-brand-50 border border-brand-200 rounded-2xl flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-            <div>
-              <p className="font-bold text-slate-900 text-[11px]">Synced with Operations Panel</p>
-              <p className="text-[10px] text-slate-500">Transitions in Admin Panel reflect here</p>
-            </div>
-          </div>
-          <a
-            href="http://localhost:5173/orders"
-            target="_blank"
-            rel="noreferrer"
-            className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold"
-          >
-            Admin Panel
-          </a>
-        </div>
+
 
         {/* 3. Status & ETA Card */}
         <div className="p-5 bg-gradient-to-br from-stone-900 to-brand-950 text-white rounded-3xl shadow-lg space-y-3">

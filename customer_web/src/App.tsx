@@ -16,7 +16,7 @@ import { OrderTrackingPage } from './pages/OrderTrackingPage';
 import { OrdersHistoryPage } from './pages/OrdersHistoryPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { HamburgerDrawer } from './components/HamburgerDrawer';
-import { Shield, ExternalLink, Menu } from 'lucide-react';
+import { PermissionPrompts } from './components/PermissionPrompts';
 
 export const AppContent: React.FC = () => {
   const { isLoading } = useAuth();
@@ -25,6 +25,7 @@ export const AppContent: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isPureVeg, setIsPureVeg] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showGpsModal, setShowGpsModal] = useState(false);
 
   // Show native top bar only on home explore page
   const isHomePage = location.pathname === '/';
@@ -35,18 +36,9 @@ export const AppContent: React.FC = () => {
       <div className="hidden md:flex items-center justify-between w-full max-w-[480px] px-4 py-2 text-stone-400 text-xs font-semibold">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Aajori Native Mobile Web App</span>
+          <span>Aajori Native Mobile App</span>
         </div>
-        <a
-          href="http://localhost:5173"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1 text-amber-400 hover:text-amber-300 transition-colors text-[11px]"
-        >
-          <Shield className="w-3 h-3" />
-          <span>Admin Panel (:5173)</span>
-          <ExternalLink className="w-2.5 h-2.5" />
-        </a>
+        <span className="text-stone-500 text-[11px] font-medium">Guwahati Metro Service</span>
       </div>
 
       {/* Smartphone Device Shell Container */}
@@ -61,6 +53,7 @@ export const AppContent: React.FC = () => {
             onSearchChange={setSearchQuery}
             onOpenAi={() => setIsAiModalOpen(true)}
             onOpenDrawer={() => setIsDrawerOpen(true)}
+            onRequestGpsLocation={() => setShowGpsModal(true)}
             isPureVeg={isPureVeg}
           />
         )}
@@ -99,6 +92,7 @@ export const AppContent: React.FC = () => {
           isOpen={isDrawerOpen}
           onClose={() => setIsDrawerOpen(false)}
           onOpenAi={() => setIsAiModalOpen(true)}
+          onRequestLocation={() => setShowGpsModal(true)}
           isPureVeg={isPureVeg}
           onTogglePureVeg={() => setIsPureVeg((prev) => !prev)}
         />
@@ -107,6 +101,12 @@ export const AppContent: React.FC = () => {
         <AuthModal />
         <CartDrawer />
         <AiAssistantModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} />
+
+        {/* Native Device Permission Prompts (GPS Location & Order Push Notifications) */}
+        <PermissionPrompts
+          forceShowLocation={showGpsModal}
+          onCloseLocationPrompt={() => setShowGpsModal(false)}
+        />
       </div>
     </div>
   );

@@ -36,7 +36,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
   const [parsedIntent, setParsedIntent] = useState<any>(null);
   const [hasQueried, setHasQueried] = useState(false);
 
-  if (!isOpen) return null;
+  // Do NOT return null here so that entrance/exit CSS transitions run smoothly
 
   const handleQuery = async (queryText: string) => {
     if (!queryText.trim()) return;
@@ -104,24 +104,39 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div className="w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl border-t border-stone-200 overflow-hidden flex flex-col h-[85vh] animate-slide-up safe-bottom">
+    <div
+      className={`fixed inset-0 z-50 flex items-end justify-center transition-opacity duration-350 ease-out ${
+        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      }`}
+    >
+      {/* Smooth Backdrop Fade */}
+      <div
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+      />
+
+      {/* Pull-Up Sheet with Spring Cubic Bezier */}
+      <div
+        className={`w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl border-t border-stone-200 overflow-hidden flex flex-col h-[85vh] safe-bottom relative z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          isOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+      >
         {/* Pull Handle */}
         <div className="pt-3 pb-1 flex justify-center bg-white shrink-0">
-          <div className="w-12 h-1 bg-stone-300 rounded-full"></div>
+          <div className="w-12 h-1.5 bg-stone-300 rounded-full"></div>
         </div>
 
         {/* Header */}
-        <div className="p-4 border-b border-stone-100 flex items-center justify-between shrink-0 bg-gradient-to-r from-stone-900 via-brand-950 to-amber-950 text-white">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-amber-300">
+        <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between shrink-0 bg-gradient-to-r from-stone-900 via-brand-950 to-amber-950 text-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-amber-300 shadow-xs">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm flex items-center gap-1.5">
-                <span>Aajori AI Food Assistant</span>
+              <h3 className="font-extrabold text-base flex items-center gap-1.5">
+                <span>Aajori AI Food Concierge</span>
               </h3>
-              <p className="text-[10px] text-amber-200/80">
+              <p className="text-xs text-amber-200/90 font-medium">
                 Grounded in live Assam kitchen menus
               </p>
             </div>
@@ -129,9 +144,10 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors btn-press"
+            aria-label="Close assistant"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -139,10 +155,10 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Quick preset bubble chips */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">
               Popular Prompts
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {PRESET_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
@@ -150,7 +166,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
                     setMessage(prompt);
                     handleQuery(prompt);
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-brand-50 border border-stone-200 text-xs text-slate-700 font-medium transition-colors text-left btn-press"
+                  className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-brand-50 border border-stone-200/90 text-xs text-slate-800 font-semibold transition-colors text-left btn-press"
                 >
                   ⚡ {prompt}
                 </button>
@@ -160,30 +176,30 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
 
           {/* Loading or Results */}
           {isLoading ? (
-            <div className="text-center py-10 space-y-3">
-              <div className="w-8 h-8 rounded-full border-2 border-brand-500 border-t-transparent animate-spin mx-auto"></div>
-              <p className="text-xs text-slate-500 font-medium">
+            <div className="text-center py-12 space-y-3">
+              <div className="w-9 h-9 rounded-full border-3 border-brand-500 border-t-transparent animate-spin mx-auto"></div>
+              <p className="text-sm text-slate-600 font-bold">
                 Resolving headcounts, budget, and real kitchen items...
               </p>
             </div>
           ) : hasQueried ? (
-            <div className="space-y-3 animate-fade-in">
+            <div className="space-y-3.5 animate-fade-in">
               {/* Intent badge bar */}
               {parsedIntent && (
-                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 flex flex-wrap items-center gap-2 text-xs text-amber-900">
-                  <span className="font-bold">Detected:</span>
+                <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 flex flex-wrap items-center gap-2 text-xs text-amber-900">
+                  <span className="font-extrabold">Detected:</span>
                   {parsedIntent.budget && (
-                    <span className="bg-white px-2 py-0.5 rounded-lg border border-amber-200 font-semibold text-[11px]">
+                    <span className="bg-white px-2.5 py-1 rounded-lg border border-amber-200 font-black text-xs text-amber-800">
                       ₹{parsedIntent.budget}
                     </span>
                   )}
                   {parsedIntent.headcount && (
-                    <span className="bg-white px-2 py-0.5 rounded-lg border border-amber-200 font-semibold text-[11px]">
+                    <span className="bg-white px-2.5 py-1 rounded-lg border border-amber-200 font-bold text-xs">
                       {parsedIntent.headcount} Guests
                     </span>
                   )}
                   {parsedIntent.spiciness && (
-                    <span className="bg-white px-2 py-0.5 rounded-lg border border-amber-200 font-semibold text-[11px]">
+                    <span className="bg-white px-2.5 py-1 rounded-lg border border-amber-200 font-bold text-xs">
                       {parsedIntent.spiciness}
                     </span>
                   )}
@@ -192,7 +208,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
 
               {/* Combos list */}
               {recommendations.length === 0 ? (
-                <div className="p-6 bg-stone-50 rounded-2xl text-center text-xs text-slate-500">
+                <div className="p-6 bg-stone-50 rounded-2xl text-center text-sm text-slate-500 font-medium">
                   No direct combo matched that specific budget or craving. Try adjusting headcount or spiciness.
                 </div>
               ) : (
@@ -200,32 +216,32 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
                   {recommendations.map((combo, idx) => (
                     <div
                       key={idx}
-                      className="p-4 rounded-2xl border border-stone-200 bg-white space-y-2.5 shadow-2xs"
+                      className="p-4 rounded-2xl border border-stone-200 bg-white space-y-3 shadow-xs"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h4 className="font-bold text-slate-900 text-xs">{combo.name}</h4>
-                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                        <div className="space-y-1">
+                          <h4 className="font-extrabold text-slate-900 text-sm">{combo.name}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">
                             {combo.description}
                           </p>
-                          <span className="inline-block mt-1 text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">
+                          <span className="inline-block text-xs font-bold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-lg border border-brand-200/50">
                             {combo.restaurantName || 'Authentic Kitchen'}
                           </span>
                         </div>
 
-                        <span className="text-sm font-black text-slate-900 shrink-0">
+                        <span className="text-base font-black text-slate-900 shrink-0">
                           ₹{combo.totalPrice || combo.price}
                         </span>
                       </div>
 
                       {/* Items */}
-                      <div className="space-y-1 pt-1.5 border-t border-stone-100">
+                      <div className="space-y-1.5 pt-2 border-t border-stone-100">
                         {combo.items?.map((it: any, i: number) => (
-                          <div key={i} className="flex justify-between text-[11px] text-slate-600">
-                            <span>
+                          <div key={i} className="flex justify-between text-xs text-slate-700">
+                            <span className="font-medium">
                               {it.quantity}x {it.name}
                             </span>
-                            <span className="font-bold text-slate-800">
+                            <span className="font-bold text-slate-900">
                               ₹{(it.price * (it.quantity || 1))}
                             </span>
                           </div>
@@ -234,10 +250,10 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
 
                       <button
                         onClick={() => handleAddComboToCart(combo)}
-                        className="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 btn-press cursor-pointer"
+                        className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-black tracking-wide flex items-center justify-center gap-2 btn-press cursor-pointer shadow-xs"
                       >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Combo to Cart</span>
+                        <Plus className="w-4 h-4" />
+                        <span>Add Full Combo to Cart</span>
                       </button>
                     </div>
                   ))}
@@ -245,9 +261,9 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
               )}
             </div>
           ) : (
-            <div className="text-center py-12 text-slate-400 space-y-2">
-              <Bot className="w-8 h-8 mx-auto text-slate-300" />
-              <p className="text-xs">
+            <div className="text-center py-12 text-slate-500 space-y-2">
+              <Bot className="w-10 h-10 mx-auto text-brand-500" />
+              <p className="text-sm font-semibold max-w-xs mx-auto">
                 Ask anything like: &quot;I want spicy duck curry and pork for 3 people under ₹1000&quot;
               </p>
             </div>
@@ -262,14 +278,14 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Tell Aajori AI what you'd like to eat..."
-              className="flex-1 px-3.5 py-2.5 bg-white border border-stone-200 rounded-2xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="flex-1 px-4 py-3 bg-white border border-stone-200 rounded-2xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
             />
             <button
               type="submit"
               disabled={isLoading || !message.trim()}
-              className="p-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl disabled:opacity-50 btn-press"
+              className="p-3 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl disabled:opacity-50 btn-press cursor-pointer shrink-0 shadow-xs"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-4.5 h-4.5" />
             </button>
           </form>
         </div>
