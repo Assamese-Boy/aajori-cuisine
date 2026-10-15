@@ -25,6 +25,7 @@ export class MockDatabase {
   public coupons: Map<string, Coupon> = new Map();
   public auditLogs: AuditLogEntry[] = [];
   public idempotencyKeys: Map<string, string> = new Map(); // key -> orderId
+  public whatsappConversations: Map<string, any> = new Map(); // phone -> session state
 
   constructor() {
     this.seed();

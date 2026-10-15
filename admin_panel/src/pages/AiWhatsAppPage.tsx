@@ -1,22 +1,49 @@
-import React, { useState } from 'react';
-import { Bot, MessageSquare, Send, Sparkles, Terminal, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bot, MessageSquare, Send, Sparkles, Terminal, CheckCircle2, RotateCcw, MapPin, ShoppingBag } from 'lucide-react';
 import { apiRequest } from '../services/api';
+
+interface WhatsAppHistoryItem {
+  sender: 'user' | 'bot';
+  text: string;
+  time: string;
+  buttons?: Array<{ id: string; title: string }>;
+  isLocation?: boolean;
+}
 
 export const AiWhatsAppPage: React.FC = () => {
   const [userPrompt, setUserPrompt] = useState('I want something spicy for 2 people under ₹500');
   const [aiResult, setAiResult] = useState<any>(null);
-  const [whatsAppHistory, setWhatsAppHistory] = useState<
-    Array<{ sender: 'user' | 'bot'; text: string; time: string }>
-  >([
+  const [sessionInfo, setSessionInfo] = useState<any>(null);
+  const [whatsAppHistory, setWhatsAppHistory] = useState<WhatsAppHistoryItem[]>([
     {
       sender: 'bot',
       text: '👋 *Welcome to Aajori Cuisine!* Hyperlocal food delivery for Kamrup.\nType *Menu* or ask e.g. "Duck curry under ₹400"!',
       time: '12:00 PM',
+      buttons: [
+        { id: 'btn_menu', title: 'Browse Restaurants' },
+        { id: 'btn_track', title: 'Track Order' },
+      ],
     },
   ]);
   const [waInput, setWaInput] = useState('');
   const [loadingAi, setLoadingAi] = useState(false);
   const [loadingWa, setLoadingWa] = useState(false);
+
+  // Fetch initial session on mount
+  useEffect(() => {
+    fetchSession();
+  }, []);
+
+  const fetchSession = async () => {
+    try {
+      const res = await apiRequest('/whatsapp/session?phone=+919864000020');
+      if (res.success && res.data?.session) {
+        setSessionInfo(res.data.session);
+      }
+    } catch (err) {
+      // ignore
+    }
+  };
 
   const testAiAssistant = async () => {
     if (!userPrompt.trim()) return;
@@ -34,26 +61,41 @@ export const AiWhatsAppPage: React.FC = () => {
     }
   };
 
-  const sendWhatsAppMessage = async () => {
-    if (!waInput.trim()) return;
-    const msg = waInput;
-    setWaInput('');
+  const sendWhatsAppMessage = async (overrideMsg?: string, replyId?: string, location?: any) => {
+    const msg = overrideMsg ?? waInput;
+    if (!msg.trim() && !location && !replyId) return;
+    if (!overrideMsg && !location && !replyId) setWaInput('');
 
-    const newHistory = [
+    const displayText = location
+      ? `📍 [Shared Location Pin: ${location.address || 'Guwahati Live GPS'}]`
+      : msg;
+
+    const newHistory: WhatsAppHistoryItem[] = [
       ...whatsAppHistory,
-      { sender: 'user' as const, text: msg, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+      {
+        sender: 'user',
+        text: displayText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isLocation: Boolean(location),
+      },
     ];
     setWhatsAppHistory(newHistory);
 
     setLoadingWa(true);
     try {
+      const payload: any = {
+        from: '+919864000020',
+        message: msg,
+        replyId,
+        location,
+        type: location ? 'location' : replyId ? 'interactive' : 'text',
+      };
+
       const res = await apiRequest('/whatsapp/webhook', {
         method: 'POST',
-        body: JSON.stringify({
-          from: '+919864000020',
-          message: msg,
-        }),
+        body: JSON.stringify(payload),
       });
+
       if (res.success && res.data?.reply) {
         setWhatsAppHistory([
           ...newHistory,
@@ -61,12 +103,50 @@ export const AiWhatsAppPage: React.FC = () => {
             sender: 'bot',
             text: res.data.reply,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            buttons: res.data.buttons,
+          },
+        ]);
+
+        if (res.data.session) {
+          setSessionInfo(res.data.session);
+        }
+      }
+    } finally {
+      setLoadingWa(false);
+    }
+  };
+
+  const resetWhatsAppSession = async () => {
+    setLoadingWa(true);
+    try {
+      const res = await apiRequest('/whatsapp/session/reset', {
+        method: 'POST',
+        body: JSON.stringify({ phone: '+919864000020' }),
+      });
+      if (res.success) {
+        setSessionInfo(res.data?.session);
+        setWhatsAppHistory((prev) => [
+          ...prev,
+          {
+            sender: 'bot',
+            text: '🔄 *Session has been reset.* Type *Menu* to start fresh!',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            buttons: [{ id: 'btn_menu', title: 'Browse Menu' }],
           },
         ]);
       }
     } finally {
       setLoadingWa(false);
     }
+  };
+
+  const sendSimulatedLocation = () => {
+    sendWhatsAppMessage('', undefined, {
+      latitude: 26.1550,
+      longitude: 91.7690,
+      name: 'GS Road Hub',
+      address: 'Christian Basti, GS Road, Guwahati',
+    });
   };
 
   return (
@@ -175,14 +255,58 @@ export const AiWhatsAppPage: React.FC = () => {
         </div>
 
         {/* Right: WhatsApp Ordering Sandbox Simulator */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4 flex flex-col h-[650px]">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-            <MessageSquare className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-bold text-slate-800 text-base">
-              WhatsApp Cloud API Conversation Simulator
-            </h3>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4 flex flex-col h-[700px]">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-emerald-600" />
+              <div>
+                <h3 className="font-bold text-slate-800 text-base">
+                  WhatsApp Cloud API Conversation Simulator
+                </h3>
+                <span className="text-[11px] text-slate-400">Target Phone: +91 98640 00020</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {sessionInfo && (
+                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[11px] font-semibold flex items-center gap-1">
+                  <ShoppingBag className="w-3 h-3" />
+                  {sessionInfo.stage} ({sessionInfo.cart?.length || 0} items)
+                </span>
+              )}
+              <button
+                onClick={resetWhatsAppSession}
+                title="Reset active cart & session"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
+          {/* Quick Command Shortcuts */}
+          <div className="flex flex-wrap gap-1.5 text-[11px]">
+            {[
+              { label: 'Menu', cmd: 'menu' },
+              { label: 'Select 1 (Khorikaa)', cmd: '1' },
+              { label: 'Add Dish 1', cmd: '1' },
+              { label: 'View Cart', cmd: 'cart' },
+              { label: 'Checkout', cmd: 'checkout' },
+              { label: 'Pay COD', cmd: '1' },
+              { label: 'Track Order', cmd: 'track' },
+            ].map((shortcut, i) => (
+              <button
+                key={i}
+                onClick={() => sendWhatsAppMessage(shortcut.cmd)}
+                disabled={loadingWa}
+                className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md font-medium"
+              >
+                {shortcut.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat Messages Log */}
           <div className="flex-1 bg-emerald-50/40 rounded-xl border border-emerald-100 p-4 overflow-y-auto space-y-3">
             {whatsAppHistory.map((item, idx) => (
               <div
@@ -199,29 +323,55 @@ export const AiWhatsAppPage: React.FC = () => {
                   }`}
                 >
                   {item.text}
+
+                  {/* Render Meta Interactive Reply Buttons */}
+                  {item.buttons && item.buttons.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
+                      {item.buttons.map((btn) => (
+                        <button
+                          key={btn.id}
+                          onClick={() => sendWhatsAppMessage(btn.title, btn.id)}
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-semibold transition-colors"
+                        >
+                          {btn.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 px-1">{item.time}</span>
               </div>
             ))}
           </div>
 
-          {/* Inbound Message Input */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={waInput}
-              onChange={(e) => setWaInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendWhatsAppMessage()}
-              placeholder="Type message (e.g. '1', 'menu', 'track', 'duck curry')..."
-              className="flex-1 px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <button
-              onClick={sendWhatsAppMessage}
-              disabled={loadingWa}
-              className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+          {/* Inbound Message Input & Quick GPS Share */}
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <button
+                onClick={sendSimulatedLocation}
+                disabled={loadingWa}
+                title="Send Simulated Guwahati GPS Pin"
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              >
+                <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Share GPS Pin</span>
+              </button>
+              <input
+                type="text"
+                value={waInput}
+                onChange={(e) => setWaInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendWhatsAppMessage()}
+                placeholder="Type message (e.g. '1', 'menu', 'duck curry', 'track')..."
+                className="flex-1 px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <button
+                onClick={() => sendWhatsAppMessage()}
+                disabled={loadingWa}
+                className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

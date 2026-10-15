@@ -16,6 +16,7 @@ import {
   ForbiddenError,
   ConflictError,
 } from '../../common/errors';
+import { notificationService, NotificationEvent } from '../notifications/notification.service';
 
 export interface CreateOrderInput {
   restaurantId: string;
@@ -121,6 +122,16 @@ export class OrderService {
       createdAt: new Date().toISOString(),
     });
 
+    // 7. Dispatch order creation notification across all channels (including WhatsApp)
+    notificationService.dispatch(
+      customer.id,
+      'ORDER_CREATED',
+      'Order Placed Successfully!',
+      `Your order #${orderNumber} has been received. Total: ₹${newOrder.pricing.totalCustomerPrice}. Waiting for restaurant confirmation.`,
+      { orderId, orderNumber },
+      ['PUSH', 'IN_APP', 'WHATSAPP']
+    ).catch((err) => console.error('[Order Created Notification Error]', err));
+
     return newOrder;
   }
 
@@ -173,6 +184,62 @@ export class OrderService {
       metadata,
       createdAt: new Date().toISOString(),
     });
+
+    // Dispatch status transition notification across channels
+    const eventMap: Partial<Record<OrderStatus, { event: NotificationEvent; title: string; message: string }>> = {
+      RESTAURANT_ACCEPTED: {
+        event: 'ORDER_ACCEPTED',
+        title: 'Order Accepted!',
+        message: `Your order #${order.orderNumber} has been accepted and is entering the kitchen queue.`,
+      },
+      PREPARING: {
+        event: 'ORDER_PREPARING',
+        title: 'Food Being Prepared 👨‍🍳',
+        message: `The kitchen has started cooking your authentic meal for order #${order.orderNumber}.`,
+      },
+      READY_FOR_PICKUP: {
+        event: 'ORDER_READY',
+        title: 'Order Ready for Pickup 🍱',
+        message: `Order #${order.orderNumber} is freshly packed and waiting for delivery partner pickup.`,
+      },
+      RIDER_ASSIGNED: {
+        event: 'RIDER_ASSIGNED',
+        title: 'Delivery Partner Assigned 🛵',
+        message: `A delivery partner has been assigned to bring your order #${order.orderNumber}.`,
+      },
+      PICKED_UP: {
+        event: 'ORDER_PICKED_UP',
+        title: 'Order Picked Up 🛵',
+        message: `Your delivery partner has picked up order #${order.orderNumber} from the kitchen.`,
+      },
+      OUT_FOR_DELIVERY: {
+        event: 'OUT_FOR_DELIVERY',
+        title: 'Out for Delivery 🚀',
+        message: `Order #${order.orderNumber} is on the way! Rider will arrive at your address shortly.`,
+      },
+      DELIVERED: {
+        event: 'ORDER_DELIVERED',
+        title: 'Order Delivered ✅',
+        message: `Order #${order.orderNumber} has been delivered! Enjoy your meal.`,
+      },
+      CANCELLED: {
+        event: 'ORDER_CANCELLED',
+        title: 'Order Cancelled',
+        message: `Order #${order.orderNumber} was cancelled. Reason: ${reason || 'Customer/Restaurant request'}.`,
+      },
+    };
+
+    const notifInfo = eventMap[toStatus];
+    if (notifInfo) {
+      notificationService.dispatch(
+        order.customerId,
+        notifInfo.event,
+        notifInfo.title,
+        notifInfo.message,
+        { orderId: order.id, orderNumber: order.orderNumber, status: toStatus },
+        ['PUSH', 'IN_APP', 'WHATSAPP']
+      ).catch((err) => console.error('[Order Transition Notification Error]', err));
+    }
 
     return order;
   }

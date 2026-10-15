@@ -9,6 +9,8 @@ import { paymentService } from '../modules/payments/payment.service';
 import { aiFoodAssistantService } from '../modules/ai/ai.service';
 import { mcpServerService } from '../modules/mcp/mcp.service';
 import { whatsAppOrderingService } from '../modules/whatsapp/whatsapp.service';
+import { whatsAppClientService } from '../modules/whatsapp/whatsapp-client.service';
+import { env } from '../config/env';
 import { adminOperationsService } from '../modules/admin/admin.service';
 import { db } from '../data/mock-db';
 import { BadRequestError } from '../common/errors';
@@ -318,7 +320,7 @@ apiRouter.get('/whatsapp/webhook', (req: Request, res: Response) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  if (mode === 'subscribe' && token === 'aajori_whatsapp_verify_token_2026') {
+  if (mode === 'subscribe' && token === env.WHATSAPP_VERIFY_TOKEN) {
     return res.status(200).send(challenge);
   }
   return res.sendStatus(403);
@@ -326,12 +328,100 @@ apiRouter.get('/whatsapp/webhook', (req: Request, res: Response) => {
 
 apiRouter.post('/whatsapp/webhook', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { from, message } = req.body;
-    const reply = await whatsAppOrderingService.handleInboundMessage(from || '+919864000020', message || 'hi');
-    res.json({ success: true, data: { reply } });
+    // 1. Meta WhatsApp Cloud API Official Inbound Payload
+    if (req.body.object === 'whatsapp_business_account' && Array.isArray(req.body.entry)) {
+      // Process entries in background to respond with 200 within Meta timeout
+      const entries = req.body.entry;
+      for (const entry of entries) {
+        for (const change of entry.changes || []) {
+          const value = change.value;
+          if (!value || !value.messages) continue;
+
+          const contact = value.contacts?.[0];
+          const customerName = contact?.profile?.name;
+
+          for (const msg of value.messages) {
+            const rawFrom = msg.from;
+            const fromPhone = rawFrom.startsWith('+') ? rawFrom : `+${rawFrom}`;
+            let messageText: string | undefined;
+            let messageType: 'text' | 'interactive' | 'location' = 'text';
+            let interactiveReplyId: string | undefined;
+            let locationData: any = undefined;
+
+            if (msg.type === 'text') {
+              messageText = msg.text?.body;
+            } else if (msg.type === 'interactive') {
+              messageType = 'interactive';
+              interactiveReplyId = msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id;
+              messageText = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title;
+            } else if (msg.type === 'location') {
+              messageType = 'location';
+              locationData = {
+                latitude: msg.location?.latitude,
+                longitude: msg.location?.longitude,
+                name: msg.location?.name,
+                address: msg.location?.address,
+              };
+            }
+
+            const result = await whatsAppOrderingService.handleInboundMessage({
+              fromPhone,
+              messageText,
+              customerName,
+              messageType,
+              interactiveReplyId,
+              location: locationData,
+            });
+
+            // Dispatch outbound reply via Meta Cloud API
+            if (result.buttons && result.buttons.length > 0) {
+              await whatsAppClientService.sendInteractiveButtons(fromPhone, result.reply, result.buttons);
+            } else {
+              await whatsAppClientService.sendTextMessage(fromPhone, result.reply);
+            }
+          }
+        }
+      }
+
+      return res.status(200).json({ status: 'EVENT_RECEIVED' });
+    }
+
+    // 2. Admin Panel Simulator / Direct API Test Mode
+    const fromPhone = req.body.from || '+919864000020';
+    const messageText = req.body.message ?? req.body.text ?? 'hi';
+    const result = await whatsAppOrderingService.handleInboundMessage({
+      fromPhone,
+      messageText: String(messageText),
+      customerName: req.body.customerName || 'Admin Simulator User',
+      messageType: req.body.type || 'text',
+      interactiveReplyId: req.body.replyId,
+      location: req.body.location,
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        reply: result.reply,
+        buttons: result.buttons,
+        session: result.session,
+        orderCreated: result.orderCreated,
+      },
+    });
   } catch (err) {
     next(err);
   }
+});
+
+apiRouter.post('/whatsapp/session/reset', (req: Request, res: Response) => {
+  const phone = req.body.phone || '+919864000020';
+  const session = whatsAppOrderingService.resetSession(phone);
+  res.json({ success: true, data: { session } });
+});
+
+apiRouter.get('/whatsapp/session', (req: Request, res: Response) => {
+  const phone = (req.query.phone as string) || '+919864000020';
+  const session = whatsAppOrderingService.getSession(phone);
+  res.json({ success: true, data: { session } });
 });
 
 // ============================================================================

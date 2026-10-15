@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '../../data/mock-db';
+import { whatsAppClientService } from '../whatsapp/whatsapp-client.service';
 
 export type NotificationEvent =
   | 'ORDER_CREATED'
@@ -36,7 +38,7 @@ export class NotificationService {
     title: string,
     message: string,
     data?: Record<string, any>,
-    channels: ('PUSH' | 'WHATSAPP' | 'SMS' | 'IN_APP')[] = ['PUSH', 'IN_APP']
+    channels: ('PUSH' | 'WHATSAPP' | 'SMS' | 'IN_APP')[] = ['PUSH', 'IN_APP', 'WHATSAPP']
   ): Promise<NotificationPayload> {
     const notification: NotificationPayload = {
       id: uuidv4(),
@@ -52,7 +54,16 @@ export class NotificationService {
     this.notifications.push(notification);
 
     // If channels include WhatsApp and user has phone, dispatch via WhatsApp service
-    // If channels include PUSH, dispatch via FCM if configured
+    if (channels.includes('WHATSAPP')) {
+      const user = db.users.get(recipientUserId);
+      if (user && user.phone) {
+        const formattedMsg = `🔔 *${title}*\n\n${message}`;
+        await whatsAppClientService.sendTextMessage(user.phone, formattedMsg).catch((err) => {
+          console.error('[Notification WhatsApp Dispatch Error]', err);
+        });
+      }
+    }
+
     return notification;
   }
 

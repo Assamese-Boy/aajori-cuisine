@@ -21,6 +21,7 @@ const envSchema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_VERIFY_TOKEN: z.string().default('aajori_whatsapp_verify_token_2026'),
+  WHATSAPP_APP_SECRET: z.string().optional(),
   AI_PROVIDER: z.string().default('MOCK'),
   DEFAULT_DISTRICT: z.string().default('Kamrup Metropolitan'),
   DEFAULT_CITY: z.string().default('Guwahati'),
