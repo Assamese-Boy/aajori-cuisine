@@ -38,6 +38,16 @@ export const Header: React.FC<HeaderProps> = ({
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false);
 
+  const formatHeaderLocation = (raw?: string): string => {
+    if (!raw) return 'Select Location';
+    let clean = raw.replace(/mainland\s*india,?\s*/gi, '').trim();
+    if (!clean) clean = raw;
+    const parts = clean.split(',').map((p) => p.trim()).filter(Boolean);
+    let main = parts[0] || clean;
+    if (/^india$/i.test(main) && parts.length > 1) main = parts[1];
+    return main;
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-xs">
       {/* Top micro announcement bar */}
@@ -83,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="text-left">
                 <span className="text-[10px] text-slate-400 block font-normal leading-none">Deliver To</span>
                 <span className="truncate max-w-[130px] block font-bold text-slate-800">
-                  {selectedAddress ? selectedAddress.landmark || selectedAddress.addressLine1 : currentLocation?.name || 'Select Location'}
+                  {selectedAddress ? selectedAddress.landmark || selectedAddress.addressLine1 : formatHeaderLocation(currentLocation?.name)}
                 </span>
               </div>
               <ChevronDown className="w-3 h-3 text-slate-400 ml-1" />

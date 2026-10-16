@@ -91,6 +91,13 @@ async function performFetch(
 
   const text = await res.text();
   const isHtml = text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html');
+  const isEdgeError =
+    text.includes('DNS_HOSTNAME_RESOLVED_PRIVATE') ||
+    text.includes('DEPLOYMENT_NOT_FOUND') ||
+    text.includes('INFINITE_LOOP_DETECTED') ||
+    text.includes('The page could not be found') ||
+    res.status === 404 ||
+    res.status >= 500;
 
   if (res.status === 401 || res.status === 403) {
     return {
@@ -104,7 +111,7 @@ async function performFetch(
     success: false,
     error: { message: isHtml ? `Server returned HTTP ${res.status}` : text },
     statusCode: res.status,
-    isInfrastructureError: isHtml || res.status >= 500,
+    isInfrastructureError: isHtml || isEdgeError,
   };
 }
 

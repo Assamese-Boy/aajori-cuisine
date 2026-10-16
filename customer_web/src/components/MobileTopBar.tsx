@@ -79,6 +79,21 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
     }
   };
 
+  const formatHeaderLocation = (raw?: string): string => {
+    if (!raw) return 'Set Location';
+    let clean = raw.replace(/mainland\s*india,?\s*/gi, '').trim();
+    if (!clean) clean = raw;
+    const parts = clean.split(',').map((p) => p.trim()).filter(Boolean);
+    let main = parts[0] || clean;
+    if (/^india$/i.test(main) && parts.length > 1) {
+      main = parts[1];
+    }
+    if (main.length > 16) {
+      return main.slice(0, 14).trim() + '…';
+    }
+    return main;
+  };
+
   return (
     <>
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-stone-200/80 safe-top transition-all">
@@ -94,80 +109,80 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
         </div>
 
         {/* Location & Profile Row with Hamburger Menu */}
-        <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+        <div className="px-3.5 py-2 flex items-center justify-between gap-2">
           {/* Hamburger Menu Toggle Button */}
           <button
             onClick={onOpenDrawer}
-            className="w-10 h-10 rounded-2xl bg-stone-100 hover:bg-stone-200/80 text-slate-800 flex items-center justify-center shrink-0 border border-stone-200/70 btn-press transition-all relative"
+            className="w-9 h-9 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-slate-800 flex items-center justify-center shrink-0 border border-stone-200/70 btn-press transition-all relative"
             aria-label="Open navigation menu"
           >
-            <Menu className="w-5 h-5 text-slate-800" />
+            <Menu className="w-4.5 h-4.5 text-slate-800" />
             {isPureVeg && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
             )}
           </button>
 
           {/* Location button with live GPS / address display */}
           <button
             onClick={() => setIsLocationSheetOpen(true)}
-            className="flex items-center gap-2.5 text-left min-w-0 flex-1 btn-press group"
+            className="flex items-center gap-2 text-left min-w-0 flex-1 btn-press group"
           >
             <div
-              className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs transition-all ${
+              className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs transition-all ${
                 currentLocation?.isGps
                   ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-300'
                   : 'bg-brand-50 text-brand-600'
               }`}
             >
-              <MapPin className="w-5 h-5" />
+              <MapPin className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-xs font-black text-slate-900 leading-tight">
-                <span>Deliver to</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-brand-600 transition-colors" />
+              <div className="flex items-center gap-1 text-[11px] font-black text-slate-900 leading-none whitespace-nowrap">
+                <span className="whitespace-nowrap">Deliver to</span>
+                <ChevronDown className="w-3 h-3 text-slate-500 group-hover:text-brand-600 transition-colors shrink-0" />
                 {currentLocation?.isGps && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black flex items-center gap-0.5">
-                    ● Live GPS
+                  <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[8.5px] font-bold shrink-0 tracking-tight leading-none">
+                    ● Live
                   </span>
                 )}
                 {isPureVeg && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center gap-1">
-                    <Leaf className="w-3 h-3" /> Veg Only
+                  <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[8.5px] font-bold shrink-0 flex items-center gap-0.5 leading-none">
+                    <Leaf className="w-2.5 h-2.5" /> Veg
                   </span>
                 )}
               </div>
-              <p className="text-sm text-slate-800 truncate leading-tight font-extrabold mt-0.5">
+              <p className="text-xs sm:text-sm text-slate-900 truncate leading-snug font-extrabold mt-0.5">
                 {currentLocation
-                  ? currentLocation.name
+                  ? formatHeaderLocation(currentLocation.name)
                   : isDetecting
-                  ? 'Detecting Real GPS...'
-                  : 'Tap to Detect Location'}
+                  ? 'Detecting GPS...'
+                  : 'Tap to Detect'}
               </p>
             </div>
           </button>
 
           {/* User profile / Avatar */}
-          <div className="shrink-0 flex items-center gap-2">
+          <div className="shrink-0 flex items-center gap-1.5">
             {onOpenAi && (
               <button
                 onClick={onOpenAi}
-                className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-brand-500 to-amber-500 text-white flex items-center justify-center shadow-xs btn-press"
+                className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-500 to-amber-500 text-white flex items-center justify-center shadow-xs btn-press"
                 title="Ask Aajori AI"
               >
-                <Sparkles className="w-4.5 h-4.5 text-amber-200" />
+                <Sparkles className="w-4 h-4 text-amber-200" />
               </button>
             )}
             {isAuthenticated && user ? (
               <button
                 onClick={() => openAuthModal('signin')}
-                className="w-9 h-9 rounded-2xl bg-slate-900 text-white font-black text-xs flex items-center justify-center shadow-xs btn-press"
+                className="w-8 h-8 rounded-xl bg-slate-900 text-white font-black text-xs flex items-center justify-center shadow-xs btn-press"
               >
                 {user.fullName ? user.fullName[0].toUpperCase() : 'U'}
               </button>
             ) : (
               <button
                 onClick={() => openAuthModal('signin')}
-                className="px-3 py-2 bg-slate-900 text-white rounded-2xl text-xs font-black btn-press shadow-xs"
+                className="px-2.5 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-black btn-press shadow-xs whitespace-nowrap"
               >
                 Sign In
               </button>
@@ -431,34 +446,6 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
                 </div>
               )}
 
-              {/* Quick Search Suggestions (Tapping launches live OSM search) */}
-              <div className="pt-1">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                  Popular Search Areas
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    'Christian Basti',
-                    'GS Road',
-                    'Paltan Bazaar',
-                    'Zoo Road',
-                    'Six Mile',
-                    'Dispur',
-                    'Pan Bazaar',
-                    'Uzan Bazar',
-                    'Beltola',
-                    'Jalukbari',
-                  ].map((loc) => (
-                    <button
-                      key={loc}
-                      onClick={() => handleSearchAddresses(loc)}
-                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 border border-stone-200 text-[11px] font-bold text-slate-700 transition-all btn-press"
-                    >
-                      {loc}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
         </div>

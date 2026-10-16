@@ -30,12 +30,26 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isDetecting, setIsDetecting] = useState<boolean>(false);
   const [nearbyLocalities, setNearbyLocalities] = useState<UserLocation[]>([]);
 
+  const cleanLocationString = (str?: string | null): string => {
+    if (!str) return '';
+    return str
+      .replace(/mainland\s*india,?\s*/gi, '')
+      .replace(/^,\s*/, '')
+      .trim();
+  };
+
   // Load recent locations from localStorage
   const [recentLocations, setRecentLocations] = useState<UserLocation[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
       const raw = localStorage.getItem('aajori_recent_locations');
-      return raw ? JSON.parse(raw) : [];
+      if (!raw) return [];
+      const parsed: UserLocation[] = JSON.parse(raw);
+      return parsed.map((item) => ({
+        ...item,
+        name: cleanLocationString(item.name) || item.name,
+        addressLine: cleanLocationString(item.addressLine) || item.addressLine,
+      }));
     } catch {
       return [];
     }
@@ -51,9 +65,11 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const savedIsGps = localStorage.getItem('aajori_user_is_gps') === 'true';
 
     if (savedName && savedLat && savedLng) {
+      const cleanName = cleanLocationString(savedName) || 'Current Location';
+      const cleanAddress = cleanLocationString(savedAddress) || cleanName;
       return {
-        name: savedName,
-        addressLine: savedAddress || savedName,
+        name: cleanName,
+        addressLine: cleanAddress,
         latitude: Number(savedLat),
         longitude: Number(savedLng),
         isGps: savedIsGps,
@@ -95,12 +111,14 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const items: UserLocation[] = data.features.slice(0, 6).map((f: any) => {
             const props = f.properties || {};
             const title =
-              props.name ||
-              props.street ||
-              props.district ||
-              props.city ||
+              cleanLocationString(props.name) ||
+              cleanLocationString(props.street) ||
+              cleanLocationString(props.district) ||
+              cleanLocationString(props.city) ||
               'Nearby Landmark';
             const subtitle = [props.street, props.district, props.city, props.state]
+              .filter(Boolean)
+              .map((s) => cleanLocationString(s))
               .filter(Boolean)
               .join(', ');
 
@@ -126,40 +144,23 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   // Free API 2: Reverse Geocode coordinates to exact human-readable address
-  // Uses BigDataCloud Client API + OpenStreetMap Nominatim fallback (100% free, no API keys)
-  const reverseGeocode = async (lat: number, lng: number): Promise<{ name: string; addressLine: string; city: string; postcode?: string }> => {
-    // 1. Try BigDataCloud free client reverse geocoder (lightning fast, specifically designed for client web apps)
-    try {
-      const bdcRes = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+  // Uses OpenStreetMap Nominatim first (most accurate, granular localities), BigDataCloud as fallback
+  const reverseGeocode = async (
+    lat: number,
+    lng: number
+  ): Promise<{ name: string; addressLine: string; city: string; postcode?: string }> => {
+    const isGeneric = (str?: string): boolean => {
+      if (!str) return true;
+      const s = str.trim().toLowerCase();
+      return (
+        s === '' ||
+        s === 'india' ||
+        s.includes('mainland india') ||
+        s === 'unnamed road'
       );
-      if (bdcRes.ok) {
-        const bdc = await bdcRes.json();
-        const locality = bdc.locality || bdc.city || bdc.principalSubdivision;
-        const city = bdc.city || 'Guwahati';
-        const postcode = bdc.postcode ? ` - ${bdc.postcode}` : '';
+    };
 
-        // Extract most descriptive street/road if available
-        let road = '';
-        if (bdc.localityInfo?.informative) {
-          const roadObj = bdc.localityInfo.informative.find(
-            (i: any) => i.description?.toLowerCase().includes('road') || i.order >= 4
-          );
-          if (roadObj && roadObj.name) road = roadObj.name;
-        }
-
-        const friendlyName = road && locality ? `${road}, ${locality}` : locality || `${city}`;
-        const addressLine = `${friendlyName}, ${city}, ${bdc.principalSubdivision || 'Assam'}${postcode}`;
-
-        if (friendlyName) {
-          return { name: friendlyName, addressLine, city, postcode: bdc.postcode };
-        }
-      }
-    } catch (err) {
-      console.warn('BigDataCloud geocoder error, falling back to OpenStreetMap Nominatim:', err);
-    }
-
-    // 2. OpenStreetMap Nominatim fallback
+    // 1. OpenStreetMap Nominatim (Granular, accurate, real neighborhood/suburb names)
     try {
       const nomRes = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
@@ -167,34 +168,97 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       );
       if (nomRes.ok) {
         const nom = await nomRes.json();
-        if (nom.address) {
+        if (nom && nom.address) {
           const addr = nom.address;
-          const road = addr.road || addr.residential || addr.street || '';
-          const suburb = addr.suburb || addr.neighbourhood || addr.city_district || addr.village || '';
-          const city = addr.city || addr.town || addr.county || 'Guwahati';
-          const postcode = addr.postcode ? ` - ${addr.postcode}` : '';
+          const suburb = !isGeneric(addr.suburb) ? addr.suburb : '';
+          const neighbourhood = !isGeneric(addr.neighbourhood) ? addr.neighbourhood : '';
+          const residential = !isGeneric(addr.residential) ? addr.residential : '';
+          const road = !isGeneric(addr.road) ? addr.road : '';
+          const village = !isGeneric(addr.village) ? addr.village : '';
+          const cityDistrict = !isGeneric(addr.city_district) ? addr.city_district : '';
+          const town = !isGeneric(addr.town) ? addr.town : '';
+          const city = !isGeneric(addr.city) ? addr.city : town || addr.county || '';
+          const state = !isGeneric(addr.state) ? addr.state : '';
+          const postcode = addr.postcode || '';
 
-          let friendlyName = '';
-          if (road && suburb) friendlyName = `${road}, ${suburb}`;
-          else if (suburb) friendlyName = `${suburb}, ${city}`;
-          else if (road) friendlyName = `${road}, ${city}`;
-          else friendlyName = nom.name || city;
+          // The primary short locality for the header
+          const shortName =
+            suburb ||
+            neighbourhood ||
+            residential ||
+            road ||
+            village ||
+            cityDistrict ||
+            town ||
+            city ||
+            'Current Location';
+
+          // Descriptive address line
+          const addressParts = [
+            road,
+            suburb || neighbourhood || residential,
+            city,
+            state,
+          ].filter(Boolean);
+          const addressLine =
+            addressParts.length > 0
+              ? addressParts.join(', ') + (postcode ? ` - ${postcode}` : '')
+              : nom.display_name || shortName;
 
           return {
-            name: friendlyName,
-            addressLine: nom.display_name || `${friendlyName}, ${city}${postcode}`,
+            name: shortName,
+            addressLine: cleanLocationString(addressLine),
             city,
-            postcode: addr.postcode,
+            postcode,
           };
         }
       }
     } catch (err) {
-      console.warn('Nominatim reverse geocoder error:', err);
+      console.warn('Nominatim reverse geocoder error, trying BigDataCloud fallback:', err);
     }
 
-    // Pure coordinate fallback ONLY if network is completely offline
+    // 2. BigDataCloud free client reverse geocoder fallback
+    try {
+      const bdcRes = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+      );
+      if (bdcRes.ok) {
+        const bdc = await bdcRes.json();
+        const locality = !isGeneric(bdc.locality) ? bdc.locality : '';
+        const city = !isGeneric(bdc.city) ? bdc.city : '';
+        const sub = !isGeneric(bdc.principalSubdivision) ? bdc.principalSubdivision : '';
+        const postcode = bdc.postcode ? ` - ${bdc.postcode}` : '';
+
+        // Extract most descriptive street/road if available
+        let road = '';
+        if (bdc.localityInfo?.informative) {
+          const roadObj = bdc.localityInfo.informative.find(
+            (i: any) =>
+              !isGeneric(i.name) &&
+              (i.description?.toLowerCase().includes('road') || i.order >= 4)
+          );
+          if (roadObj && roadObj.name) road = roadObj.name;
+        }
+
+        const shortName = locality || road || city || sub || 'Current Location';
+        const addressParts = [road, locality, city, sub].filter(Boolean);
+        const addressLine =
+          addressParts.length > 0 ? addressParts.join(', ') + postcode : shortName;
+
+        return {
+          name: shortName,
+          addressLine: cleanLocationString(addressLine),
+          city,
+          postcode: bdc.postcode,
+        };
+      }
+    } catch (err) {
+      console.warn('BigDataCloud geocoder error:', err);
+    }
+
+    // 3. Fallback coordinate
     return {
-      name: `GPS Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+      name: `GPS (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
       addressLine: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`,
       city: '',
     };
@@ -266,7 +330,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // 1. Try Nominatim with countrycodes=in
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          q + ', Assam'
+          q
         )}&countrycodes=in&limit=8&addressdetails=1`,
         { headers: { 'Accept-Language': 'en' } }
       );
@@ -284,12 +348,12 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               item.display_name.split(',')[0];
 
             return {
-              name: shortName,
-              addressLine: item.display_name,
+              name: cleanLocationString(shortName),
+              addressLine: cleanLocationString(item.display_name),
               latitude: Number(item.lat),
               longitude: Number(item.lon),
               isGps: false,
-              city: addr.city || addr.town || 'Guwahati',
+              city: addr.city || addr.town || addr.county || '',
               postalCode: addr.postcode,
             };
           });
