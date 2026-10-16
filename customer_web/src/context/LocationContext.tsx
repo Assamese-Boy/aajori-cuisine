@@ -13,7 +13,7 @@ export interface UserLocation {
 }
 
 interface LocationContextType {
-  currentLocation: UserLocation;
+  currentLocation: UserLocation | null;
   recentLocations: UserLocation[];
   nearbyLocalities: UserLocation[];
   isDetecting: boolean;
@@ -22,16 +22,6 @@ interface LocationContextType {
   searchLocalities: (query: string) => Promise<UserLocation[]>;
   fetchNearbyPlaces: (lat: number, lng: number) => Promise<UserLocation[]>;
 }
-
-// Fallback initial state before GPS or user selection
-const INITIAL_LOCATION: UserLocation = {
-  name: 'Guwahati, Assam',
-  addressLine: 'Kamrup Metropolitan, Assam, India',
-  latitude: 26.1852,
-  longitude: 91.765,
-  isGps: false,
-  city: 'Guwahati',
-};
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
 
@@ -51,9 +41,9 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   });
 
-  // Initialize current location from localStorage if saved
-  const [currentLocation, setCurrentLocationState] = useState<UserLocation>(() => {
-    if (typeof window === 'undefined') return INITIAL_LOCATION;
+  // Initialize current location strictly from localStorage if user previously selected/detected it
+  const [currentLocation, setCurrentLocationState] = useState<UserLocation | null>(() => {
+    if (typeof window === 'undefined') return null;
     const savedName = localStorage.getItem('aajori_user_location_name');
     const savedLat = localStorage.getItem('aajori_user_lat');
     const savedLng = localStorage.getItem('aajori_user_lng');
@@ -69,7 +59,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isGps: savedIsGps,
       };
     }
-    return INITIAL_LOCATION;
+    return null;
   });
 
   // Save location to state and recent history
@@ -202,11 +192,11 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn('Nominatim reverse geocoder error:', err);
     }
 
-    // Safe fallback if network is completely offline
+    // Pure coordinate fallback ONLY if network is completely offline
     return {
       name: `GPS Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
-      addressLine: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}, Assam`,
-      city: 'Guwahati',
+      addressLine: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`,
+      city: '',
     };
   };
 
@@ -343,12 +333,19 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return [];
   }, []);
 
-  // Fetch nearby places around initial location on mount
+  // On initial mount: if no saved location in storage, automatically detect real device GPS
   useEffect(() => {
-    if (currentLocation.latitude && currentLocation.longitude) {
+    if (!currentLocation && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      detectGpsLocation();
+    }
+  }, []);
+
+  // Fetch nearby places around current location whenever valid coordinates exist
+  useEffect(() => {
+    if (currentLocation?.latitude && currentLocation?.longitude) {
       fetchNearbyPlaces(currentLocation.latitude, currentLocation.longitude);
     }
-  }, [currentLocation.latitude, currentLocation.longitude, fetchNearbyPlaces]);
+  }, [currentLocation?.latitude, currentLocation?.longitude, fetchNearbyPlaces]);
 
   return (
     <LocationContext.Provider

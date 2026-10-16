@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useLocationContext } from '../context/LocationContext';
 
 interface ProfilePageProps {
   onOpenDrawer?: () => void;
@@ -25,6 +26,7 @@ interface ProfilePageProps {
 export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenDrawer }) => {
   const { user, isAuthenticated, addresses, addAddress, deleteAddress, updateProfile, logout, openAuthModal } =
     useAuth();
+  const { currentLocation } = useLocationContext();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -40,10 +42,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenDrawer }) => {
     label: 'Home',
     addressLine1: '',
     landmark: '',
-    city: 'Guwahati',
-    postalCode: '781001',
-    latitude: 26.166,
-    longitude: 91.759,
+    city: currentLocation?.city || '',
+    postalCode: currentLocation?.postalCode || '',
+    latitude: currentLocation?.latitude || 0,
+    longitude: currentLocation?.longitude || 0,
   });
 
   if (!isAuthenticated || !user) {
@@ -85,10 +87,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onOpenDrawer }) => {
         label: 'Home',
         addressLine1: '',
         landmark: '',
-        city: 'Guwahati',
-        postalCode: '781001',
-        latitude: 26.166,
-        longitude: 91.759,
+        city: currentLocation?.city || '',
+        postalCode: currentLocation?.postalCode || '',
+        latitude: currentLocation?.latitude || 0,
+        longitude: currentLocation?.longitude || 0,
       });
     }
   };

@@ -114,7 +114,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
           >
             <div
               className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs transition-all ${
-                currentLocation.isGps
+                currentLocation?.isGps
                   ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-300'
                   : 'bg-brand-50 text-brand-600'
               }`}
@@ -125,7 +125,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
               <div className="flex items-center gap-1.5 text-xs font-black text-slate-900 leading-tight">
                 <span>Deliver to</span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-brand-600 transition-colors" />
-                {currentLocation.isGps && (
+                {currentLocation?.isGps && (
                   <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black flex items-center gap-0.5">
                     ● Live GPS
                   </span>
@@ -137,7 +137,11 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
                 )}
               </div>
               <p className="text-sm text-slate-800 truncate leading-tight font-extrabold mt-0.5">
-                {currentLocation.name}
+                {currentLocation
+                  ? currentLocation.name
+                  : isDetecting
+                  ? 'Detecting Real GPS...'
+                  : 'Tap to Detect Location'}
               </p>
             </div>
           </button>
@@ -338,30 +342,39 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
             /* Dynamic Localities & Addresses View */
             <div className="space-y-4 overflow-y-auto flex-1 pr-1">
               {/* Active Current Location Card */}
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-stone-50 to-emerald-50/40 border border-stone-200">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                    Active Delivery Address
-                  </span>
-                  {currentLocation.isGps && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Verified Live GPS
+              {currentLocation ? (
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-stone-50 to-emerald-50/40 border border-stone-200">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      Active Delivery Address
                     </span>
-                  )}
-                </div>
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="font-extrabold text-xs text-slate-900 truncate">
-                      {currentLocation.name}
-                    </p>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                      {currentLocation.addressLine}
-                    </p>
+                    {currentLocation.isGps && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Verified Live GPS
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="font-extrabold text-xs text-slate-900 truncate">
+                        {currentLocation.name}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                        {currentLocation.addressLine}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 text-center space-y-1">
+                  <p className="font-bold text-xs text-slate-700">No Location Selected Yet</p>
+                  <p className="text-[11px] text-slate-400">
+                    Tap &quot;Use Current GPS Location&quot; above to auto-detect your real street address.
+                  </p>
+                </div>
+              )}
 
               {/* Recent Saved Locations */}
               {recentLocations && recentLocations.length > 0 && (
@@ -382,7 +395,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
                           <div className="text-[10px] text-slate-500 truncate">{loc.addressLine}</div>
                         </div>
                       </div>
-                      {currentLocation.name === loc.name && (
+                      {currentLocation?.name === loc.name && (
                         <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />
                       )}
                     </button>
@@ -410,7 +423,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
                           <div className="text-[10px] text-slate-500 truncate">{place.addressLine}</div>
                         </div>
                       </div>
-                      {currentLocation.name === place.name && (
+                      {currentLocation?.name === place.name && (
                         <Check className="w-4 h-4 text-brand-600 shrink-0 ml-2" />
                       )}
                     </button>

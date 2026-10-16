@@ -14,8 +14,10 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLocationContext } from '../context/LocationContext';
 
 export const AuthModal: React.FC = () => {
+  const { currentLocation } = useLocationContext();
   const {
     isAuthModalOpen,
     authModalTab,
@@ -101,10 +103,10 @@ export const AuthModal: React.FC = () => {
             label: 'Home',
             addressLine1: signupForm.addressLine1.trim(),
             landmark: signupForm.landmark.trim() || undefined,
-            city: 'Guwahati',
-            postalCode: signupForm.postalCode.trim() || '781001',
-            latitude: 26.166,
-            longitude: 91.759,
+            city: currentLocation?.city || '',
+            postalCode: signupForm.postalCode.trim() || currentLocation?.postalCode || '',
+            latitude: currentLocation?.latitude || 0,
+            longitude: currentLocation?.longitude || 0,
           }
         : undefined,
     });

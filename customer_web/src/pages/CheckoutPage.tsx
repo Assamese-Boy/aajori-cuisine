@@ -44,10 +44,10 @@ export const CheckoutPage: React.FC = () => {
     label: 'Home',
     addressLine1: '',
     landmark: '',
-    city: 'Guwahati',
-    postalCode: '781001',
-    latitude: currentLocation?.latitude || 26.166,
-    longitude: currentLocation?.longitude || 91.759,
+    city: currentLocation?.city || '',
+    postalCode: currentLocation?.postalCode || '',
+    latitude: currentLocation?.latitude || 0,
+    longitude: currentLocation?.longitude || 0,
   });
 
   useEffect(() => {
@@ -62,13 +62,13 @@ export const CheckoutPage: React.FC = () => {
       setSelectedAddress({
         id: 'gps-current',
         customerId: user?.id || 'guest',
-        label: currentLocation.isGps ? 'Current GPS Location' : 'Selected Hub',
+        label: currentLocation.isGps ? 'Current GPS Location' : 'Selected Address',
         addressLine1: currentLocation.name,
         addressLine2: currentLocation.addressLine,
         landmark: currentLocation.isGps ? 'GPS Detected' : '',
-        city: 'Guwahati',
-        district: 'Kamrup Metropolitan',
-        postalCode: '781001',
+        city: currentLocation.city || '',
+        district: currentLocation.locality || '',
+        postalCode: currentLocation.postalCode || '',
         location: {
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude,
