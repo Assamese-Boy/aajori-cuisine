@@ -86,6 +86,8 @@ export class OrderService {
     const initialStatus: OrderStatus =
       input.paymentMethod === 'CASH_ON_DELIVERY' ? 'PAYMENT_CONFIRMED' : 'PAYMENT_PENDING';
 
+    const trackingToken = uuidv4().replace(/-/g, '');
+
     const newOrder: Order = {
       id: orderId,
       orderNumber,
@@ -101,6 +103,9 @@ export class OrderService {
       customerInstructions: input.customerInstructions,
       estimatedPrepTimeMinutes: 25,
       idempotencyKey: input.idempotencyKey,
+      trackingToken,
+      isWhatsAppOrder: false,
+      whatsappNotificationStatus: 'SENT',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

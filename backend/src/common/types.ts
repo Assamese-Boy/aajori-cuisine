@@ -108,6 +108,7 @@ export interface Restaurant {
   logoUrl?: string;
   coverUrl?: string;
   rating?: number;
+  isBusy?: boolean;
 }
 
 export interface MenuItem {
@@ -122,6 +123,9 @@ export interface MenuItem {
   spicinessLevel: number; // 0: Mild, 1: Medium, 2: Hot, 3: Ghost Pepper / Bhut Jolokia
   imageUrl?: string;
   prepTimeMinutes: number;
+  isBestseller?: boolean;
+  variants?: MenuItemVariant[];
+  addons?: MenuItemAddon[];
 }
 
 export interface MenuItemVariant {
@@ -220,6 +224,9 @@ export interface Order {
   estimatedPrepTimeMinutes: number;
   estimatedDeliveryTime?: string;
   idempotencyKey?: string;
+  trackingToken?: string;
+  isWhatsAppOrder?: boolean;
+  whatsappNotificationStatus?: string;
   createdAt: string;
   updatedAt: string;
 }

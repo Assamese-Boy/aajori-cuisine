@@ -93,11 +93,13 @@ The backend is engineered as a serverless-compatible Express application.
 
 ## 4. Admin Panel Deployment
 
-The Admin Control Center is a modern Vite/React single-page application.
-Deploy to Vercel, Netlify, or Cloudflare Pages:
+The Admin Control Center is a native Next.js 14 application.
+Deploy to Vercel:
+- **Framework Preset**: `Next.js`
+- **Output Directory**: Leave default / empty (do NOT override with `dist`)
+- **Build Command**: `next build` (default)
 ```bash
 cd admin_panel
 npm run build
-# Upload dist/ folder
 ```
-Set the `VITE_API_BASE_URL` to your production Vercel backend URL.
+Set the `BACKEND_URL` environment variable to your production backend URL.
