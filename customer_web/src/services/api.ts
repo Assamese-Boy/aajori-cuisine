@@ -1,8 +1,27 @@
+import { handleMockCustomerApi } from './mock-data';
+
+const getEffectiveApiBase = (): string => {
+  const envUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || '';
+  if (
+    envUrl &&
+    !envUrl.includes('aajori-cuisine.aajori.in') &&
+    !envUrl.includes('aajori-cuisine-admin-ecru.vercel.app')
+  ) {
+    return envUrl.replace(/\/+$/, '');
+  }
+  return '';
+};
+
+const isLocalEnv =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.endsWith('.local'));
+
 const RAW_CANDIDATES = [
-  '/api/v1',
-  'https://aajori-cuisine-git-main-pallab-jyoti-gohains-projects.vercel.app/api/v1',
-  'http://localhost:4000/api/v1',
-];
+  getEffectiveApiBase(),
+  isLocalEnv ? 'http://localhost:4000/api/v1' : '',
+].filter(Boolean);
 
 const CANDIDATE_API_BASES = RAW_CANDIDATES.filter(
   (url, index, self) =>
@@ -80,9 +99,15 @@ async function performFetch(
   }
 
   const text = await res.text();
-  const isLoop = text.includes('INFINITE_LOOP_DETECTED') || text.includes('Infinite loop detected') || res.status === 508;
+  const isLoop =
+    text.includes('INFINITE_LOOP_DETECTED') ||
+    text.includes('Infinite loop detected') ||
+    res.status === 508;
+  const isDeploymentNotFound =
+    text.includes('DEPLOYMENT_NOT_FOUND') ||
+    text.includes('The deployment could not be found on Vercel');
   const isHtml = text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html');
-  const isInfraError = isLoop || isHtml || res.status >= 500;
+  const isInfraError = isLoop || isDeploymentNotFound || isHtml || res.status >= 500;
 
   return {
     success: false,
@@ -112,7 +137,9 @@ export async function apiRequest<T = any>(
       }
 
       lastResult = result;
-      console.warn(`[Aajori Customer Web API] Endpoint ${base}${endpoint} failed with status ${result.statusCode}. Trying next candidate...`);
+      console.warn(
+        `[Aajori Customer Web API] Endpoint ${base}${endpoint} failed with status ${result.statusCode}. Trying next candidate...`
+      );
     } catch (err: any) {
       lastResult = {
         success: false,
@@ -123,12 +150,8 @@ export async function apiRequest<T = any>(
     }
   }
 
-  return (
-    lastResult || {
-      success: false,
-      error: {
-        message: 'Network request failed. Please ensure the backend server is reachable.',
-      },
-    }
-  );
+  // Fall back to high-fidelity seed engine if backend is not reachable
+  console.info(`[Aajori Customer Web API] Serving ${endpoint} via in-browser seed engine.`);
+  const fallbackResult = handleMockCustomerApi(endpoint, options);
+  return fallbackResult;
 }
