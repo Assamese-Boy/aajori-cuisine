@@ -1,5 +1,6 @@
-import React from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+'use client';
+
+import { useNavigate, useOutletContext } from '../utils/router-compat';
 import {
   ShoppingBag,
   Users,

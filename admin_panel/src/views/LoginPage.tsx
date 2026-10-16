@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '../utils/router-compat';
 import { Lock, Mail, ShieldAlert, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { apiRequest, setAuthToken } from '../services/api';
 

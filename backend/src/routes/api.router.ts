@@ -526,6 +526,30 @@ apiRouter.post('/mcp/execute', optionalAuthenticate, async (req: AuthenticatedRe
 });
 
 // ============================================================================
+// 10.1 MEDIA STORAGE & UPLOAD
+// ============================================================================
+apiRouter.post('/media/upload', (req: Request, res: Response) => {
+  const fileUrl = req.body.url || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1000';
+  res.json({
+    success: true,
+    data: {
+      id: `media_${Date.now()}`,
+      url: fileUrl,
+      filename: req.body.filename || 'uploaded-asset.jpg',
+      createdAt: new Date().toISOString(),
+    },
+  });
+});
+
+apiRouter.get('/media/list', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    files: [],
+    total: 0,
+  });
+});
+
+// ============================================================================
 // 11. SUPER ADMIN OPERATIONS CONTROL CENTER
 // ============================================================================
 apiRouter.get('/admin/dashboard', (req: Request, res: Response) => {

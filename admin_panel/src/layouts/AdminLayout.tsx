@@ -1,13 +1,16 @@
+'use client';
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { NavLink, Outlet as RouterOutlet, useLocation as useRouterLocation } from 'react-router-dom';
+import { NavLink, useLocation as useRouterLocation } from '../utils/router-compat';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { TopProgressBar } from '../components/SkeletonLoaders';
 import { apiRequest, logout, getCurrentStoredUser } from '../services/api';
 import { mergeRestaurants } from '../services/local-persistence';
+import { AdminContext } from '../context/AdminContext';
 import { ChevronRight, Home } from 'lucide-react';
 
-export const AdminLayout: React.FC = () => {
+export const AdminLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const routerLocation = useRouterLocation();
   const [currentUser] = useState<any>(() => getCurrentStoredUser());
   const [currentRole, setCurrentRole] = useState(() => getCurrentStoredUser()?.role || 'SUPER_ADMIN');
@@ -95,10 +98,6 @@ export const AdminLayout: React.FC = () => {
       }
       return;
     }
-
-    // 4. Other routes (media, users, delivery-partners, live-map, audit-logs, ai-whatsapp):
-    // DO NOT make requests for /dashboard, /orders, or /restaurants!
-    // They manage their own isolated data fetching without unnecessary server load.
   }, [currentSection]);
 
   // Load data ONLY when route changes, with ZERO background setInterval polling
@@ -142,57 +141,61 @@ export const AdminLayout: React.FC = () => {
     }
   };
 
+  const contextValue = {
+    metrics,
+    orders,
+    restaurants,
+    isLoading,
+    onRefresh: handleManualRefresh,
+  };
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans relative">
-      <TopProgressBar isLoading={isLoading} />
-      <Sidebar />
+    <AdminContext.Provider value={contextValue}>
+      <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans relative">
+        <TopProgressBar isLoading={isLoading} />
+        <Sidebar />
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Header
-          user={currentUser}
-          currentRole={currentRole}
-          onRoleChanged={setCurrentRole}
-          onRefresh={handleManualRefresh}
-          onLogout={handleLogout}
-          isLoading={isLoading}
-        />
-
-        {/* Dynamic Breadcrumbs Navigation Bar */}
-        <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/80 px-6 py-2 flex items-center gap-1.5 text-xs text-slate-500">
-          <NavLink to="/dashboard" className="flex items-center gap-1 hover:text-brand-600 transition-colors">
-            <Home className="w-3.5 h-3.5" />
-            <span>District</span>
-          </NavLink>
-          {pathSegments.map((segment, index) => {
-            const isLast = index === pathSegments.length - 1;
-            const routePath = `/${pathSegments.slice(0, index + 1).join('/')}`;
-            return (
-              <React.Fragment key={routePath}>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                {isLast ? (
-                  <span className="font-semibold text-slate-800">{getBreadcrumbTitle(segment)}</span>
-                ) : (
-                  <NavLink to={routePath} className="hover:text-brand-600 transition-colors">
-                    {getBreadcrumbTitle(segment)}
-                  </NavLink>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-
-        <main className="flex-1 overflow-y-auto p-6">
-          <RouterOutlet
-            context={{
-              metrics,
-              orders,
-              restaurants,
-              isLoading,
-              onRefresh: handleManualRefresh,
-            }}
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <Header
+            user={currentUser}
+            currentRole={currentRole}
+            onRoleChanged={setCurrentRole}
+            onRefresh={handleManualRefresh}
+            onLogout={handleLogout}
+            isLoading={isLoading}
           />
-        </main>
+
+          {/* Dynamic Breadcrumbs Navigation Bar */}
+          <div className="bg-white/80 backdrop-blur-xs border-b border-slate-200/80 px-6 py-2 flex items-center gap-1.5 text-xs text-slate-500">
+            <NavLink to="/dashboard" className="flex items-center gap-1 hover:text-brand-600 transition-colors">
+              <Home className="w-3.5 h-3.5" />
+              <span>District</span>
+            </NavLink>
+            {pathSegments.map((segment, index) => {
+              const isLast = index === pathSegments.length - 1;
+              const routePath = `/${pathSegments.slice(0, index + 1).join('/')}`;
+              return (
+                <React.Fragment key={routePath}>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  {isLast ? (
+                    <span className="font-semibold text-slate-800">{getBreadcrumbTitle(segment)}</span>
+                  ) : (
+                    <NavLink to={routePath} className="hover:text-brand-600 transition-colors">
+                      {getBreadcrumbTitle(segment)}
+                    </NavLink>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          <main className="flex-1 overflow-y-auto p-6">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </AdminContext.Provider>
   );
 };
+
+export default AdminLayout;

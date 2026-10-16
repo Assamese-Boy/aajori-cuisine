@@ -9,7 +9,8 @@ export const app = express();
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'Accept', 'X-Requested-With'],
+  allowedHeaders: '*',
+  maxAge: 86400,
 }));
 app.options('*', cors());
 app.use(express.json());

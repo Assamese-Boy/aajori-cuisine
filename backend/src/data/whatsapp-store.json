@@ -1,13 +1,13 @@
 {
-  "updatedAt": "2026-10-15T12:14:12.989Z",
+  "updatedAt": "2026-10-16T05:04:00.077Z",
   "conversations": [
     {
       "phone": "+919864999999",
       "customerName": "Valued Customer",
       "stage": "IDLE",
       "cart": [],
-      "updatedAt": "2026-10-15T12:14:12.989Z",
-      "lastActiveOrderId": "7c4efd13-d8c3-403e-aada-55474c3f3577",
+      "updatedAt": "2026-10-16T05:04:00.077Z",
+      "lastActiveOrderId": "b84e39ed-77c4-42ac-a22d-205de16db4a2",
       "lastActiveOrderNumber": "AJR-202610-0003",
       "lastRecommendedItems": [
         {
@@ -459,6 +459,400 @@
       },
       "text": "🍛 *Recommended by Aajori AI:*\nRestaurant: *Khorikaa Ethnic Kitchen*\n• Duck Curry with Til (Black Sesame) (*₹320*)\nTotal: *₹320*\n\n_Matches dish request (duck) from authentic district kitchen._\n\n👉 Reply *Order Combo* to add this directly to your cart, or type *Menu* to browse!",
       "createdAt": "2026-10-15T12:14:12.984Z"
+    },
+    {
+      "id": "6a40d8ba-a242-43c1-97b8-c9db34338e9a",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "menu"
+      },
+      "text": "menu",
+      "createdAt": "2026-10-16T05:04:00.019Z"
+    },
+    {
+      "id": "a1a567c3-4df7-4659-9a69-44b8be64e4d5",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "👋 *Welcome to Aajori Cuisine!* Authentic hyperlocal food delivery for Kamrup.\n\nHere are popular local kitchens:\n1. *Khorikaa Ethnic Kitchen* (⭐ 4.8) - Assamese Ethnic, Charcoal Grill, Indigenous Cuisine\n2. *Paradise Heritage Diner* (⭐ 4.7) - Assamese Thali, Heritage Fish, Regional Delicacies\n3. *Brahmaputra Spice Bistro* (⭐ 4.6) - Regional Fusion, Assam Tea Cafe, River Catch\n\n💡 *How to order:*\n• Reply with restaurant number (e.g. *1*) to view dishes\n• Ask in plain words: _\"Duck curry under ₹400\"_\n• Type *Track* to see active orders\n• Type *Cart* to review your order anytime",
+        "buttons": [
+          {
+            "id": "1",
+            "title": "1. Khorikaa"
+          },
+          {
+            "id": "2",
+            "title": "2. Paradise"
+          },
+          {
+            "id": "btn_track",
+            "title": "Track Order"
+          }
+        ]
+      },
+      "text": "👋 *Welcome to Aajori Cuisine!* Authentic hyperlocal food delivery for Kamrup.\n\nHere are popular local kitchens:\n1. *Khorikaa Ethnic Kitchen* (⭐ 4.8) - Assamese Ethnic, Charcoal Grill, Indigenous Cuisine\n2. *Paradise Heritage Diner* (⭐ 4.7) - Assamese Thali, Heritage Fish, Regional Delicacies\n3. *Brahmaputra Spice Bistro* (⭐ 4.6) - Regional Fusion, Assam Tea Cafe, River Catch\n\n💡 *How to order:*\n• Reply with restaurant number (e.g. *1*) to view dishes\n• Ask in plain words: _\"Duck curry under ₹400\"_\n• Type *Track* to see active orders\n• Type *Cart* to review your order anytime",
+      "createdAt": "2026-10-16T05:04:00.022Z"
+    },
+    {
+      "id": "0c851c4e-2538-4010-ad57-1ef5cd3aa6b0",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "1"
+      },
+      "text": "1",
+      "createdAt": "2026-10-16T05:04:00.026Z"
+    },
+    {
+      "id": "a17b93a0-2bc7-42e4-bd3d-7ed6d8cc9fd2",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "🍽️ *Khorikaa Ethnic Kitchen*\nFamous for authentic Assamese smoked pork, duck curry with black sesame, and traditional thalis prepared with heritage spices.\n\n*Popular Dishes Today:*\n  1. *Smoked Pork with Khorisa (Bamboo Shoot)* - ₹280\n  2. *Duck Curry with Til (Black Sesame)* - ₹320\n  3. *Fragrant Joha Rice with Pitika Platter* - ₹160\n\n💡 Reply with dish number (e.g. *1*) to add to cart, or type *Menu* to switch restaurants.",
+        "buttons": [
+          {
+            "id": "add_item_1",
+            "title": "Add Dish 1"
+          },
+          {
+            "id": "add_item_2",
+            "title": "Add Dish 2"
+          },
+          {
+            "id": "btn_cart",
+            "title": "View Cart"
+          }
+        ]
+      },
+      "text": "🍽️ *Khorikaa Ethnic Kitchen*\nFamous for authentic Assamese smoked pork, duck curry with black sesame, and traditional thalis prepared with heritage spices.\n\n*Popular Dishes Today:*\n  1. *Smoked Pork with Khorisa (Bamboo Shoot)* - ₹280\n  2. *Duck Curry with Til (Black Sesame)* - ₹320\n  3. *Fragrant Joha Rice with Pitika Platter* - ₹160\n\n💡 Reply with dish number (e.g. *1*) to add to cart, or type *Menu* to switch restaurants.",
+      "createdAt": "2026-10-16T05:04:00.028Z"
+    },
+    {
+      "id": "868ccc77-1fe5-4205-9bf6-67a4d907080a",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "1"
+      },
+      "text": "1",
+      "createdAt": "2026-10-16T05:04:00.030Z"
+    },
+    {
+      "id": "83e84056-1260-46b1-b40c-9b9bb709689a",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "🍽️ *Khorikaa Ethnic Kitchen*\nFamous for authentic Assamese smoked pork, duck curry with black sesame, and traditional thalis prepared with heritage spices.\n\n*Popular Dishes Today:*\n  1. *Smoked Pork with Khorisa (Bamboo Shoot)* - ₹280\n  2. *Duck Curry with Til (Black Sesame)* - ₹320\n  3. *Fragrant Joha Rice with Pitika Platter* - ₹160\n\n💡 Reply with dish number (e.g. *1*) to add to cart, or type *Menu* to switch restaurants.",
+        "buttons": [
+          {
+            "id": "add_item_1",
+            "title": "Add Dish 1"
+          },
+          {
+            "id": "add_item_2",
+            "title": "Add Dish 2"
+          },
+          {
+            "id": "btn_cart",
+            "title": "View Cart"
+          }
+        ]
+      },
+      "text": "🍽️ *Khorikaa Ethnic Kitchen*\nFamous for authentic Assamese smoked pork, duck curry with black sesame, and traditional thalis prepared with heritage spices.\n\n*Popular Dishes Today:*\n  1. *Smoked Pork with Khorisa (Bamboo Shoot)* - ₹280\n  2. *Duck Curry with Til (Black Sesame)* - ₹320\n  3. *Fragrant Joha Rice with Pitika Platter* - ₹160\n\n💡 Reply with dish number (e.g. *1*) to add to cart, or type *Menu* to switch restaurants.",
+      "createdAt": "2026-10-16T05:04:00.034Z"
+    },
+    {
+      "id": "de0b354d-4026-487f-a11c-3b01b800cad1",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "1"
+      },
+      "text": "1",
+      "createdAt": "2026-10-16T05:04:00.037Z"
+    },
+    {
+      "id": "e627049b-89ce-4317-b847-f5adc3fd61c1",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "✅ Added *1x Smoked Pork with Khorisa (Bamboo Shoot)* (₹280) to your cart!\n\n🛒 Current Cart: *1 items* (Subtotal: ₹280)\n\n• Reply with another dish number to add more\n• Reply *Cart* to review\n• Reply *Checkout* to proceed to delivery!",
+        "buttons": [
+          {
+            "id": "btn_checkout",
+            "title": "Checkout Now"
+          },
+          {
+            "id": "btn_cart",
+            "title": "View Cart"
+          },
+          {
+            "id": "btn_menu",
+            "title": "Other Restaurants"
+          }
+        ]
+      },
+      "text": "✅ Added *1x Smoked Pork with Khorisa (Bamboo Shoot)* (₹280) to your cart!\n\n🛒 Current Cart: *1 items* (Subtotal: ₹280)\n\n• Reply with another dish number to add more\n• Reply *Cart* to review\n• Reply *Checkout* to proceed to delivery!",
+      "createdAt": "2026-10-16T05:04:00.040Z"
+    },
+    {
+      "id": "2dd7bf01-1149-4101-bfcb-b7fa018e2735",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "1"
+      },
+      "text": "1",
+      "createdAt": "2026-10-16T05:04:00.043Z"
+    },
+    {
+      "id": "dfd10db2-6023-40f8-930f-34f40d94338a",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "🍽️ *Khorikaa Ethnic Kitchen*\nFamous for authentic Assamese smoked pork, duck curry with black sesame, and traditional thalis prepared with heritage spices.\n\n*Popular Dishes Today:*\n  1. *Smoked Pork with Khorisa (Bamboo Shoot)* - ₹280\n  2. *Duck Curry with Til (Black Sesame)* - ₹320\n  3. *Fragrant Joha Rice with Pitika Platter* - ₹160\n\n💡 Reply with dish number (e.g. *1*) to add to cart, or type *Menu* to switch restaurants.",
+        "buttons": [
+          {
+            "id": "add_item_1",
+            "title": "Add Dish 1"
+          },
+          {
+            "id": "add_item_2",
+            "title": "Add Dish 2"
+          },
+          {
+            "id": "btn_cart",
+            "title": "View Cart"
+          }
+        ]
+      },
+      "text": "🍽️ *Khorikaa Ethnic Kitchen*\nFamous for authentic Assamese smoked pork, duck curry with black sesame, and traditional thalis prepared with heritage spices.\n\n*Popular Dishes Today:*\n  1. *Smoked Pork with Khorisa (Bamboo Shoot)* - ₹280\n  2. *Duck Curry with Til (Black Sesame)* - ₹320\n  3. *Fragrant Joha Rice with Pitika Platter* - ₹160\n\n💡 Reply with dish number (e.g. *1*) to add to cart, or type *Menu* to switch restaurants.",
+      "createdAt": "2026-10-16T05:04:00.045Z"
+    },
+    {
+      "id": "6053be79-2447-43a4-b4d9-cf50b0e44008",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "1"
+      },
+      "text": "1",
+      "createdAt": "2026-10-16T05:04:00.047Z"
+    },
+    {
+      "id": "e265efbe-ee2e-402e-8882-10cbcd9c5cc6",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "✅ Added *1x Smoked Pork with Khorisa (Bamboo Shoot)* (₹280) to your cart!\n\n🛒 Current Cart: *1 items* (Subtotal: ₹280)\n\n• Reply with another dish number to add more\n• Reply *Cart* to review\n• Reply *Checkout* to proceed to delivery!",
+        "buttons": [
+          {
+            "id": "btn_checkout",
+            "title": "Checkout Now"
+          },
+          {
+            "id": "btn_cart",
+            "title": "View Cart"
+          },
+          {
+            "id": "btn_menu",
+            "title": "Other Restaurants"
+          }
+        ]
+      },
+      "text": "✅ Added *1x Smoked Pork with Khorisa (Bamboo Shoot)* (₹280) to your cart!\n\n🛒 Current Cart: *1 items* (Subtotal: ₹280)\n\n• Reply with another dish number to add more\n• Reply *Cart* to review\n• Reply *Checkout* to proceed to delivery!",
+      "createdAt": "2026-10-16T05:04:00.051Z"
+    },
+    {
+      "id": "13da7697-a1a2-4a20-afb9-000df6dbe504",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "checkout"
+      },
+      "text": "checkout",
+      "createdAt": "2026-10-16T05:04:00.052Z"
+    },
+    {
+      "id": "83e5827d-732a-43eb-8b41-8e92e5dffc57",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "📍 *Delivery Address Required*\n\nPlease reply with your street delivery address (e.g. _\"Zoo Road Tiniali, near SBI, Guwahati\"_),\nor share your 📍 *WhatsApp Location Pin* directly!",
+        "buttons": [
+          {
+            "id": "btn_use_default_address",
+            "title": "Use Guwahati Center"
+          },
+          {
+            "id": "btn_cart",
+            "title": "Back to Cart"
+          }
+        ]
+      },
+      "text": "📍 *Delivery Address Required*\n\nPlease reply with your street delivery address (e.g. _\"Zoo Road Tiniali, near SBI, Guwahati\"_),\nor share your 📍 *WhatsApp Location Pin* directly!",
+      "createdAt": "2026-10-16T05:04:00.055Z"
+    },
+    {
+      "id": "b1331be0-8752-4086-b4f2-5c21d100323a",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "location",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageType": "location",
+        "location": {
+          "latitude": 26.155,
+          "longitude": 91.769,
+          "name": "Christian Basti Hub",
+          "address": "GS Road, Guwahati, Assam"
+        }
+      },
+      "text": "",
+      "createdAt": "2026-10-16T05:04:00.056Z"
+    },
+    {
+      "id": "0e32b294-9c57-451d-ab57-7dab000ef314",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "📍 *Delivery Address Confirmed:*\nGS Road, Guwahati, Assam, Guwahati\n\nOrder Total: *₹315*\n\n*Choose Payment Method:*\n1. 💵 *Cash on Delivery (COD)*\n2. 📱 *Pay Online / UPI (Instant Confirmation)*\n\nReply *1* or *COD* to place order with cash,\nor *2* or *Online* for UPI payment.",
+        "buttons": [
+          {
+            "id": "btn_pay_cod",
+            "title": "1. Cash on Delivery"
+          },
+          {
+            "id": "btn_pay_online",
+            "title": "2. Pay via UPI/Card"
+          }
+        ]
+      },
+      "text": "📍 *Delivery Address Confirmed:*\nGS Road, Guwahati, Assam, Guwahati\n\nOrder Total: *₹315*\n\n*Choose Payment Method:*\n1. 💵 *Cash on Delivery (COD)*\n2. 📱 *Pay Online / UPI (Instant Confirmation)*\n\nReply *1* or *COD* to place order with cash,\nor *2* or *Online* for UPI payment.",
+      "createdAt": "2026-10-16T05:04:00.058Z"
+    },
+    {
+      "id": "79d9e92d-db7b-4d0a-9ad8-ead65db26f8d",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "1"
+      },
+      "text": "1",
+      "createdAt": "2026-10-16T05:04:00.059Z"
+    },
+    {
+      "id": "4fc38e92-6516-43ab-9ec9-82530a7f4fed",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "🎉 *Order Confirmed!* #AJR-202610-0003\n\nRestaurant: *Khorikaa Ethnic Kitchen*\nDelivery Address: GS Road, Guwahati, Assam\n\n*Items Ordered:*\n• 1x Smoked Pork with Khorisa (Bamboo Shoot) (₹280)\n\n💰 *Total Amount:* ₹339 *(Pay Cash/UPI to Rider)*\n⏱️ *Estimated Delivery:* 25-35 minutes\n\nThe kitchen has begun preparing your meal! We'll send live WhatsApp notifications as your rider is dispatched.\n\n💡 Reply *Track* anytime to check live order status!",
+        "buttons": [
+          {
+            "id": "btn_track",
+            "title": "Track Order"
+          },
+          {
+            "id": "btn_menu",
+            "title": "Browse Menu"
+          }
+        ],
+        "orderId": "b84e39ed-77c4-42ac-a22d-205de16db4a2"
+      },
+      "text": "🎉 *Order Confirmed!* #AJR-202610-0003\n\nRestaurant: *Khorikaa Ethnic Kitchen*\nDelivery Address: GS Road, Guwahati, Assam\n\n*Items Ordered:*\n• 1x Smoked Pork with Khorisa (Bamboo Shoot) (₹280)\n\n💰 *Total Amount:* ₹339 *(Pay Cash/UPI to Rider)*\n⏱️ *Estimated Delivery:* 25-35 minutes\n\nThe kitchen has begun preparing your meal! We'll send live WhatsApp notifications as your rider is dispatched.\n\n💡 Reply *Track* anytime to check live order status!",
+      "createdAt": "2026-10-16T05:04:00.063Z"
+    },
+    {
+      "id": "091f9c7c-2c06-4093-9b5d-920b257ac3dd",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "track"
+      },
+      "text": "track",
+      "createdAt": "2026-10-16T05:04:00.065Z"
+    },
+    {
+      "id": "bc936dab-cca5-4229-a58d-2067665f9226",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "📦 *Order #AJR-202610-0003*\nStatus: *PAYMENT CONFIRMED*\nRestaurant: *Khorikaa Ethnic Kitchen*\nItems: 1x Smoked Pork with Khorisa (Bamboo Shoot)\nTotal: *₹339* (Cash on Delivery)\nDelivery to: GS Road, Guwahati, Assam, Guwahati\n\n⏱️ *Estimated Delivery:* 20-30 mins\n🛵 Rider will deliver shortly.",
+        "buttons": [
+          {
+            "id": "btn_menu",
+            "title": "Order Again"
+          },
+          {
+            "id": "btn_help",
+            "title": "Support Help"
+          }
+        ]
+      },
+      "text": "📦 *Order #AJR-202610-0003*\nStatus: *PAYMENT CONFIRMED*\nRestaurant: *Khorikaa Ethnic Kitchen*\nItems: 1x Smoked Pork with Khorisa (Bamboo Shoot)\nTotal: *₹339* (Cash on Delivery)\nDelivery to: GS Road, Guwahati, Assam, Guwahati\n\n⏱️ *Estimated Delivery:* 20-30 mins\n🛵 Rider will deliver shortly.",
+      "createdAt": "2026-10-16T05:04:00.067Z"
+    },
+    {
+      "id": "b716e397-87f2-4295-82f7-00db567bd3cb",
+      "phone": "+919864999999",
+      "direction": "INBOUND",
+      "type": "text",
+      "rawPayload": {
+        "fromPhone": "+919864999999",
+        "messageText": "Duck curry with black sesame under ₹400"
+      },
+      "text": "Duck curry with black sesame under ₹400",
+      "createdAt": "2026-10-16T05:04:00.070Z"
+    },
+    {
+      "id": "0311806c-d8cb-4a66-95ed-271d66d25ea8",
+      "phone": "+919864999999",
+      "direction": "OUTBOUND",
+      "type": "interactive",
+      "rawPayload": {
+        "reply": "🍛 *Recommended by Aajori AI:*\nRestaurant: *Khorikaa Ethnic Kitchen*\n• Duck Curry with Til (Black Sesame) (*₹320*)\nTotal: *₹320*\n\n_Matches dish request (duck) from authentic district kitchen._\n\n👉 Reply *Order Combo* to add this directly to your cart, or type *Menu* to browse!",
+        "buttons": [
+          {
+            "id": "btn_order_combo",
+            "title": "Order This Combo"
+          },
+          {
+            "id": "btn_menu",
+            "title": "Browse All"
+          }
+        ]
+      },
+      "text": "🍛 *Recommended by Aajori AI:*\nRestaurant: *Khorikaa Ethnic Kitchen*\n• Duck Curry with Til (Black Sesame) (*₹320*)\nTotal: *₹320*\n\n_Matches dish request (duck) from authentic district kitchen._\n\n👉 Reply *Order Combo* to add this directly to your cart, or type *Menu* to browse!",
+      "createdAt": "2026-10-16T05:04:00.073Z"
     }
   ]
 }

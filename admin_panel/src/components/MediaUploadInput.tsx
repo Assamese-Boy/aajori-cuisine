@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useRef } from 'react';
 import { Upload, Image as ImageIcon, Link as LinkIcon, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadMedia } from '../services/media.service';

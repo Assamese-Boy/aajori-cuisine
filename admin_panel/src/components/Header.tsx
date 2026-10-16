@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { RefreshCw, Shield, LogOut, ShoppingBag, ExternalLink } from 'lucide-react';
 

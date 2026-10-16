@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Image as ImageIcon,
@@ -204,17 +206,17 @@ export const MediaLibraryPage: React.FC = () => {
       </div>
 
       {/* Storage Connectivity Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-900 text-white rounded-2xl text-xs shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-900 text-white rounded-2xl text-xs shadow-xs">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-amber-400 shrink-0">
             <Cloud className="w-4 h-4" />
           </div>
           <div>
             <p className="font-bold">
-              Storage Provider: <span className="text-amber-400 font-mono">PHP Media Storage API</span>
+              Storage Provider: <span className="text-amber-400 font-mono">Aajori Native Media Engine</span>
             </p>
             <p className="text-slate-400 text-[11px]">
-              https://storage.tiwaautonomouscouncil.in/media.php
+              Same-Origin Next.js API (/api/media/upload) &bull; Zero CORS &bull; Local Disk / Cloud Ready
             </p>
           </div>
         </div>

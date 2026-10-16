@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Bot, MessageSquare, Send, Sparkles, Terminal, CheckCircle2, RotateCcw, MapPin, ShoppingBag } from 'lucide-react';
 import { apiRequest } from '../services/api';

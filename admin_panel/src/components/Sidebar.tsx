@@ -1,5 +1,6 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+'use client';
+
+import { NavLink } from '../utils/router-compat';
 import {
   LayoutDashboard,
   ShoppingBag,

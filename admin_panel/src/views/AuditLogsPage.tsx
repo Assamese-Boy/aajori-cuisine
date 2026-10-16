@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { FileText, Clock, User, Shield, Terminal } from 'lucide-react';
 import { apiRequest } from '../services/api';

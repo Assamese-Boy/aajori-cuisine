@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 
 export const TopProgressBar: React.FC<{ isLoading: boolean }> = ({ isLoading }) => {
