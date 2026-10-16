@@ -49,8 +49,6 @@ export const LiveMapPage: React.FC = () => {
 
   useEffect(() => {
     fetchMapData();
-    const interval = setInterval(fetchMapData, 10000); // 10s auto-refresh
-    return () => clearInterval(interval);
   }, []);
 
   const guwahatiCenter: [number, number] = [26.16, 91.765];

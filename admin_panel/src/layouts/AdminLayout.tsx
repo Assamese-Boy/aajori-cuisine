@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavLink, Outlet as RouterOutlet, useLocation as useRouterLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
@@ -9,37 +9,107 @@ import { ChevronRight, Home } from 'lucide-react';
 
 export const AdminLayout: React.FC = () => {
   const routerLocation = useRouterLocation();
-  const [currentUser, setCurrentUser] = useState<any>(() => getCurrentStoredUser());
+  const [currentUser] = useState<any>(() => getCurrentStoredUser());
   const [currentRole, setCurrentRole] = useState(() => getCurrentStoredUser()?.role || 'SUPER_ADMIN');
   const [metrics, setMetrics] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchGlobalData = async () => {
-    setIsLoading(true);
-    try {
-      const [metricsRes, ordersRes, restRes] = await Promise.all([
-        apiRequest('/admin/dashboard'),
-        apiRequest('/admin/orders'),
-        apiRequest('/admin/restaurants'),
-      ]);
+  // In-memory cache tracking so navigating between tabs does NOT trigger redundant network requests
+  const hasLoadedMetrics = useRef(false);
+  const hasLoadedOrders = useRef(false);
+  const hasLoadedRestaurants = useRef(false);
 
-      if (metricsRes.success) setMetrics(metricsRes.data);
-      if (ordersRes.success) setOrders(ordersRes.data || []);
-      if (restRes.success) {
-        setRestaurants(mergeRestaurants(restRes.data || []));
+  // Determine current active section from URL (e.g., 'dashboard', 'orders', 'restaurants')
+  const pathSegments = routerLocation.pathname.split('/').filter(Boolean);
+  const currentSection = pathSegments[0] || 'dashboard';
+
+  // Route-aware data loader: Only loads the specific dataset needed by the active page
+  const loadDataForCurrentRoute = useCallback(async (force = false) => {
+    // 1. Dashboard route needs metrics & orders
+    if (currentSection === 'dashboard') {
+      const needsMetrics = force || !hasLoadedMetrics.current;
+      const needsOrders = force || !hasLoadedOrders.current;
+
+      if (!needsMetrics && !needsOrders) return;
+
+      setIsLoading(true);
+      try {
+        const promises: Promise<any>[] = [];
+        if (needsMetrics) promises.push(apiRequest('/admin/dashboard'));
+        if (needsOrders) promises.push(apiRequest('/admin/orders'));
+
+        const results = await Promise.all(promises);
+        let resultIdx = 0;
+
+        if (needsMetrics) {
+          const metricsRes = results[resultIdx++];
+          if (metricsRes?.success) {
+            setMetrics(metricsRes.data);
+            hasLoadedMetrics.current = true;
+          }
+        }
+
+        if (needsOrders) {
+          const ordersRes = results[resultIdx++];
+          if (ordersRes?.success) {
+            setOrders(ordersRes.data || []);
+            hasLoadedOrders.current = true;
+          }
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
+      return;
     }
-  };
 
+    // 2. Orders route only needs orders
+    if (currentSection === 'orders') {
+      if (!force && hasLoadedOrders.current) return;
+      setIsLoading(true);
+      try {
+        const ordersRes = await apiRequest('/admin/orders');
+        if (ordersRes?.success) {
+          setOrders(ordersRes.data || []);
+          hasLoadedOrders.current = true;
+        }
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // 3. Restaurants route only needs restaurants
+    if (currentSection === 'restaurants') {
+      if (!force && hasLoadedRestaurants.current) return;
+      setIsLoading(true);
+      try {
+        const restRes = await apiRequest('/admin/restaurants');
+        if (restRes?.success) {
+          setRestaurants(mergeRestaurants(restRes.data || []));
+          hasLoadedRestaurants.current = true;
+        }
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // 4. Other routes (media, users, delivery-partners, live-map, audit-logs, ai-whatsapp):
+    // DO NOT make requests for /dashboard, /orders, or /restaurants!
+    // They manage their own isolated data fetching without unnecessary server load.
+  }, [currentSection]);
+
+  // Load data ONLY when route changes, with ZERO background setInterval polling
   useEffect(() => {
-    fetchGlobalData();
-    const interval = setInterval(fetchGlobalData, 20000);
-    return () => clearInterval(interval);
-  }, []);
+    loadDataForCurrentRoute(false);
+  }, [loadDataForCurrentRoute]);
+
+  // Manual refresh handler triggered by the Header Sync button
+  const handleManualRefresh = useCallback(async () => {
+    await loadDataForCurrentRoute(true);
+  }, [loadDataForCurrentRoute]);
 
   const handleLogout = () => {
     logout();
@@ -47,7 +117,6 @@ export const AdminLayout: React.FC = () => {
   };
 
   // Build breadcrumb segments
-  const pathSegments = routerLocation.pathname.split('/').filter(Boolean);
   const getBreadcrumbTitle = (segment: string) => {
     switch (segment) {
       case 'dashboard':
@@ -83,7 +152,7 @@ export const AdminLayout: React.FC = () => {
           user={currentUser}
           currentRole={currentRole}
           onRoleChanged={setCurrentRole}
-          onRefresh={fetchGlobalData}
+          onRefresh={handleManualRefresh}
           onLogout={handleLogout}
           isLoading={isLoading}
         />
@@ -119,7 +188,7 @@ export const AdminLayout: React.FC = () => {
               orders,
               restaurants,
               isLoading,
-              onRefresh: fetchGlobalData,
+              onRefresh: handleManualRefresh,
             }}
           />
         </main>

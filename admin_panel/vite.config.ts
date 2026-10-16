@@ -10,6 +10,12 @@ export default defineConfig({
         target: 'http://localhost:4000',
         changeOrigin: true,
       },
+      '/storage-api': {
+        target: 'https://storage.tiwaautonomouscouncil.in',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/storage-api/, ''),
+        secure: false,
+      },
     },
   },
 });
