@@ -11,18 +11,26 @@ import {
   FileText,
   Users,
   Image,
+  ChefHat,
+  Tag,
+  Compass,
+  BarChart3,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
   const navItems = [
     { path: '/dashboard', label: 'Operations Dashboard', icon: LayoutDashboard },
     { path: '/orders', label: 'Order Control Center', icon: ShoppingBag },
+    { path: '/restaurant-portal', label: 'Kitchen Portal (KDS)', icon: ChefHat },
     { path: '/live-map', label: 'Live GIS Operations Map', icon: MapPin },
     { path: '/restaurants', label: 'Restaurant Partners', icon: Store },
-    { path: '/media', label: 'Media & Asset Library', icon: Image },
+    { path: '/delivery-zones', label: 'Zones & Charges', icon: Compass },
+    { path: '/promotions', label: 'Coupons & Promos', icon: Tag },
+    { path: '/reports', label: 'Reports & Reconciliation', icon: BarChart3 },
     { path: '/delivery-partners', label: 'Delivery Fleet', icon: Bike },
     { path: '/users', label: 'Users & Customers', icon: Users },
     { path: '/ai-whatsapp', label: 'AI & WhatsApp Hub', icon: Bot },
+    { path: '/media', label: 'Media & Asset Library', icon: Image },
     { path: '/audit-logs', label: 'Enterprise Audit Trail', icon: FileText },
   ];
 

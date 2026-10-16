@@ -240,12 +240,60 @@ export class RestaurantService {
     return updated;
   }
 
+  public toggleBusy(restaurantId: string, isBusy: boolean): Restaurant {
+    const restaurant = this.getRestaurantById(restaurantId);
+    restaurant.isBusy = isBusy;
+    db.restaurants.set(restaurantId, restaurant);
+    return restaurant;
+  }
+
+  public createCategory(restaurantId: string, data: { name: string; description?: string; displayOrder?: number }): MenuCategory {
+    this.getRestaurantById(restaurantId);
+    const id = `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newCategory: MenuCategory = {
+      id,
+      restaurantId,
+      name: data.name,
+      description: data.description,
+      displayOrder: data.displayOrder ?? (db.menuCategories.size + 1),
+      isActive: true,
+    };
+    db.menuCategories.set(id, newCategory);
+    return newCategory;
+  }
+
+  public updateCategory(categoryId: string, updates: Partial<MenuCategory>): MenuCategory {
+    const category = db.menuCategories.get(categoryId);
+    if (!category) {
+      throw new NotFoundError('Category not found');
+    }
+    const updated = { ...category, ...updates };
+    db.menuCategories.set(categoryId, updated);
+    return updated;
+  }
+
+  public deleteCategory(categoryId: string): boolean {
+    const category = db.menuCategories.get(categoryId);
+    if (!category) {
+      throw new NotFoundError('Category not found');
+    }
+    // Archive category rather than hard delete if referenced
+    category.isActive = false;
+    db.menuCategories.set(categoryId, category);
+    return true;
+  }
+
   public deleteMenuItem(itemId: string): boolean {
-    if (!db.menuItems.has(itemId)) {
+    const item = db.menuItems.get(itemId);
+    if (!item) {
       throw new NotFoundError('Menu item not found');
     }
-    return db.menuItems.delete(itemId);
+    // Archive item rather than breaking historical references
+    item.isAvailable = false;
+    db.menuItems.set(itemId, item);
+    return true;
   }
 }
 
 export const restaurantService = new RestaurantService();
+

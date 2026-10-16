@@ -58,6 +58,19 @@ export interface Restaurant {
   logoUrl?: string;
   coverUrl?: string;
   rating?: number;
+  isBusy?: boolean;
+}
+
+export interface MenuItemVariant {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export interface MenuItemAddon {
+  id: string;
+  name: string;
+  price: number;
 }
 
 export interface MenuItem {
@@ -71,6 +84,9 @@ export interface MenuItem {
   spiceLevel?: 'MILD' | 'MEDIUM' | 'SPICY' | 'VERY_SPICY';
   isAvailable?: boolean;
   imageUrl?: string;
+  isBestseller?: boolean;
+  variants?: MenuItemVariant[];
+  addons?: MenuItemAddon[];
 }
 
 export interface MenuCategory {
@@ -86,6 +102,9 @@ export interface CartItem {
   quantity: number;
   unitPrice: number;
   subtotal: number;
+  selectedVariant?: MenuItemVariant;
+  selectedAddons?: MenuItemAddon[];
+  specialInstructions?: string;
 }
 
 export type OrderStatus =

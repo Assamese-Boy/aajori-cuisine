@@ -11,6 +11,7 @@ import { AiAssistantModal } from './components/AiAssistantModal';
 import { TopProgressBar } from './components/SkeletonLoaders';
 import { HomePage } from './pages/HomePage';
 import { RestaurantDetailPage } from './pages/RestaurantDetailPage';
+import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderTrackingPage } from './pages/OrderTrackingPage';
 import { OrdersHistoryPage } from './pages/OrdersHistoryPage';
@@ -73,6 +74,7 @@ export const AppContent: React.FC = () => {
               }
             />
             <Route path="/restaurant/:id" element={<RestaurantDetailPage isPureVeg={isPureVeg} />} />
+            <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/orders" element={<OrdersHistoryPage />} />
             <Route path="/orders/:id" element={<OrderTrackingPage />} />

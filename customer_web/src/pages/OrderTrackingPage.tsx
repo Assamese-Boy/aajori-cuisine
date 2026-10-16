@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   Clock,
   MapPin,
@@ -29,6 +29,8 @@ const LIFECYCLE_STEPS: Array<{ key: OrderStatus; label: string; desc: string }> 
 
 export const OrderTrackingPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -39,10 +41,17 @@ export const OrderTrackingPage: React.FC = () => {
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   const fetchOrder = async (showLoading = false) => {
-    if (!id) return;
+    if (!id && !token) return;
     if (showLoading) setIsLoading(true);
     try {
-      const res = await apiRequest<{ order: Order; history: any[] }>(`/orders/${id}`);
+      // First try token endpoint if token present, or fallback to standard authenticated endpoint
+      const trackingTarget = token || id;
+      let res = await apiRequest<{ order: Order; history: any[] }>(`/orders/${trackingTarget}`);
+      if (!res.success && trackingTarget) {
+        // Try public token endpoint
+        res = await apiRequest<any>(`/orders/track/${trackingTarget}`);
+      }
+
       if (res.success && res.data) {
         const orderData = (res.data as any).order || res.data;
         setOrder(orderData);

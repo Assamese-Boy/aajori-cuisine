@@ -14,6 +14,8 @@ import { env } from '../config/env';
 import { adminOperationsService } from '../modules/admin/admin.service';
 import { db } from '../data/mock-db';
 import { BadRequestError } from '../common/errors';
+import { Coupon, DeliveryZone } from '../common/types';
+import { v4 as uuidv4 } from 'uuid';
 
 export const apiRouter = Router();
 
@@ -250,6 +252,55 @@ apiRouter.get('/orders/:id', optionalAuthenticate, async (req: AuthenticatedRequ
   try {
     const result = await orderService.getOrderById(req.params.id, req.user);
     res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.get('/orders/track/:token', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token } = req.params;
+    const order = Array.from(db.orders.values()).find(
+      (o) => o.trackingToken === token || o.id === token || o.orderNumber === token
+    );
+    if (!order) {
+      return res.status(404).json({ success: false, error: { message: 'Order tracking session not found' } });
+    }
+    const restaurant = db.restaurants.get(order.restaurantId);
+    const rider = order.deliveryPartnerId ? db.deliveryPartners.get(order.deliveryPartnerId) : null;
+    const history = db.orderStatusHistory.filter((h) => h.orderId === order.id);
+
+    const publicData = {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      restaurantId: order.restaurantId,
+      restaurantName: restaurant?.name || 'Local Kitchen',
+      restaurantAddress: restaurant?.addressLine || 'Guwahati',
+      estimatedPrepTimeMinutes: order.estimatedPrepTimeMinutes,
+      estimatedDeliveryTime: order.estimatedDeliveryTime,
+      createdAt: order.createdAt,
+      items: order.items.map((i) => ({ name: i.name, quantity: i.quantity, subtotal: i.subtotal, unitPrice: i.unitPrice })),
+      pricing: {
+        total: order.pricing.totalCustomerPrice,
+        subtotal: order.pricing.subtotal,
+        deliveryFee: order.pricing.deliveryFee,
+        packagingFee: order.pricing.packagingFee,
+        discount: order.pricing.discountAmount,
+      },
+      deliveryPartner: rider
+        ? {
+            id: rider.id,
+            name: rider.user.fullName,
+            phone: rider.user.phone,
+            vehicleNumber: rider.vehicleNumber,
+            rating: rider.rating,
+            currentLocation: rider.currentLocation,
+          }
+        : null,
+      history,
+    };
+    res.json({ success: true, data: publicData });
   } catch (err) {
     next(err);
   }
@@ -723,3 +774,262 @@ apiRouter.get('/admin/audit-logs', (req: Request, res: Response) => {
   const logs = adminOperationsService.getAuditLogs();
   res.json({ success: true, data: logs });
 });
+
+// ============================================================================
+// 12. PROMOTIONS & COUPONS
+// ============================================================================
+apiRouter.get('/coupons', (req: Request, res: Response) => {
+  const activeCoupons = Array.from(db.coupons.values()).filter((c) => c.isActive);
+  res.json({ success: true, data: activeCoupons });
+});
+
+apiRouter.get('/admin/coupons', (req: Request, res: Response) => {
+  const allCoupons = Array.from(db.coupons.values());
+  res.json({ success: true, data: allCoupons });
+});
+
+apiRouter.post('/admin/coupons', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { code, description, discountType, discountValue, minOrderAmount, maxDiscountAmount, validFrom, validUntil, maxUses, isActive } = req.body;
+    if (!code || discountValue === undefined) {
+      return res.status(400).json({ success: false, error: { message: 'Coupon code and discountValue are required' } });
+    }
+    const codeUpper = String(code).trim().toUpperCase();
+    const existing = db.coupons.get(codeUpper);
+    const coupon: Coupon = {
+      id: existing ? existing.id : uuidv4(),
+      code: codeUpper,
+      description: description || `Promo ${codeUpper}`,
+      discountType: discountType || 'FLAT',
+      discountValue: Number(discountValue),
+      minOrderAmount: Number(minOrderAmount || 0),
+      maxDiscountAmount: maxDiscountAmount ? Number(maxDiscountAmount) : undefined,
+      validFrom: validFrom || new Date().toISOString(),
+      validUntil: validUntil || new Date(Date.now() + 30 * 86400000).toISOString(),
+      maxUses: maxUses ? Number(maxUses) : 1000,
+      currentUses: existing ? existing.currentUses : 0,
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
+    };
+    db.coupons.set(codeUpper, coupon);
+    res.status(existing ? 200 : 201).json({ success: true, data: coupon });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.delete('/admin/coupons/:code', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  const code = req.params.code.trim().toUpperCase();
+  const existing = db.coupons.get(code);
+  if (!existing) {
+    return res.status(404).json({ success: false, error: { message: 'Coupon not found' } });
+  }
+  existing.isActive = false;
+  db.coupons.set(code, existing);
+  res.json({ success: true, message: `Coupon ${code} deactivated` });
+});
+
+// ============================================================================
+// 13. DELIVERY ZONES & PRICING PARAMETERS
+// ============================================================================
+apiRouter.get('/delivery-zones', (req: Request, res: Response) => {
+  const zones = Array.from(db.deliveryZones.values()).filter((z) => z.isActive);
+  res.json({ success: true, data: zones });
+});
+
+apiRouter.get('/admin/delivery-zones', (req: Request, res: Response) => {
+  const zones = Array.from(db.deliveryZones.values());
+  res.json({ success: true, data: zones });
+});
+
+apiRouter.post('/admin/delivery-zones', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { name, district, baseFee, baseDistanceKm, perKmFee, maxDeliveryDistanceKm, isActive } = req.body;
+    const id = req.body.id || uuidv4();
+    const zone: DeliveryZone = {
+      id,
+      name: name || 'Kamrup Metropolitan Operational Zone',
+      district: district || 'Kamrup Metropolitan',
+      centerPoint: { latitude: 26.16, longitude: 91.77 },
+      baseFee: Number(baseFee ?? 20),
+      baseDistanceKm: Number(baseDistanceKm ?? 3),
+      perKmFee: Number(perKmFee ?? 7.5),
+      maxDeliveryDistanceKm: Number(maxDeliveryDistanceKm ?? 10),
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
+    };
+    db.deliveryZones.set(id, zone);
+    res.status(201).json({ success: true, data: zone });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 14. ADMIN REPORTS & RECONCILIATION
+// ============================================================================
+apiRouter.get('/admin/reports', (req: Request, res: Response) => {
+  const restaurantId = req.query.restaurantId as string | undefined;
+  const locality = req.query.locality as string | undefined;
+  const reports = adminOperationsService.getReports({ restaurantId, locality });
+  res.json({ success: true, data: reports });
+});
+
+// ============================================================================
+// 15. ADMIN DISPATCH & RIDER ASSIGNMENT
+// ============================================================================
+apiRouter.post('/admin/orders/:id/assign-rider', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { riderId, reason } = req.body;
+    if (!riderId) {
+      return res.status(400).json({ success: false, error: { message: 'riderId is required' } });
+    }
+    const updated = await adminOperationsService.assignRider(req.params.id, riderId, req.user!, reason);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 16. RESTAURANT PORTAL (ROLE-BASED RESTAURANT WORKFLOWS)
+// ============================================================================
+apiRouter.get('/restaurant-portal/orders', authenticate, requireRole('RESTAURANT_OWNER', 'RESTAURANT_MANAGER', 'SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user!;
+  let targetRestId = req.query.restaurantId as string | undefined;
+  if (!targetRestId && (user.role === 'RESTAURANT_OWNER' || user.role === 'RESTAURANT_MANAGER')) {
+    const owned = Array.from(db.restaurants.values()).find((r) => r.ownerId === user.id);
+    if (owned) targetRestId = owned.id;
+  }
+  let orders = Array.from(db.orders.values());
+  if (targetRestId && targetRestId !== 'ALL') {
+    orders = orders.filter((o) => o.restaurantId === targetRestId);
+  }
+  res.json({ success: true, data: orders });
+});
+
+apiRouter.get('/restaurant-portal/metrics', authenticate, requireRole('RESTAURANT_OWNER', 'RESTAURANT_MANAGER', 'SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user!;
+  let targetRestId = req.query.restaurantId as string | undefined;
+  if (!targetRestId && (user.role === 'RESTAURANT_OWNER' || user.role === 'RESTAURANT_MANAGER')) {
+    const owned = Array.from(db.restaurants.values()).find((r) => r.ownerId === user.id);
+    if (owned) targetRestId = owned.id;
+  }
+  const restaurant = targetRestId ? db.restaurants.get(targetRestId) : Array.from(db.restaurants.values())[0];
+  let orders = Array.from(db.orders.values());
+  if (restaurant) {
+    orders = orders.filter((o) => o.restaurantId === restaurant.id);
+  }
+  const todayOrders = orders.filter((o) => {
+    const created = new Date(o.createdAt);
+    const today = new Date();
+    return created.toDateString() === today.toDateString();
+  });
+  const pendingCount = orders.filter((o) => ['CREATED', 'PAYMENT_CONFIRMED'].includes(o.status)).length;
+  const preparingCount = orders.filter((o) => o.status === 'PREPARING').length;
+  const readyCount = orders.filter((o) => o.status === 'READY_FOR_PICKUP').length;
+  const todayRevenue = todayOrders
+    .filter((o) => o.status === 'DELIVERED')
+    .reduce((sum, o) => sum + (o.pricing.subtotal - o.pricing.restaurantCommissionAmount), 0);
+
+  res.json({
+    success: true,
+    data: {
+      restaurant: restaurant || null,
+      ordersToday: todayOrders.length,
+      pendingOrders: pendingCount,
+      preparingOrders: preparingCount,
+      readyOrders: readyCount,
+      netPayoutToday: Math.round(todayRevenue * 100) / 100,
+      isAcceptingOrders: restaurant?.isAcceptingOrders ?? true,
+      isBusy: restaurant?.isBusy ?? false,
+    },
+  });
+});
+
+apiRouter.patch('/restaurant-portal/orders/:id/accept', authenticate, requireRole('RESTAURANT_OWNER', 'RESTAURANT_MANAGER', 'SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const prepMinutes = req.body.prepMinutes || 25;
+    const order = db.orders.get(req.params.id);
+    if (!order) return res.status(404).json({ success: false, error: { message: 'Order not found' } });
+    order.estimatedPrepTimeMinutes = prepMinutes;
+    const updated = await orderService.transitionOrderStatus(
+      req.params.id,
+      'RESTAURANT_ACCEPTED',
+      req.user!,
+      `Kitchen confirmed with ${prepMinutes} mins prep estimate`
+    );
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.patch('/restaurant-portal/orders/:id/reject', authenticate, requireRole('RESTAURANT_OWNER', 'RESTAURANT_MANAGER', 'SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const reason = req.body.reason || 'Kitchen closed / item out of stock';
+    const updated = await orderService.transitionOrderStatus(
+      req.params.id,
+      'REJECTED',
+      req.user!,
+      reason
+    );
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.patch('/restaurant-portal/orders/:id/preparing', authenticate, requireRole('RESTAURANT_OWNER', 'RESTAURANT_MANAGER', 'SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const updated = await orderService.transitionOrderStatus(
+      req.params.id,
+      'PREPARING',
+      req.user!,
+      'Cooking started by kitchen chef'
+    );
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.patch('/restaurant-portal/orders/:id/ready', authenticate, requireRole('RESTAURANT_OWNER', 'RESTAURANT_MANAGER', 'SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const updated = await orderService.transitionOrderStatus(
+      req.params.id,
+      'READY_FOR_PICKUP',
+      req.user!,
+      'Food packaged & hot at dispatch counter'
+    );
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.patch('/restaurant-portal/status', authenticate, requireRole('RESTAURANT_OWNER', 'RESTAURANT_MANAGER', 'SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { restaurantId, isAcceptingOrders, isBusy } = req.body;
+    const rest = db.restaurants.get(restaurantId);
+    if (!rest) return res.status(404).json({ success: false, error: { message: 'Restaurant not found' } });
+    if (isAcceptingOrders !== undefined) rest.isAcceptingOrders = Boolean(isAcceptingOrders);
+    if (isBusy !== undefined) rest.isBusy = Boolean(isBusy);
+    db.restaurants.set(restaurantId, rest);
+    res.json({ success: true, data: rest });
+  } catch (err) {
+    next(err);
+  }
+});
+
+apiRouter.patch('/restaurant-portal/menu/:itemId/stock', authenticate, requireRole('RESTAURANT_OWNER', 'RESTAURANT_MANAGER', 'SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { isAvailable } = req.body;
+    const item = db.menuItems.get(req.params.itemId);
+    if (!item) return res.status(404).json({ success: false, error: { message: 'Menu item not found' } });
+    item.isAvailable = Boolean(isAvailable);
+    db.menuItems.set(req.params.itemId, item);
+    res.json({ success: true, data: item });
+  } catch (err) {
+    next(err);
+  }
+});
+

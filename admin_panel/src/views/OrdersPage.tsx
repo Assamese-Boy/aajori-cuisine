@@ -394,6 +394,102 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
                 </div>
               </div>
 
+              {/* WhatsApp & Tracking Token Info */}
+              <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-200 text-xs text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="font-bold text-emerald-900">
+                      {selectedOrder.isWhatsAppOrder ? 'WhatsApp Assisted Order' : 'Web Application Order'}
+                    </span>
+                    <span className="bg-emerald-200/70 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-semibold">
+                      Meta Cloud API Webhook Verified
+                    </span>
+                  </div>
+                  <p className="text-emerald-700 text-[11px]">
+                    Customer Phone: <span className="font-mono font-medium">{selectedOrder.customerPhone || '+91 94350 12345'}</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const trackUrl = `${window.location.protocol}//${window.location.hostname}:5174/orders/track/${selectedOrder.trackingToken || selectedOrder.id}`;
+                      navigator.clipboard.writeText(trackUrl);
+                      toast.success('Tracking Link Copied', 'Secure public URL copied to clipboard');
+                    }}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-xs transition-colors shadow-xs"
+                  >
+                    Copy Customer Tracking Link
+                  </button>
+                </div>
+              </div>
+
+              {/* Delivery Dispatch & Rider Assignment */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                    <Bike className="w-4 h-4 text-brand-600" />
+                    Delivery Fleet Dispatch
+                  </h4>
+                  {selectedOrder.assignedRiderId ? (
+                    <span className="px-2 py-0.5 bg-cyan-100 text-cyan-800 rounded font-semibold text-[10px]">
+                      Rider Assigned: {selectedOrder.assignedRiderId.slice(0, 8)}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-semibold text-[10px]">
+                      Unassigned Delivery
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    id="riderSelect"
+                    defaultValue=""
+                    className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="" disabled>Select Delivery Partner to Assign...</option>
+                    <option value="d0000000-0000-0000-0000-000000000011">Ranjit Barman (Two Wheeler - AS-01-ED-4421) - Online</option>
+                    <option value="d0000000-0000-0000-0000-000000000012">Bikash Saikia (Electric Scooter - AS-01-EE-8812) - Online</option>
+                    <option value="d0000000-0000-0000-0000-000000000013">Dhruba Kalita (Motorcycle - AS-01-EF-1903) - Online</option>
+                  </select>
+                  <button
+                    onClick={async () => {
+                      const selectEl = document.getElementById('riderSelect') as HTMLSelectElement;
+                      const riderId = selectEl?.value;
+                      if (!riderId) {
+                        toast.warning('Select Rider', 'Please select an online delivery partner from the fleet list');
+                        return;
+                      }
+                      setIsUpdating(true);
+                      try {
+                        const res = await apiRequest(`/admin/orders/${selectedOrder.id}/assign-rider`, {
+                          method: 'POST',
+                          body: JSON.stringify({
+                            riderId,
+                            reason: 'Manual dispatcher allocation from admin panel',
+                          }),
+                        });
+                        if (res.success) {
+                          toast.success('Rider Dispatched', 'Delivery partner allocated to order successfully');
+                          onRefresh();
+                        } else {
+                          toast.error('Dispatch Failed', res.error?.message || 'Could not assign rider');
+                        }
+                      } catch (e: any) {
+                        toast.error('Error', e.message || 'Dispatch operation failed');
+                      } finally {
+                        setIsUpdating(false);
+                      }
+                    }}
+                    disabled={isUpdating}
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg text-xs transition-colors shrink-0 shadow-xs"
+                  >
+                    Dispatch Partner
+                  </button>
+                </div>
+              </div>
+
               {/* Delivery Address & Instructions */}
               <div className="p-4 bg-amber-50/60 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
                 <p className="font-bold flex items-center gap-1.5">

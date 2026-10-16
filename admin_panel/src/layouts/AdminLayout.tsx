@@ -122,10 +122,18 @@ export const AdminLayout: React.FC<{ children?: React.ReactNode }> = ({ children
         return 'Operations Dashboard';
       case 'orders':
         return 'Order Control Center';
+      case 'restaurant-portal':
+        return 'Kitchen Portal (KDS)';
       case 'live-map':
         return 'Live GIS Operations Map';
       case 'restaurants':
         return 'Restaurant Partners';
+      case 'delivery-zones':
+        return 'Zones & Charges';
+      case 'promotions':
+        return 'Coupons & Promos';
+      case 'reports':
+        return 'Reports & Reconciliation';
       case 'media':
         return 'Media & Asset Library';
       case 'delivery-partners':

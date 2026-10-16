@@ -12,9 +12,18 @@ interface CartContextType {
   appliedCoupon: string | null;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (restaurant: { id: string; name: string }, item: MenuItem, qty?: number) => void;
-  removeItem: (menuItemId: string) => void;
-  updateQuantity: (menuItemId: string, quantity: number) => void;
+  addItem: (
+    restaurant: { id: string; name: string },
+    item: MenuItem,
+    qty?: number,
+    customization?: {
+      variant?: any;
+      addons?: any[];
+      instructions?: string;
+    }
+  ) => void;
+  removeItem: (itemId: string) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
   getItemQuantity: (menuItemId: string) => number;
   clearCart: () => void;
   applyCoupon: (code: string) => void;
@@ -79,7 +88,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const closeCart = useCallback(() => setIsCartOpen(false), []);
 
   const addItem = useCallback(
-    (restaurant: { id: string; name: string }, menuItem: MenuItem, qty: number = 1) => {
+    (
+      restaurant: { id: string; name: string },
+      menuItem: MenuItem,
+      qty: number = 1,
+      customization?: {
+        variant?: any;
+        addons?: any[];
+        instructions?: string;
+      }
+    ) => {
       // Check if trying to add from different restaurant
       if (restaurantId && restaurantId !== restaurant.id && items.length > 0) {
         const replace = window.confirm(
@@ -92,26 +110,40 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRestaurantId(restaurant.id);
       setRestaurantName(restaurant.name);
 
+      const basePrice = customization?.variant ? customization.variant.price : menuItem.price;
+      const addonsPrice = customization?.addons
+        ? customization.addons.reduce((sum, a) => sum + (a.price || 0), 0)
+        : 0;
+      const effectiveUnitPrice = basePrice + addonsPrice;
+
+      // Cart item key: if customized, append variant/addon ids so different choices don't collide
+      const customKey = customization
+        ? `${menuItem.id}_${customization.variant?.id || 'std'}_${(customization.addons || []).map((a) => a.id).join('-')}`
+        : menuItem.id;
+
       setItems((prev) => {
-        const existingIdx = prev.findIndex((i) => i.menuItem.id === menuItem.id);
+        const existingIdx = prev.findIndex((i) => i.id === customKey || (!customization && i.menuItem.id === menuItem.id));
         if (existingIdx !== -1) {
           const updated = [...prev];
           const newQty = updated[existingIdx].quantity + qty;
           updated[existingIdx] = {
             ...updated[existingIdx],
             quantity: newQty,
-            subtotal: newQty * menuItem.price,
+            subtotal: newQty * updated[existingIdx].unitPrice,
           };
           return updated;
         } else {
           return [
             ...prev,
             {
-              id: `ci_${Date.now()}_${menuItem.id}`,
+              id: customKey,
               menuItem,
               quantity: qty,
-              unitPrice: menuItem.price,
-              subtotal: qty * menuItem.price,
+              unitPrice: effectiveUnitPrice,
+              subtotal: qty * effectiveUnitPrice,
+              selectedVariant: customization?.variant,
+              selectedAddons: customization?.addons,
+              specialInstructions: customization?.instructions,
             },
           ];
         }

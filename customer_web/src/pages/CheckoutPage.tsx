@@ -120,7 +120,7 @@ export const CheckoutPage: React.FC = () => {
     }
   };
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = async (isWhatsApp = false) => {
     if (!selectedAddress) {
       toast.error('Address Required', 'Please select or add a delivery address');
       setIsAddressSheetOpen(true);
@@ -128,6 +128,8 @@ export const CheckoutPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    const idempotencyKey = `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
     try {
       const orderPayload = {
         restaurantId,
@@ -135,14 +137,20 @@ export const CheckoutPage: React.FC = () => {
         items: items.map((i) => ({
           menuItemId: i.menuItem.id,
           quantity: i.quantity,
+          variantId: i.selectedVariant?.id,
+          addonIds: (i.selectedAddons || []).map((a) => a.id),
         })),
-        paymentMethod,
+        paymentMethod: isWhatsApp ? 'CASH_ON_DELIVERY' : paymentMethod,
         customerInstructions: customerInstructions.trim() || undefined,
         couponCode: appliedCoupon || undefined,
+        idempotencyKey,
       };
 
       const res = await apiRequest<any>('/orders', {
         method: 'POST',
+        headers: {
+          'Idempotency-Key': idempotencyKey,
+        },
         body: JSON.stringify(orderPayload),
       });
 
@@ -153,7 +161,24 @@ export const CheckoutPage: React.FC = () => {
 
         toast.success('Order Placed!', `Order #${res.data.orderNumber} confirmed.`);
         clearCart();
-        navigate(`/orders/${res.data.id}`);
+
+        if (isWhatsApp) {
+          // Format WhatsApp message
+          const itemsText = items.map((i) => `• ${i.quantity}x ${i.menuItem.name} (₹${i.subtotal})`).join('\n');
+          const waText = encodeURIComponent(
+            `*🔔 New Aajori Order Placed*\n\n` +
+            `*Order:* #${res.data.orderNumber}\n` +
+            `*Kitchen:* ${restaurantName}\n\n` +
+            `*Items:*\n${itemsText}\n\n` +
+            `*Total Payable:* ₹${res.data.pricing?.totalCustomerPrice || pricing?.pricing?.total}\n` +
+            `*Delivery Address:* ${selectedAddress.addressLine1}, ${selectedAddress.city}\n` +
+            `*Payment:* ${isWhatsApp ? 'Cash on Delivery (COD)' : paymentMethod}\n\n` +
+            `*Live Track Link:* ${window.location.origin}/orders/${res.data.id}?token=${res.data.trackingToken || res.data.id}`
+          );
+          window.open(`https://api.whatsapp.com/send?phone=919864000000&text=${waText}`, '_blank');
+        }
+
+        navigate(`/orders/${res.data.id}${res.data.trackingToken ? `?token=${res.data.trackingToken}` : ''}`);
       } else {
         toast.error('Order Failed', res.error?.message || 'Server rejected order request');
       }
@@ -339,9 +364,9 @@ export const CheckoutPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 7. Fixed Bottom Pay Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 max-w-[480px] mx-auto bg-white border-t border-stone-200 p-4 safe-bottom shadow-xl">
-        <div className="flex items-center justify-between gap-4">
+      {/* 7. Fixed Bottom Pay Action Bar with WhatsApp and Web Checkout */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 max-w-[480px] mx-auto bg-white border-t border-stone-200 p-3.5 safe-bottom shadow-xl">
+        <div className="flex items-center justify-between gap-2.5">
           <div>
             <span className="text-[10px] text-slate-400 block font-semibold leading-tight">
               Total to Pay
@@ -351,13 +376,26 @@ export const CheckoutPage: React.FC = () => {
             </span>
           </div>
 
-          <button
-            onClick={handlePlaceOrder}
-            disabled={isSubmitting || !selectedAddress || isCalculating}
-            className="flex-1 py-3.5 bg-gradient-to-r from-brand-600 via-brand-500 to-amber-600 text-white font-black rounded-2xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs btn-press disabled:opacity-50 cursor-pointer"
-          >
-            {isSubmitting ? <span>Confirming...</span> : <span>PLACE ORDER &bull; PAY NOW &rarr;</span>}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handlePlaceOrder(true)}
+              disabled={isSubmitting || !selectedAddress || isCalculating}
+              className="py-3 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-sm transition-all flex items-center justify-center gap-1.5 text-xs btn-press disabled:opacity-50 cursor-pointer"
+              title="Order via WhatsApp"
+            >
+              <span>💬 WhatsApp</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePlaceOrder(false)}
+              disabled={isSubmitting || !selectedAddress || isCalculating}
+              className="py-3 px-4.5 bg-gradient-to-r from-brand-600 to-amber-600 text-white font-black rounded-2xl shadow-md transition-all flex items-center justify-center gap-1 text-xs btn-press disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? <span>Confirming...</span> : <span>PAY NOW &rarr;</span>}
+            </button>
+          </div>
         </div>
       </div>
 

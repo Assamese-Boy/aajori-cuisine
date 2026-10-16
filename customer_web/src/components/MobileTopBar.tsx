@@ -41,6 +41,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
   const { user, isAuthenticated, selectedAddress, openAuthModal } = useAuth();
   const [selectedArea, setSelectedArea] = useState(GUWAHATI_AREAS[0].name);
   const [isLocationSheetOpen, setIsLocationSheetOpen] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const displayLocation = selectedAddress
     ? `${selectedAddress.landmark || selectedAddress.addressLine1}, ${selectedAddress.city}`
@@ -127,19 +128,64 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
           </div>
         </div>
 
-        {/* Native In-App Search Bar with Larger Readable Input */}
+        {/* Native In-App Search Bar with Autocomplete Suggestions */}
         {onSearchChange && (
-          <div className="px-4 pb-3">
+          <div className="px-4 pb-3 relative">
             <div className="relative">
               <Search className="w-4.5 h-4.5 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="text"
                 value={searchQuery}
+                onFocus={() => setIsSearchFocused(true)}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search 'Khorikaa smoked pork', 'thali', 'fish'..."
-                className="w-full pl-10 pr-4 py-2.5 bg-stone-100 border border-stone-200/80 rounded-2xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all font-medium"
+                placeholder="Search dishes, cuisines and restaurants..."
+                className="w-full pl-10 pr-9 py-2.5 bg-stone-100 border border-stone-200/80 rounded-2xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all font-medium"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => onSearchChange('')}
+                  className="absolute right-3 top-3 text-xs font-bold text-slate-400 hover:text-slate-700 w-5 h-5 flex items-center justify-center rounded-full bg-stone-200"
+                >
+                  ✕
+                </button>
+              )}
             </div>
+
+            {/* Quick Autocomplete Suggestions Dropdown */}
+            {isSearchFocused && (
+              <div className="absolute left-4 right-4 top-12 z-50 bg-white rounded-2xl shadow-xl border border-stone-200 p-3 space-y-2 animate-fade-in">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500 border-b border-stone-100 pb-1.5">
+                  <span>Popular Assam Searches</span>
+                  <button
+                    onClick={() => setIsSearchFocused(false)}
+                    className="text-stone-400 hover:text-stone-700 text-[11px]"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Khorikaa smoked pork',
+                    'Parampara thali',
+                    'Duck curry with til',
+                    'Masor tenga',
+                    'Fragrant Joha rice',
+                    'Luchi & aloo dum',
+                  ].map((phrase) => (
+                    <button
+                      key={phrase}
+                      onClick={() => {
+                        onSearchChange(phrase);
+                        setIsSearchFocused(false);
+                      }}
+                      className="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-brand-50 hover:text-brand-700 text-xs text-slate-700 font-semibold transition-all btn-press"
+                    >
+                      🔍 {phrase}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </header>
