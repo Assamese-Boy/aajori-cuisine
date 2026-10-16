@@ -24,6 +24,8 @@ interface OrdersPageProps {
   isLoading?: boolean;
 }
 
+const EMPTY_ORDERS: any[] = [];
+
 export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
   const toast = useToast();
   const { orderId } = useParams<{ orderId?: string }>();
@@ -34,7 +36,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
     isLoading?: boolean;
   } | null>();
 
-  const orders = props.orders ?? outlet?.orders ?? [];
+  const orders = props.orders ?? outlet?.orders ?? EMPTY_ORDERS;
   const onRefresh = props.onRefresh ?? outlet?.onRefresh ?? (() => {});
   const isLoading = props.isLoading ?? outlet?.isLoading ?? false;
 

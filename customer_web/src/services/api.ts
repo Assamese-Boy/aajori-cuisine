@@ -1,9 +1,15 @@
-const CANDIDATE_API_BASES = [
+const RAW_CANDIDATES = [
   '/api/v1',
-  'http://localhost:4000/api/v1',
-  'https://aajori-cuisine-admin-ecru.vercel.app/api/v1',
   'https://aajori-cuisine-git-main-pallab-jyoti-gohains-projects.vercel.app/api/v1',
+  'http://localhost:4000/api/v1',
 ];
+
+const CANDIDATE_API_BASES = RAW_CANDIDATES.filter(
+  (url, index, self) =>
+    Boolean(url) &&
+    !url.includes('aajori-cuisine-admin-ecru.vercel.app') &&
+    self.indexOf(url) === index
+);
 
 const TOKEN_KEY = 'aajori_customer_token';
 const USER_KEY = 'aajori_customer_user';
@@ -34,7 +40,20 @@ export function setCurrentCustomerUser(user: any) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-async function performFetch(baseUrl: string, endpoint: string, options: RequestInit, token: string | null) {
+interface FetchResult {
+  success: boolean;
+  data?: any;
+  error?: { message: string };
+  statusCode: number;
+  isInfrastructureError?: boolean;
+}
+
+async function performFetch(
+  baseUrl: string,
+  endpoint: string,
+  options: RequestInit,
+  token: string | null
+): Promise<FetchResult> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -54,20 +73,23 @@ async function performFetch(baseUrl: string, endpoint: string, options: RequestI
       return {
         success: false,
         error: { message: data.message || `Request failed with status ${res.status}` },
+        statusCode: res.status,
       };
     }
-    return data;
+    return { ...data, statusCode: res.status };
   }
 
   const text = await res.text();
-  if (!res.ok) {
-    return {
-      success: false,
-      error: { message: text || `Server returned error status ${res.status}` },
-    };
-  }
+  const isLoop = text.includes('INFINITE_LOOP_DETECTED') || text.includes('Infinite loop detected') || res.status === 508;
+  const isHtml = text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html');
+  const isInfraError = isLoop || isHtml || res.status >= 500;
 
-  return { success: true, data: text as any };
+  return {
+    success: false,
+    error: { message: isHtml ? `Server returned HTTP ${res.status}` : text },
+    statusCode: res.status,
+    isInfrastructureError: isInfraError,
+  };
 }
 
 export async function apiRequest<T = any>(
@@ -75,23 +97,38 @@ export async function apiRequest<T = any>(
   options: RequestInit = {}
 ): Promise<{ success: boolean; data?: T; error?: any; [key: string]: any }> {
   const token = getCustomerToken();
-  let lastError: any = null;
+  let lastResult: FetchResult | null = null;
 
   for (const base of CANDIDATE_API_BASES) {
     try {
       const result = await performFetch(base, endpoint, options, token);
-      if (result && (result.success !== false || result.error)) {
+
+      if (result.success) {
         return result;
       }
+
+      if (!result.isInfrastructureError && result.statusCode >= 400 && result.statusCode < 500) {
+        return result;
+      }
+
+      lastResult = result;
+      console.warn(`[Aajori Customer Web API] Endpoint ${base}${endpoint} failed with status ${result.statusCode}. Trying next candidate...`);
     } catch (err: any) {
-      lastError = err;
+      lastResult = {
+        success: false,
+        error: { message: err?.message || 'Network request failed' },
+        statusCode: 0,
+        isInfrastructureError: true,
+      };
     }
   }
 
-  return {
-    success: false,
-    error: {
-      message: lastError?.message || 'Network request failed. Please ensure the backend server is running on port 4000.',
-    },
-  };
+  return (
+    lastResult || {
+      success: false,
+      error: {
+        message: 'Network request failed. Please ensure the backend server is reachable.',
+      },
+    }
+  );
 }

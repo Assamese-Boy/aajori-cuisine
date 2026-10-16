@@ -38,6 +38,8 @@ interface RestaurantsPageProps {
   isLoading?: boolean;
 }
 
+const EMPTY_RESTAURANTS: any[] = [];
+
 export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
   const toast = useToast();
   const outlet = useOutletContext<{
@@ -46,7 +48,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     isLoading?: boolean;
   } | null>();
 
-  const baseRestaurants = props.restaurants ?? outlet?.restaurants ?? [];
+  const baseRestaurants = props.restaurants ?? outlet?.restaurants ?? EMPTY_RESTAURANTS;
   const onRefresh = props.onRefresh ?? outlet?.onRefresh ?? (() => {});
   const isLoading = props.isLoading ?? outlet?.isLoading ?? false;
 
