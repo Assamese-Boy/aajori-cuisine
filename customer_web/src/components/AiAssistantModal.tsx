@@ -117,7 +117,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onCl
 
       {/* Pull-Up Sheet with Spring Cubic Bezier */}
       <div
-        className={`w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl border-t border-stone-200 overflow-hidden flex flex-col h-[85vh] safe-bottom relative z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={`w-full max-w-md bg-white rounded-t-3xl shadow-2xl border-t border-stone-200 overflow-hidden flex flex-col h-[85vh] safe-bottom relative z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
       >

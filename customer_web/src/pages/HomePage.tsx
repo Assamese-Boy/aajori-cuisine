@@ -239,7 +239,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 className="flex flex-col items-center shrink-0 space-y-1.5 btn-press group"
               >
                 <div
-                  className={`w-15 h-15 rounded-2xl flex items-center justify-center text-2xl shadow-2xs transition-all duration-200 ${
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-2xs transition-all duration-200 ${
                     isSelected
                       ? 'bg-gradient-to-tr from-brand-600 to-amber-500 text-white ring-2 ring-brand-500 ring-offset-2 scale-105 shadow-md shadow-brand-500/20'
                       : 'bg-white border border-stone-200 text-slate-800 group-hover:border-brand-300'
@@ -496,7 +496,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               return (
                 <div
                   key={dish.id}
-                  className="p-3 bg-white rounded-2xl border border-stone-200/90 flex items-center justify-between gap-3 shadow-2xs card-smooth"
+                  className="p-3 bg-white rounded-2xl border border-stone-200/90 flex items-center justify-between gap-3 shadow-2xs card-smooth overflow-hidden"
                 >
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
@@ -526,21 +526,21 @@ export const HomePage: React.FC<HomePageProps> = ({
                   </div>
 
                   {/* Dish Thumbnail and Add/Stepper button */}
-                  <div className="relative shrink-0 flex flex-col items-center">
-                    <div className="w-18 h-18 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200/80 shadow-2xs">
+                  <div className="relative shrink-0 w-24 flex flex-col items-center pb-2">
+                    <div className="w-24 h-24 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200/80 shadow-2xs relative">
                       <img
-                        src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'}
+                        src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300'}
                         alt={dish.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
-                            'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200';
+                            'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300';
                         }}
                       />
                     </div>
                     <div className="-mt-3.5 z-10">
                       {qty > 0 ? (
-                        <div className="flex items-center bg-white border border-brand-500 rounded-xl px-1 py-0.5 shadow-md">
+                        <div className="flex items-center bg-white border border-brand-500 rounded-xl px-1.5 py-0.5 shadow-md">
                           <button
                             onClick={() => updateQuantity(dish.id, qty - 1)}
                             className="w-5 h-5 flex items-center justify-center text-brand-700 font-black hover:bg-stone-50 rounded-lg transition-all btn-press"
@@ -560,7 +560,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                       ) : (
                         <button
                           onClick={() => addItem(rest, dish, 1)}
-                          className="px-3.5 py-1 bg-white border border-brand-600 hover:bg-brand-50 text-brand-700 rounded-xl text-xs font-black transition-all btn-press shadow-md"
+                          className="px-4 py-1.5 bg-white border border-brand-600 hover:bg-brand-50 text-brand-700 rounded-xl text-xs font-black transition-all btn-press shadow-md"
                         >
                           ADD
                         </button>

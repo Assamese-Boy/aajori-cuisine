@@ -32,18 +32,9 @@ export const AppContent: React.FC = () => {
   const isHomePage = location.pathname === '/';
 
   return (
-    <div className="min-h-screen bg-stone-900 md:py-6 flex flex-col items-center justify-center selection:bg-brand-500 selection:text-white">
-      {/* Desktop Header Backdrop banner (hidden on actual mobile phones) */}
-      <div className="hidden md:flex items-center justify-between w-full max-w-[480px] px-4 py-2 text-stone-400 text-xs font-semibold">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Aajori Native Mobile App</span>
-        </div>
-        <span className="text-stone-500 text-[11px] font-medium">Guwahati Metro Service</span>
-      </div>
-
-      {/* Smartphone Device Shell Container */}
-      <div className="w-full max-w-[480px] min-h-screen md:min-h-[844px] md:max-h-[920px] bg-stone-50 md:rounded-[40px] shadow-2xl relative flex flex-col overflow-y-auto no-scrollbar md:border-[8px] md:border-stone-800">
+    <div className="min-h-screen bg-stone-100 flex flex-col items-center w-full overflow-x-hidden selection:bg-brand-500 selection:text-white">
+      {/* Main Mobile App Container */}
+      <div className="w-full max-w-md min-h-screen bg-white flex flex-col relative shadow-sm overflow-x-hidden">
         {/* Top Progress Loading Bar */}
         <TopProgressBar isLoading={isLoading} />
 

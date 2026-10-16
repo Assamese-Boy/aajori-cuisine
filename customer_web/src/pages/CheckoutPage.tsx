@@ -365,7 +365,7 @@ export const CheckoutPage: React.FC = () => {
       </div>
 
       {/* 7. Fixed Bottom Pay Action Bar with WhatsApp and Web Checkout */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 max-w-[480px] mx-auto bg-white border-t border-stone-200 p-3.5 safe-bottom shadow-xl">
+      <div className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white border-t border-stone-200 p-3.5 safe-bottom shadow-xl">
         <div className="flex items-center justify-between gap-2.5">
           <div>
             <span className="text-[10px] text-slate-400 block font-semibold leading-tight">
@@ -411,7 +411,7 @@ export const CheckoutPage: React.FC = () => {
         />
 
         <div
-          className={`w-full max-w-[480px] bg-white rounded-t-3xl p-5 space-y-4 shadow-2xl safe-bottom relative z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          className={`w-full max-w-md bg-white rounded-t-3xl p-5 space-y-4 shadow-2xl safe-bottom relative z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
             isAddressSheetOpen ? 'translate-y-0' : 'translate-y-full'
           }`}
         >

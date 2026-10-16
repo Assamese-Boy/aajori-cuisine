@@ -202,7 +202,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
         />
 
         <div
-          className={`w-full max-w-[480px] bg-white rounded-t-3xl p-5 space-y-4 shadow-2xl relative z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          className={`w-full max-w-md bg-white rounded-t-3xl p-5 space-y-4 shadow-2xl relative z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
             isLocationSheetOpen ? 'translate-y-0' : 'translate-y-full'
           } safe-bottom`}
         >

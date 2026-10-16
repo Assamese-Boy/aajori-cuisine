@@ -130,7 +130,7 @@ export const AuthModal: React.FC = () => {
 
       {/* Smooth Pull-Up Sheet with Spring Ease */}
       <div
-        className={`w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl border-t border-stone-200 overflow-hidden max-h-[92vh] flex flex-col z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={`w-full max-w-md bg-white rounded-t-3xl shadow-2xl border-t border-stone-200 overflow-hidden max-h-[92vh] flex flex-col z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
           isAuthModalOpen ? 'translate-y-0' : 'translate-y-full'
         } safe-bottom`}
       >

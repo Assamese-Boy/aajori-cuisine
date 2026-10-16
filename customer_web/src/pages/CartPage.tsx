@@ -347,7 +347,7 @@ export const CartPage: React.FC = () => {
       </div>
 
       {/* Fixed Bottom Checkout Action */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 max-w-[480px] mx-auto bg-white border-t border-stone-200 p-3.5 safe-bottom shadow-xl">
+      <div className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white border-t border-stone-200 p-3.5 safe-bottom shadow-xl">
         <div className="flex items-center justify-between gap-3">
           <div>
             <span className="text-[10px] text-slate-400 block font-semibold leading-tight">

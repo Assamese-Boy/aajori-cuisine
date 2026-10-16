@@ -164,7 +164,7 @@ export const PermissionPrompts: React.FC<PermissionPromptsProps> = ({
         />
 
         <div
-          className={`w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl relative z-10 p-6 space-y-5 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          className={`w-full max-w-md bg-white rounded-t-3xl shadow-2xl relative z-10 p-6 space-y-5 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
             showLocationModal ? 'translate-y-0' : 'translate-y-full'
           } safe-bottom`}
         >
@@ -217,7 +217,7 @@ export const PermissionPrompts: React.FC<PermissionPromptsProps> = ({
 
       {/* 2. Push Notification Permission Banner / Card */}
       <div
-        className={`fixed bottom-20 left-0 right-0 z-40 max-w-[480px] mx-auto px-4 transition-all duration-350 ${
+        className={`fixed bottom-20 left-0 right-0 z-40 max-w-md mx-auto px-4 transition-all duration-350 ${
           showNotificationPrompt
             ? 'opacity-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 translate-y-6 pointer-events-none'

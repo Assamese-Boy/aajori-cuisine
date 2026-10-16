@@ -25,6 +25,18 @@ export default {
           brahmaputra: '#0369a1',
         },
       },
+      spacing: {
+        '4.5': '1.125rem',
+        '11': '2.75rem',
+        '13': '3.25rem',
+        '14': '3.5rem',
+        '15': '3.75rem',
+        '18': '4.5rem',
+        '22': '5.5rem',
+      },
+      boxShadow: {
+        '2xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+      },
       fontFamily: {
         sans: [
           'Proxima Nova',

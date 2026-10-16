@@ -376,8 +376,8 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
                 </div>
 
                 {/* Right Action: Dish Photo + Overlapping ADD / Stepper */}
-                <div className="relative shrink-0 flex flex-col items-center">
-                  <div className="w-22 h-22 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200/80 shadow-2xs">
+                <div className="relative shrink-0 w-24 flex flex-col items-center pb-2">
+                  <div className="w-24 h-24 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200/80 shadow-2xs relative">
                     <img
                       src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300'}
                       alt={dish.name}
@@ -435,7 +435,7 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
             className="fixed inset-0 bg-black/60 backdrop-blur-xs"
           />
 
-          <div className="w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl relative z-10 max-h-[85vh] flex flex-col safe-bottom animate-slide-up">
+          <div className="w-full max-w-md bg-white rounded-t-3xl shadow-2xl relative z-10 max-h-[85vh] flex flex-col safe-bottom animate-slide-up">
             {/* Sheet Handle */}
             <div className="pt-3 pb-1 flex justify-center bg-white shrink-0">
               <div className="w-12 h-1.5 bg-stone-300 rounded-full"></div>

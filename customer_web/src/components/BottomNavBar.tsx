@@ -21,7 +21,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenAi, onOpenSear
     <>
       {/* Floating Cart Strip (Shows above the bottom nav if cart has items and not on checkout) */}
       {totalItems > 0 && currentPath !== '/checkout' && (
-        <div className="fixed bottom-16 left-0 right-0 z-40 max-w-[480px] mx-auto px-4 pb-2 animate-slide-up pointer-events-none">
+        <div className="fixed bottom-16 left-0 right-0 z-40 max-w-md mx-auto px-4 pb-2 animate-slide-up pointer-events-none">
           <button
             onClick={openCart}
             className="w-full bg-gradient-to-r from-brand-600 to-amber-600 text-white rounded-2xl p-3.5 shadow-xl flex items-center justify-between border border-white/20 pointer-events-auto btn-press cursor-pointer"
@@ -49,7 +49,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenAi, onOpenSear
       )}
 
       {/* Native Bottom Tab Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 max-w-[480px] mx-auto bg-white/95 backdrop-blur-md border-t border-stone-200/90 safe-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-stone-200/90 safe-bottom">
         <div className="grid grid-cols-5 h-16 items-center px-1">
           {/* Tab 1: Home */}
           <button

@@ -5,21 +5,38 @@
 @tailwind utilities;
 
 @layer base {
-  html, body {
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+    width: 100%;
+    background-color: #fafaf9;
+  }
+
+  body {
     margin: 0;
     padding: 0;
     width: 100%;
-    height: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+    background-color: #fafaf9;
     -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-x: none;
     user-select: none;
     -webkit-user-select: none;
-    overscroll-behavior-y: contain;
     font-family: 'Proxima Nova', 'ProximaNova', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
   
+  #root {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
   /* Retain Playfair for elegant Assamese culinary brand titles */
   .font-serif-culinary {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Playfair Display', Georgia, serif;
   }
 
   button, input, select, textarea {
