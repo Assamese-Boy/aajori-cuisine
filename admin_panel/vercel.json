@@ -1,12 +1,13 @@
 {
   "version": 2,
+  "cleanUrls": false,
   "rewrites": [
     {
-      "source": "/api/:match*",
-      "destination": "https://aajori-cuisine-git-main-pallab-jyoti-gohains-projects.vercel.app/api/:match*"
+      "source": "/api/:path*",
+      "destination": "https://aajori-cuisine-git-main-pallab-jyoti-gohains-projects.vercel.app/api/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]
