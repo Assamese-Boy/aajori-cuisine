@@ -15,21 +15,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useLocationContext } from '../context/LocationContext';
 
 interface HeaderProps {
   onOpenAiAssistant?: () => void;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
 }
-
-const GUWAHATI_AREAS = [
-  { name: 'Ulubari / GS Road', lat: 26.1661, lng: 91.7594 },
-  { name: 'Silpukhuri / Chandmari', lat: 26.1852, lng: 91.765 },
-  { name: 'Uzan Bazar Riverfront', lat: 26.1915, lng: 91.7512 },
-  { name: 'Zoo Road / Ambikagiri', lat: 26.172, lng: 91.778 },
-  { name: 'Beltola / Dispur Capital', lat: 26.134, lng: 91.792 },
-  { name: 'Pan Bazar / Fancy Bazar', lat: 26.184, lng: 91.743 },
-];
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenAiAssistant,
@@ -38,9 +30,9 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { user, isAuthenticated, logout, openAuthModal, selectedAddress } = useAuth();
   const { totalItems, subtotal, openCart } = useCart();
+  const { currentLocation, nearbyLocalities, setLocation } = useLocationContext();
   const navigate = useNavigate();
 
-  const [selectedArea, setSelectedArea] = useState(GUWAHATI_AREAS[0].name);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false);
 
@@ -91,32 +83,36 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="text-left">
                 <span className="text-[10px] text-slate-400 block font-normal leading-none">Deliver To</span>
                 <span className="truncate max-w-[130px] block font-bold text-slate-800">
-                  {selectedAddress ? selectedAddress.landmark || selectedAddress.addressLine1 : selectedArea}
+                  {selectedAddress ? selectedAddress.landmark || selectedAddress.addressLine1 : currentLocation.name}
                 </span>
               </div>
               <ChevronDown className="w-3 h-3 text-slate-400 ml-1" />
             </button>
 
             {isAreaDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-50 animate-fade-in">
+              <div className="absolute left-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-50 animate-fade-in">
                 <div className="text-[10px] font-bold text-slate-400 px-3 py-1 uppercase tracking-wider">
-                  Guwahati Operational Hubs
+                  Live Detected & Nearby Areas
                 </div>
-                {GUWAHATI_AREAS.map((a) => (
+                <div className="p-2 mb-1 bg-stone-50 rounded-lg text-xs font-bold text-slate-800">
+                  📍 {currentLocation.name}
+                  <div className="text-[10px] text-slate-400 font-normal truncate">{currentLocation.addressLine}</div>
+                </div>
+                {nearbyLocalities.map((a) => (
                   <button
                     key={a.name}
                     onClick={() => {
-                      setSelectedArea(a.name);
+                      setLocation(a);
                       setIsAreaDropdownOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
-                      selectedArea === a.name
+                      currentLocation.name === a.name
                         ? 'bg-brand-50 text-brand-700 font-semibold'
                         : 'text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    <span>{a.name}</span>
-                    <span className="text-[10px] text-slate-400">PostGIS Tier 1</span>
+                    <span className="truncate">{a.name}</span>
+                    <span className="text-[10px] text-emerald-600 font-bold shrink-0">OSM</span>
                   </button>
                 ))}
               </div>

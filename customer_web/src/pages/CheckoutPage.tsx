@@ -16,13 +16,15 @@ import {
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useLocationContext } from '../context/LocationContext';
 import { apiRequest } from '../services/api';
 import { PaymentMethod } from '../types';
 
 export const CheckoutPage: React.FC = () => {
   const { items, restaurantId, restaurantName, appliedCoupon, clearCart } = useCart();
-  const { isAuthenticated, addresses, selectedAddress, setSelectedAddress, addAddress, openAuthModal } =
+  const { isAuthenticated, user, addresses, selectedAddress, setSelectedAddress, addAddress, openAuthModal } =
     useAuth();
+  const { currentLocation } = useLocationContext();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -44,8 +46,8 @@ export const CheckoutPage: React.FC = () => {
     landmark: '',
     city: 'Guwahati',
     postalCode: '781001',
-    latitude: 26.166,
-    longitude: 91.759,
+    latitude: currentLocation?.latitude || 26.166,
+    longitude: currentLocation?.longitude || 91.759,
   });
 
   useEffect(() => {
@@ -53,6 +55,29 @@ export const CheckoutPage: React.FC = () => {
       openAuthModal('signin');
     }
   }, [isAuthenticated, openAuthModal]);
+
+  // Auto-select current GPS/detected location as delivery address if none selected
+  useEffect(() => {
+    if (!selectedAddress && currentLocation) {
+      setSelectedAddress({
+        id: 'gps-current',
+        customerId: user?.id || 'guest',
+        label: currentLocation.isGps ? 'Current GPS Location' : 'Selected Hub',
+        addressLine1: currentLocation.name,
+        addressLine2: currentLocation.addressLine,
+        landmark: currentLocation.isGps ? 'GPS Detected' : '',
+        city: 'Guwahati',
+        district: 'Kamrup Metropolitan',
+        postalCode: '781001',
+        location: {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+        },
+        deliveryInstructions: '',
+        isDefault: true,
+      });
+    }
+  }, [selectedAddress, currentLocation, setSelectedAddress, user?.id]);
 
   // Recalculate pricing with authoritative backend pricing engine
   useEffect(() => {

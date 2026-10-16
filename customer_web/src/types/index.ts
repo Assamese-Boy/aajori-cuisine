@@ -59,6 +59,7 @@ export interface Restaurant {
   coverUrl?: string;
   rating?: number;
   isBusy?: boolean;
+  distanceKm?: number;
 }
 
 export interface MenuItemVariant {

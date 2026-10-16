@@ -4,13 +4,16 @@ import {
   MapPin,
   Search,
   ChevronDown,
-  User as UserIcon,
   Sparkles,
   Leaf,
   Navigation,
   Check,
+  Loader2,
+  X,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLocationContext, UserLocation } from '../context/LocationContext';
 
 interface MobileTopBarProps {
   searchQuery?: string;
@@ -21,31 +24,58 @@ interface MobileTopBarProps {
   isPureVeg?: boolean;
 }
 
-const GUWAHATI_AREAS = [
-  { name: 'Ulubari / GS Road', lat: 26.1661, lng: 91.7594 },
-  { name: 'Silpukhuri Heritage', lat: 26.1852, lng: 91.765 },
-  { name: 'Uzan Bazar Riverfront', lat: 26.1915, lng: 91.7512 },
-  { name: 'Zoo Road / Ambikagiri', lat: 26.172, lng: 91.778 },
-  { name: 'Beltola / Dispur Capital', lat: 26.134, lng: 91.792 },
-  { name: 'Pan Bazar Cultural Hub', lat: 26.184, lng: 91.743 },
-];
-
 export const MobileTopBar: React.FC<MobileTopBarProps> = ({
   searchQuery = '',
   onSearchChange,
   onOpenAi,
   onOpenDrawer,
-  onRequestGpsLocation,
   isPureVeg = false,
 }) => {
-  const { user, isAuthenticated, selectedAddress, openAuthModal } = useAuth();
-  const [selectedArea, setSelectedArea] = useState(GUWAHATI_AREAS[0].name);
+  const { user, isAuthenticated, openAuthModal } = useAuth();
+  const {
+    currentLocation,
+    recentLocations,
+    nearbyLocalities,
+    isDetecting,
+    detectGpsLocation,
+    setLocation,
+    searchLocalities,
+  } = useLocationContext();
+
   const [isLocationSheetOpen, setIsLocationSheetOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [addressSearchQuery, setAddressSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UserLocation[]>([]);
+  const [isSearchingAddresses, setIsSearchingAddresses] = useState(false);
 
-  const displayLocation = selectedAddress
-    ? `${selectedAddress.landmark || selectedAddress.addressLine1}, ${selectedAddress.city}`
-    : selectedArea;
+  const handleSearchAddresses = async (q: string) => {
+    setAddressSearchQuery(q);
+    if (!q.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearchingAddresses(true);
+    try {
+      const results = await searchLocalities(q);
+      setSearchResults(results);
+    } finally {
+      setIsSearchingAddresses(false);
+    }
+  };
+
+  const handleSelectLocation = (loc: UserLocation) => {
+    setLocation(loc);
+    setIsLocationSheetOpen(false);
+    setAddressSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const handleDetectGps = async () => {
+    const loc = await detectGpsLocation();
+    if (loc) {
+      setIsLocationSheetOpen(false);
+    }
+  };
 
   return (
     <>
@@ -75,26 +105,37 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
             )}
           </button>
 
-          {/* Location button with larger readable text */}
+          {/* Location button with live GPS / address display */}
           <button
             onClick={() => setIsLocationSheetOpen(true)}
-            className="flex items-center gap-2.5 text-left min-w-0 flex-1 btn-press"
+            className="flex items-center gap-2.5 text-left min-w-0 flex-1 btn-press group"
           >
-            <div className="w-9 h-9 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0 shadow-2xs">
-              <MapPin className="w-5 h-5 text-brand-600" />
+            <div
+              className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs transition-all ${
+                currentLocation.isGps
+                  ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-300'
+                  : 'bg-brand-50 text-brand-600'
+              }`}
+            >
+              <MapPin className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-xs font-black text-slate-900 leading-tight">
                 <span>Deliver to</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-brand-600 transition-colors" />
+                {currentLocation.isGps && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black flex items-center gap-0.5">
+                    ● Live GPS
+                  </span>
+                )}
                 {isPureVeg && (
                   <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center gap-1">
                     <Leaf className="w-3 h-3" /> Veg Only
                   </span>
                 )}
               </div>
-              <p className="text-sm text-slate-600 truncate leading-tight font-semibold mt-0.5">
-                {displayLocation}
+              <p className="text-sm text-slate-800 truncate leading-tight font-extrabold mt-0.5">
+                {currentLocation.name}
               </p>
             </div>
           </button>
@@ -190,7 +231,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
         )}
       </header>
 
-      {/* Location Picker Bottom Sheet with Smooth Animation */}
+      {/* Location Picker Bottom Sheet with Real GPS & Address Search */}
       <div
         className={`fixed inset-0 z-50 flex items-end justify-center transition-opacity duration-350 ease-out ${
           isLocationSheetOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -204,62 +245,207 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
         <div
           className={`w-full max-w-md bg-white rounded-t-3xl p-5 space-y-4 shadow-2xl relative z-10 transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)] ${
             isLocationSheetOpen ? 'translate-y-0' : 'translate-y-full'
-          } safe-bottom`}
+          } safe-bottom max-h-[85vh] flex flex-col`}
         >
           {/* Sheet Handle */}
-          <div className="w-12 h-1.5 bg-stone-300 rounded-full mx-auto"></div>
+          <div className="w-12 h-1.5 bg-stone-300 rounded-full mx-auto shrink-0"></div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between shrink-0">
             <div>
               <h3 className="text-lg font-black text-slate-900">Choose Delivery Location</h3>
-              <p className="text-xs text-slate-500">Kamrup Metropolitan delivery radius</p>
+              <p className="text-xs text-slate-500">Kamrup Metropolitan 25-min delivery zone</p>
             </div>
             <button
               onClick={() => setIsLocationSheetOpen(false)}
-              className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-slate-500 hover:text-slate-700"
+              className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-slate-500 hover:text-slate-700 btn-press"
             >
               ✕
             </button>
           </div>
 
-          {/* Quick GPS Location Detect Button */}
-          {onRequestGpsLocation && (
-            <button
-              onClick={() => {
-                setIsLocationSheetOpen(false);
-                onRequestGpsLocation();
-              }}
-              className="w-full p-3.5 bg-brand-50 border border-brand-300 rounded-2xl text-brand-700 font-extrabold text-sm flex items-center justify-center gap-2 btn-press"
-            >
-              <Navigation className="w-4.5 h-4.5 text-brand-600" />
-              <span>Use Current GPS Location</span>
-            </button>
-          )}
+          {/* Real Device GPS Location Detect Button */}
+          <button
+            onClick={handleDetectGps}
+            disabled={isDetecting}
+            className="w-full p-3.5 bg-brand-50 hover:bg-brand-100 border border-brand-300 rounded-2xl text-brand-700 font-extrabold text-sm flex items-center justify-center gap-2 btn-press transition-colors shadow-2xs shrink-0 disabled:opacity-60"
+          >
+            {isDetecting ? (
+              <>
+                <Loader2 className="w-4.5 h-4.5 text-brand-600 animate-spin" />
+                <span>Locating Your Exact Street GPS...</span>
+              </>
+            ) : (
+              <>
+                <Navigation className="w-4.5 h-4.5 text-brand-600" />
+                <span>Use Current GPS Location</span>
+              </>
+            )}
+          </button>
 
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-            {GUWAHATI_AREAS.map((area) => (
+          {/* Search Location Input */}
+          <div className="relative shrink-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={addressSearchQuery}
+              onChange={(e) => handleSearchAddresses(e.target.value)}
+              placeholder="Search locality, road, or landmark..."
+              className="w-full pl-9.5 pr-8 py-2 bg-stone-100 border border-stone-200 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            {addressSearchQuery && (
               <button
-                key={area.name}
-                onClick={() => {
-                  setSelectedArea(area.name);
-                  setIsLocationSheetOpen(false);
-                }}
-                className={`w-full p-3.5 rounded-2xl text-left text-sm font-bold flex items-center justify-between border transition-all ${
-                  selectedArea === area.name
-                    ? 'bg-brand-50 border-brand-500 text-brand-800'
-                    : 'border-stone-200 bg-stone-50 text-slate-700 hover:bg-stone-100'
-                }`}
+                onClick={() => handleSearchAddresses('')}
+                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
               >
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4.5 h-4.5 text-brand-600" />
-                  <span>{area.name}</span>
-                </div>
-                {selectedArea === area.name && (
-                  <Check className="w-4.5 h-4.5 text-brand-600" />
-                )}
+                <X className="w-4 h-4" />
               </button>
-            ))}
+            )}
           </div>
+
+          {/* Search Results if user is searching */}
+          {addressSearchQuery.trim() ? (
+            <div className="space-y-2 overflow-y-auto flex-1 pr-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                Matching Locations
+              </span>
+              {isSearchingAddresses ? (
+                <div className="p-4 text-center text-xs text-slate-400">Searching locations...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-400">
+                  No locations found matching "{addressSearchQuery}"
+                </div>
+              ) : (
+                searchResults.map((loc, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSelectLocation(loc)}
+                    className="w-full p-3 rounded-2xl text-left text-xs font-bold border border-stone-200 bg-stone-50 hover:bg-brand-50 hover:border-brand-300 text-slate-700 transition-all flex items-start gap-2.5 btn-press"
+                  >
+                    <MapPin className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <div className="font-extrabold text-slate-900 truncate">{loc.name}</div>
+                      <div className="text-[11px] text-slate-500 truncate mt-0.5 font-normal">
+                        {loc.addressLine}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : (
+            /* Dynamic Localities & Addresses View */
+            <div className="space-y-4 overflow-y-auto flex-1 pr-1">
+              {/* Active Current Location Card */}
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-stone-50 to-emerald-50/40 border border-stone-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    Active Delivery Address
+                  </span>
+                  {currentLocation.isGps && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Verified Live GPS
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-xs text-slate-900 truncate">
+                      {currentLocation.name}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                      {currentLocation.addressLine}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Saved Locations */}
+              {recentLocations && recentLocations.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Recent Addresses
+                  </span>
+                  {recentLocations.slice(0, 4).map((loc, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSelectLocation(loc)}
+                      className="w-full p-2.5 rounded-xl text-left text-xs font-semibold flex items-center justify-between border border-stone-200 bg-stone-50 hover:bg-stone-100 text-slate-700 transition-all btn-press"
+                    >
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-800 truncate">{loc.name}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{loc.addressLine}</div>
+                        </div>
+                      </div>
+                      {currentLocation.name === loc.name && (
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Real Nearby Localities fetched dynamically from OpenStreetMap/Photon */}
+              {nearbyLocalities && nearbyLocalities.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block flex items-center justify-between">
+                    <span>Nearby Places (Live Geocoded)</span>
+                    <span className="text-[9px] font-bold text-emerald-600">OpenStreetMap</span>
+                  </span>
+                  {nearbyLocalities.map((place, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSelectLocation(place)}
+                      className="w-full p-2.5 rounded-xl text-left text-xs font-semibold flex items-center justify-between border border-stone-200 bg-stone-50 hover:bg-brand-50 hover:border-brand-200 text-slate-700 transition-all btn-press"
+                    >
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <MapPin className="w-3.5 h-3.5 text-brand-500 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-800 truncate">{place.name}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{place.addressLine}</div>
+                        </div>
+                      </div>
+                      {currentLocation.name === place.name && (
+                        <Check className="w-4 h-4 text-brand-600 shrink-0 ml-2" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Quick Search Suggestions (Tapping launches live OSM search) */}
+              <div className="pt-1">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  Popular Search Areas
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Christian Basti',
+                    'GS Road',
+                    'Paltan Bazaar',
+                    'Zoo Road',
+                    'Six Mile',
+                    'Dispur',
+                    'Pan Bazaar',
+                    'Uzan Bazar',
+                    'Beltola',
+                    'Jalukbari',
+                  ].map((loc) => (
+                    <button
+                      key={loc}
+                      onClick={() => handleSearchAddresses(loc)}
+                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 border border-stone-200 text-[11px] font-bold text-slate-700 transition-all btn-press"
+                    >
+                      {loc}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

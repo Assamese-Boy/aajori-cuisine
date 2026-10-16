@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Bell, X, Navigation, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useLocationContext } from '../context/LocationContext';
 
 interface PermissionPromptsProps {
   onLocationDetected?: (loc: { name: string; lat: number; lng: number }) => void;
@@ -50,62 +51,22 @@ export const PermissionPrompts: React.FC<PermissionPromptsProps> = ({
     }
   }, [showLocationModal]);
 
-  const handleRequestLocation = () => {
+  const { detectGpsLocation } = useLocationContext();
+
+  const handleRequestLocation = async () => {
     setIsDetectingLocation(true);
     localStorage.setItem('aajori_location_prompted', 'true');
-
-    if (!('geolocation' in navigator)) {
-      toast.error('Location Unavailable', 'Geolocation is not supported by your browser');
-      setIsDetectingLocation(false);
-      setShowLocationModal(false);
-      onCloseLocationPrompt?.();
-      return;
+    const loc = await detectGpsLocation();
+    if (loc && onLocationDetected) {
+      onLocationDetected({
+        name: loc.name,
+        lat: loc.latitude,
+        lng: loc.longitude,
+      });
     }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-
-        // Map to nearest district area or use coordinate representation
-        const detectedLocation = {
-          name: 'Current GPS Location (Guwahati Metro)',
-          lat,
-          lng,
-        };
-
-        localStorage.setItem('aajori_user_lat', String(lat));
-        localStorage.setItem('aajori_user_lng', String(lng));
-        localStorage.setItem('aajori_user_area', detectedLocation.name);
-
-        onLocationDetected?.(detectedLocation);
-        toast.success(
-          'Location Detected',
-          `GPS active: Kamrup Metropolitan (${lat.toFixed(3)}, ${lng.toFixed(3)})`
-        );
-        setIsDetectingLocation(false);
-        setShowLocationModal(false);
-        onCloseLocationPrompt?.();
-      },
-      (error) => {
-        console.warn('Geolocation error:', error);
-        // Fallback default
-        const defaultLoc = {
-          name: 'Ulubari / GS Road (Default)',
-          lat: 26.1661,
-          lng: 91.7594,
-        };
-        onLocationDetected?.(defaultLoc);
-        toast.info(
-          'Set to Central Guwahati',
-          'Using default Kamrup Metropolitan delivery hub'
-        );
-        setIsDetectingLocation(false);
-        setShowLocationModal(false);
-        onCloseLocationPrompt?.();
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
+    setIsDetectingLocation(false);
+    setShowLocationModal(false);
+    onCloseLocationPrompt?.();
   };
 
   const handleDismissLocation = () => {

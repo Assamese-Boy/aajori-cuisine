@@ -25,6 +25,7 @@ import { apiRequest } from '../services/api';
 import { Restaurant, MenuItem } from '../types';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
+import { useLocationContext } from '../context/LocationContext';
 import {
   SkeletonRestaurantGrid,
   SkeletonMenuGrid,
@@ -98,6 +99,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 }) => {
   const { addItem, getItemQuantity, updateQuantity, applyCoupon, openCart } = useCart();
   const toast = useToast();
+  const { currentLocation } = useLocationContext();
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [featuredDishes, setFeaturedDishes] = useState<MenuItem[]>([]);
@@ -105,6 +107,17 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCoupons, setActiveCoupons] = useState<any[]>([]);
+
+  // Calculate dynamic driving distance in km from user's current GPS/selected locality
+  const getRestaurantDistance = (r: Restaurant) => {
+    if (r.location && currentLocation) {
+      const dLat = (r.location.latitude - currentLocation.latitude) * 111;
+      const dLng = (r.location.longitude - currentLocation.longitude) * 111 * Math.cos((currentLocation.latitude * Math.PI) / 180);
+      const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+      return Math.max(0.5, Math.round(dist * 10) / 10);
+    }
+    return 2.1;
+  };
 
   // Sync selectedCategory if isPureVeg changes
   useEffect(() => {
@@ -125,8 +138,9 @@ export const HomePage: React.FC<HomePageProps> = ({
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        const queryParams = `?lat=${currentLocation.latitude}&lng=${currentLocation.longitude}`;
         const [res, couponRes] = await Promise.all([
-          apiRequest<Restaurant[]>('/restaurants'),
+          apiRequest<Restaurant[]>(`/restaurants${queryParams}`),
           apiRequest<any[]>('/coupons'),
         ]);
 
@@ -159,7 +173,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
 
     fetchData();
-  }, []);
+  }, [currentLocation.latitude, currentLocation.longitude]);
 
   const handleApplyPromo = (code: string) => {
     applyCoupon(code);
@@ -412,9 +426,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                   {/* Delivery time & distance pill overlay */}
                   <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-xl bg-slate-950/90 text-white text-[11px] font-black flex items-center gap-1.5 backdrop-blur-md shadow-md border border-white/10">
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{restaurant.avgPrepTimeMinutes} MINS</span>
+                    <span>{restaurant.avgPrepTimeMinutes + Math.round(getRestaurantDistance(restaurant) * 3)} MINS</span>
                     <span className="text-stone-500">•</span>
-                    <span>2.1 KM</span>
+                    <span>{getRestaurantDistance(restaurant)} KM</span>
                   </div>
 
                   {/* Rating badge */}
