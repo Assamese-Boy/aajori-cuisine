@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLocationContext, UserLocation } from '../context/LocationContext';
+import { useSettings } from '../context/SettingsContext';
 
 interface MobileTopBarProps {
   searchQuery?: string;
@@ -41,6 +42,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
     setLocation,
     searchLocalities,
   } = useLocationContext();
+  const { settings } = useSettings();
 
   const [isLocationSheetOpen, setIsLocationSheetOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -84,10 +86,10 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
         <div className="bg-gradient-to-r from-stone-900 via-brand-950 to-stone-900 px-4 py-1.5 text-white flex items-center justify-between text-xs font-semibold">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-stone-200 font-bold tracking-tight">Kamrup Metropolitan</span>
+            <span className="text-stone-200 font-bold tracking-tight">{settings.topBannerDistrict}</span>
           </div>
           <span className="text-amber-400 text-xs font-black tracking-wide">
-            ⚡ 25 Mins Express
+            {settings.topBannerTag}
           </span>
         </div>
 
@@ -253,7 +255,7 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
           <div className="flex items-center justify-between shrink-0">
             <div>
               <h3 className="text-lg font-black text-slate-900">Choose Delivery Location</h3>
-              <p className="text-xs text-slate-500">Kamrup Metropolitan 25-min delivery zone</p>
+              <p className="text-xs text-slate-500">{settings.topBannerDistrict} Delivery Zone</p>
             </div>
             <button
               onClick={() => setIsLocationSheetOpen(false)}

@@ -12,12 +12,33 @@ import { ChevronRight, Home } from 'lucide-react';
 
 export const AdminLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const routerLocation = useRouterLocation();
-  const [currentUser] = useState<any>(() => getCurrentStoredUser());
+  const [currentUser, setCurrentUser] = useState<any>(() => getCurrentStoredUser());
   const [currentRole, setCurrentRole] = useState(() => getCurrentStoredUser()?.role || 'SUPER_ADMIN');
+  const [appSettings, setAppSettings] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Load authenticated user and dynamic platform settings
+  useEffect(() => {
+    apiRequest('/auth/me')
+      .then((res) => {
+        if (res?.success && res.data) {
+          setCurrentUser(res.data);
+          if (res.data.role) setCurrentRole(res.data.role);
+        }
+      })
+      .catch(() => {});
+
+    apiRequest('/settings')
+      .then((res) => {
+        if (res?.success && res.data) {
+          setAppSettings(res.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // In-memory cache tracking so navigating between tabs does NOT trigger redundant network requests
   const hasLoadedMetrics = useRef(false);
@@ -161,12 +182,13 @@ export const AdminLayout: React.FC<{ children?: React.ReactNode }> = ({ children
     <AdminContext.Provider value={contextValue}>
       <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans relative">
         <TopProgressBar isLoading={isLoading} />
-        <Sidebar />
+        <Sidebar appSettings={appSettings} />
 
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           <Header
             user={currentUser}
             currentRole={currentRole}
+            appSettings={appSettings}
             onRoleChanged={setCurrentRole}
             onRefresh={handleManualRefresh}
             onLogout={handleLogout}

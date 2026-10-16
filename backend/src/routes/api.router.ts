@@ -12,6 +12,7 @@ import { whatsAppOrderingService } from '../modules/whatsapp/whatsapp.service';
 import { whatsAppClientService } from '../modules/whatsapp/whatsapp-client.service';
 import { env } from '../config/env';
 import { adminOperationsService } from '../modules/admin/admin.service';
+import { settingsService } from '../modules/admin/settings.service';
 import { db } from '../data/mock-db';
 import { BadRequestError } from '../common/errors';
 import { Coupon, DeliveryZone } from '../common/types';
@@ -1028,6 +1029,28 @@ apiRouter.patch('/restaurant-portal/menu/:itemId/stock', authenticate, requireRo
     item.isAvailable = Boolean(isAvailable);
     db.menuItems.set(req.params.itemId, item);
     res.json({ success: true, data: item });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// PLATFORM SETTINGS & APP CUSTOMIZATION (Fully Dynamic Headers, Texts & Banners)
+// ============================================================================
+apiRouter.get('/settings', (req: Request, res: Response) => {
+  const settings = settingsService.getSettings();
+  res.json({ success: true, data: settings });
+});
+
+apiRouter.get('/admin/settings', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  const settings = settingsService.getSettings();
+  res.json({ success: true, data: settings });
+});
+
+apiRouter.put('/admin/settings', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const updated = settingsService.updateSettings(req.body);
+    res.json({ success: true, data: updated });
   } catch (err) {
     next(err);
   }

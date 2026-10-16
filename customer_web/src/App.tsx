@@ -4,6 +4,7 @@ import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { LocationProvider, useLocationContext } from './context/LocationContext';
+import { SettingsProvider } from './context/SettingsContext';
 import { MobileTopBar } from './components/MobileTopBar';
 import { BottomNavBar } from './components/BottomNavBar';
 import { AuthModal } from './components/AuthModal';
@@ -110,13 +111,15 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <LocationProvider>
-          <AuthProvider>
-            <CartProvider>
-              <AppContent />
-            </CartProvider>
-          </AuthProvider>
-        </LocationProvider>
+        <SettingsProvider>
+          <LocationProvider>
+            <AuthProvider>
+              <CartProvider>
+                <AppContent />
+              </CartProvider>
+            </AuthProvider>
+          </LocationProvider>
+        </SettingsProvider>
       </ToastProvider>
     </BrowserRouter>
   );

@@ -6,6 +6,7 @@ import { RefreshCw, Shield, LogOut, ShoppingBag, ExternalLink } from 'lucide-rea
 interface HeaderProps {
   user: any;
   currentRole: string;
+  appSettings?: any;
   onRoleChanged: (role: string) => void;
   onRefresh: () => void;
   onLogout: () => void;
@@ -15,10 +16,12 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   user,
   currentRole,
+  appSettings,
   onRefresh,
   onLogout,
   isLoading,
 }) => {
+  const districtName = appSettings?.topBannerDistrict || 'Kamrup Metropolitan (Guwahati, Assam)';
   const getInitials = (name?: string) => {
     if (!name) return 'SA';
     return name
@@ -43,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
           <span className="text-sm font-bold text-slate-800">
-            District: Kamrup Metropolitan (Guwahati, Assam)
+            District: {districtName}
           </span>
         </div>
         <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">

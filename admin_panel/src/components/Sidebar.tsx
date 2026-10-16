@@ -15,9 +15,17 @@ import {
   Tag,
   Compass,
   BarChart3,
+  Sliders,
 } from 'lucide-react';
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  appSettings?: any;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ appSettings }) => {
+  const districtName = appSettings?.topBannerDistrict || 'Kamrup Metro';
+  const brandName = appSettings?.brandName || 'Aajori Cuisine';
+
   const navItems = [
     { path: '/dashboard', label: 'Operations Dashboard', icon: LayoutDashboard },
     { path: '/orders', label: 'Order Control Center', icon: ShoppingBag },
@@ -26,6 +34,7 @@ export const Sidebar: React.FC = () => {
     { path: '/restaurants', label: 'Restaurant Partners', icon: Store },
     { path: '/delivery-zones', label: 'Zones & Charges', icon: Compass },
     { path: '/promotions', label: 'Coupons & Promos', icon: Tag },
+    { path: '/settings', label: 'App Customizer & Branding', icon: Sliders },
     { path: '/reports', label: 'Reports & Reconciliation', icon: BarChart3 },
     { path: '/delivery-partners', label: 'Delivery Fleet', icon: Bike },
     { path: '/users', label: 'Users & Customers', icon: Users },
@@ -41,7 +50,7 @@ export const Sidebar: React.FC = () => {
           AJ
         </div>
         <div>
-          <h1 className="font-bold text-white text-base leading-tight">Aajori Cuisine</h1>
+          <h1 className="font-bold text-white text-base leading-tight">{brandName}</h1>
           <p className="text-xs text-amber-400 font-medium">Operations Center</p>
         </div>
       </div>
@@ -51,7 +60,7 @@ export const Sidebar: React.FC = () => {
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           District Live
         </span>
-        <span className="text-slate-300 font-mono font-medium">Kamrup Metro</span>
+        <span className="text-slate-300 font-mono font-medium truncate max-w-[120px]">{districtName}</span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

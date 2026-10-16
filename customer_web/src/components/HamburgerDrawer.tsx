@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useSettings } from '../context/SettingsContext';
 
 interface HamburgerDrawerProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, openAuthModal } = useAuth();
+  const { settings } = useSettings();
   const toast = useToast();
 
   const [activeLanguage, setActiveLanguage] = useState<'EN' | 'AS' | 'HI'>('EN');
@@ -374,7 +376,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
             </div>
 
             <a
-              href="tel:+919864012345"
+              href={`tel:${settings.supportPhone || '+919864000001'}`}
               className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-stone-100 transition-colors text-slate-800 font-bold"
             >
               <div className="flex items-center gap-3.5">
@@ -383,7 +385,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
                 </div>
                 <div>
                   <span className="block text-sm">24x7 Delivery Support</span>
-                  <p className="text-xs text-stone-400 font-normal">+91 98640 12345</p>
+                  <p className="text-xs text-stone-400 font-normal">{settings.supportPhone || '+91 98640 00001'}</p>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-stone-400" />
@@ -410,10 +412,10 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
           )}
         </div>
 
-        {/* Clean Footer without admin references */}
+        {/* Dynamic Footer */}
         <div className="p-3.5 bg-stone-100 border-t border-stone-200 text-center safe-bottom">
-          <p className="text-xs font-bold text-slate-700">Aajori Cuisine Mobile App</p>
-          <p className="text-xs text-slate-500">Kamrup Metropolitan District, Assam • v2.4.0</p>
+          <p className="text-xs font-bold text-slate-700">{settings.brandName} Mobile App</p>
+          <p className="text-xs text-slate-500">{settings.topBannerDistrict} District, Assam</p>
         </div>
       </div>
     </div>

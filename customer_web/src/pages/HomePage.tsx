@@ -26,6 +26,7 @@ import { Restaurant, MenuItem } from '../types';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { useLocationContext } from '../context/LocationContext';
+import { useSettings } from '../context/SettingsContext';
 import {
   SkeletonRestaurantGrid,
   SkeletonMenuGrid,
@@ -100,6 +101,16 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { addItem, getItemQuantity, updateQuantity, applyCoupon, openCart } = useCart();
   const toast = useToast();
   const { currentLocation } = useLocationContext();
+  const { settings } = useSettings();
+
+  const categories =
+    settings.culinaryCategories && settings.culinaryCategories.length > 0
+      ? settings.culinaryCategories
+      : STORY_CATEGORIES;
+  const promoSlides =
+    settings.heroBanners && settings.heroBanners.length > 0
+      ? settings.heroBanners
+      : MOBILE_PROMO_SLIDES;
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [featuredDishes, setFeaturedDishes] = useState<MenuItem[]>([]);
@@ -244,7 +255,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* 1. Horizontal Circular Category Stories (Native Food Delivery Pattern) */}
       <section className="px-4 stagger-1">
         <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
-          {STORY_CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isSelected = selectedCategory === cat.name;
             return (
               <button
@@ -275,74 +286,86 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* 2. Compact Promotional Hero Banner */}
-      <section className="px-4 stagger-2">
-        <div className="relative rounded-3xl overflow-hidden shadow-sm border border-stone-800">
-          <div
-            className={`p-4 min-h-[160px] flex flex-col justify-between bg-gradient-to-br ${MOBILE_PROMO_SLIDES[currentSlide].bg} text-white relative transition-all duration-500`}
-          >
-            {/* Background image overlay */}
-            <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-35 overflow-hidden pointer-events-none">
-              <img
-                src={MOBILE_PROMO_SLIDES[currentSlide].image}
-                alt=""
-                className="w-full h-full object-cover filter blur-[0.5px] transition-opacity duration-500"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src =
-                    'https://images.unsplash.com/photo-1544025162-d76694265947?w=600';
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-stone-900 to-transparent"></div>
-            </div>
-
-            <div className="relative z-10 space-y-1 max-w-[75%]">
-              <span className="inline-block px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-black uppercase tracking-wider text-amber-300">
-                {MOBILE_PROMO_SLIDES[currentSlide].tag}
-              </span>
-              <h3 className="text-base font-black font-serif-culinary leading-tight">
-                {MOBILE_PROMO_SLIDES[currentSlide].title}
-              </h3>
-              <p className="text-xs text-stone-200 leading-snug line-clamp-1 font-medium">
-                {MOBILE_PROMO_SLIDES[currentSlide].subtitle}
-              </p>
-              <p className="text-[10px] text-amber-300/90 font-bold">
-                {MOBILE_PROMO_SLIDES[currentSlide].condition}
-              </p>
-            </div>
-
-            {/* Bottom promo action */}
-            <div className="relative z-10 flex items-center justify-between pt-2">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleApplyPromo(MOBILE_PROMO_SLIDES[currentSlide].code)}
-                  className="px-3 py-1.5 bg-white text-slate-900 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm btn-press"
+      {promoSlides.length > 0 && (
+        <section className="px-4 stagger-2">
+          {(() => {
+            const activeIdx = Math.min(currentSlide, promoSlides.length - 1);
+            const activeSlide = promoSlides[activeIdx] || promoSlides[0];
+            return (
+              <div className="relative rounded-3xl overflow-hidden shadow-sm border border-stone-800">
+                <div
+                  className={`p-4 min-h-[160px] flex flex-col justify-between bg-gradient-to-br ${
+                    activeSlide.bg || 'from-brand-900 via-stone-900 to-amber-950'
+                  } text-white relative transition-all duration-500`}
                 >
-                  <Tag className="w-3.5 h-3.5 text-brand-600" />
-                  <span>Use {MOBILE_PROMO_SLIDES[currentSlide].code}</span>
-                </button>
-                <Link
-                  to={`/restaurant/${MOBILE_PROMO_SLIDES[currentSlide].restaurantId}`}
-                  className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold btn-press"
-                >
-                  Order
-                </Link>
-              </div>
+                  {/* Background image overlay */}
+                  <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-35 overflow-hidden pointer-events-none">
+                    <img
+                      src={activeSlide.image}
+                      alt=""
+                      className="w-full h-full object-cover filter blur-[0.5px] transition-opacity duration-500"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          'https://images.unsplash.com/photo-1544025162-d76694265947?w=600';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-stone-900 to-transparent"></div>
+                  </div>
 
-              {/* Dots */}
-              <div className="flex gap-1.5">
-                {MOBILE_PROMO_SLIDES.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentSlide(i)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      currentSlide === i ? 'w-5 bg-amber-400' : 'w-1.5 bg-white/40'
-                    }`}
-                  ></button>
-                ))}
+                  <div className="relative z-10 space-y-1 max-w-[75%]">
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                      {activeSlide.tag}
+                    </span>
+                    <h3 className="text-base font-black font-serif-culinary leading-tight">
+                      {activeSlide.title}
+                    </h3>
+                    <p className="text-xs text-stone-200 leading-snug line-clamp-1 font-medium">
+                      {activeSlide.subtitle}
+                    </p>
+                    <p className="text-[10px] text-amber-300/90 font-bold">
+                      {activeSlide.condition}
+                    </p>
+                  </div>
+
+                  {/* Bottom promo action */}
+                  <div className="relative z-10 flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleApplyPromo(activeSlide.code)}
+                        className="px-3 py-1.5 bg-white text-slate-900 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm btn-press"
+                      >
+                        <Tag className="w-3.5 h-3.5 text-brand-600" />
+                        <span>Use {activeSlide.code}</span>
+                      </button>
+                      {activeSlide.restaurantId && (
+                        <Link
+                          to={`/restaurant/${activeSlide.restaurantId}`}
+                          className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold btn-press"
+                        >
+                          Order
+                        </Link>
+                      )}
+                    </div>
+
+                    {/* Dots */}
+                    <div className="flex gap-1.5">
+                      {promoSlides.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentSlide(i)}
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            activeIdx === i ? 'w-5 bg-amber-400' : 'w-1.5 bg-white/40'
+                          }`}
+                        ></button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
+            );
+          })()}
+        </section>
+      )}
 
       {/* 3. Aajori AI Assistant Entry Pill */}
       <section className="px-4 stagger-3">

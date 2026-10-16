@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLocationContext } from '../context/LocationContext';
+import { useSettings } from '../context/SettingsContext';
 
 interface HeaderProps {
   onOpenAiAssistant?: () => void;
@@ -31,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { user, isAuthenticated, logout, openAuthModal, selectedAddress } = useAuth();
   const { totalItems, subtotal, openCart } = useCart();
   const { currentLocation, nearbyLocalities, setLocation } = useLocationContext();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -42,12 +44,10 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="bg-gradient-to-r from-brand-900 via-brand-800 to-amber-900 text-amber-100 text-[11px] py-1 px-4 text-center font-medium flex items-center justify-between">
         <div className="hidden sm:flex items-center gap-2 mx-auto">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>⚡ Hyperlocal Kitchens Live across Kamrup Metropolitan, Guwahati</span>
+          <span>{settings.topAnnouncement}</span>
           <span className="text-amber-400 font-bold">•</span>
-          <span>Use code <strong>AAJORI50</strong> for ₹50 off</span>
+          <span>{settings.promoCodeAnnouncement}</span>
         </div>
-
-
       </div>
 
       {/* Main navigation header */}

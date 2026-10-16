@@ -22,11 +22,13 @@ import {
   Phone,
   Mail,
   Lock,
+  Smartphone,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { SkeletonCards, EmptyState } from '../components/SkeletonLoaders';
 import { MediaUploadInput } from '../components/MediaUploadInput';
+import { MobileDishPreview } from '../components/MobileDishPreview';
 import {
   mergeRestaurants,
   recordCreatedRestaurant,
@@ -100,6 +102,10 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     prepTimeMinutes: 20,
     isAvailable: true,
   });
+
+  // Mobile Customer Review Preview states
+  const [reviewingItem, setReviewingItem] = useState<any | null>(null);
+  const [showModalPreview, setShowModalPreview] = useState(true);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -892,7 +898,15 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                             {item.isAvailable ? 'In Stock' : 'Out of Stock'}
                           </span>
 
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => setReviewingItem(item)}
+                              title="Review Customer Mobile View"
+                              className="px-2 py-1 text-[11px] font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg flex items-center gap-1 border border-brand-200 transition-colors"
+                            >
+                              <Smartphone className="w-3 h-3 text-brand-600" />
+                              <span>Mobile View</span>
+                            </button>
                             <button
                               onClick={() => handleOpenEditItem(item)}
                               title="Edit Dish"
@@ -919,14 +933,33 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
         </div>
       )}
 
-      {/* Add / Edit Menu Item Modal */}
+      {/* Add / Edit Menu Item Modal with Live Mobile Preview */}
       {showItemModal && (
         <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900">
-                {editingItem ? 'Edit Dish' : 'Add New Dish to Menu'}
-              </h3>
+          <div
+            className={`bg-white rounded-3xl w-full shadow-2xl overflow-hidden border border-slate-200 transition-all ${
+              showModalPreview ? 'max-w-4xl' : 'max-w-lg'
+            }`}
+          >
+            {/* Header with Mobile Preview Toggle */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-bold text-slate-900">
+                  {editingItem ? 'Edit Dish' : 'Add New Dish to Menu'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowModalPreview(!showModalPreview)}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all border ${
+                    showModalPreview
+                      ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
+                      : 'bg-stone-100 hover:bg-stone-200 text-slate-700 border-stone-200'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>{showModalPreview ? '📱 Hide Mobile View' : '📱 Show Mobile View'}</span>
+                </button>
+              </div>
               <button
                 onClick={() => setShowItemModal(false)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
@@ -935,108 +968,163 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveItem} className="p-6 space-y-4">
-              {formError && (
-                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
-                  {formError}
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Dish Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={itemFormData.name}
-                  onChange={(e) => setItemFormData({ ...itemFormData, name: e.target.value })}
-                  placeholder="e.g. Traditional Duck Curry with Ash Gourd"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Description</label>
-                <textarea
-                  rows={2}
-                  value={itemFormData.description}
-                  onChange={(e) => setItemFormData({ ...itemFormData, description: e.target.value })}
-                  placeholder="Special spices, preparation style..."
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Price (₹) *</label>
-                  <input
-                    type="number"
-                    min="10"
-                    required
-                    value={itemFormData.price}
-                    onChange={(e) => setItemFormData({ ...itemFormData, price: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
-                  />
-                </div>
+            {/* Split layout: Form on Left, Mobile Preview on Right */}
+            <div className={`p-6 ${showModalPreview ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : ''}`}>
+              {/* Form Container */}
+              <form onSubmit={handleSaveItem} className="space-y-4">
+                {formError && (
+                  <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                    {formError}
+                  </div>
+                )}
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Category</label>
+                  <label className="text-xs font-semibold text-slate-700">Dish Name *</label>
                   <input
                     type="text"
-                    value={itemFormData.categoryName}
-                    onChange={(e) => setItemFormData({ ...itemFormData, categoryName: e.target.value })}
-                    placeholder="Signature Dishes"
+                    required
+                    value={itemFormData.name}
+                    onChange={(e) => setItemFormData({ ...itemFormData, name: e.target.value })}
+                    placeholder="e.g. Traditional Duck Curry with Ash Gourd"
                     className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
                   />
                 </div>
-              </div>
 
-              <MediaUploadInput
-                label="Dish Photograph (Upload File or URL)"
-                value={itemFormData.imageUrl}
-                onChange={(url) => setItemFormData({ ...itemFormData, imageUrl: url })}
-                placeholder="https://..."
-                helperText="Upload appetizing photograph of the prepared dish"
-              />
-
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                  <input
-                    type="checkbox"
-                    checked={itemFormData.isVeg}
-                    onChange={(e) => setItemFormData({ ...itemFormData, isVeg: e.target.checked })}
-                    className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Description</label>
+                  <textarea
+                    rows={2}
+                    value={itemFormData.description}
+                    onChange={(e) => setItemFormData({ ...itemFormData, description: e.target.value })}
+                    placeholder="Special spices, preparation style..."
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
                   />
-                  <span className="text-xs font-semibold text-slate-700">Vegetarian Dish</span>
-                </label>
+                </div>
 
-                <label className="flex items-center gap-2 cursor-pointer bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                  <input
-                    type="checkbox"
-                    checked={itemFormData.isAvailable}
-                    onChange={(e) => setItemFormData({ ...itemFormData, isAvailable: e.target.checked })}
-                    className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Price (₹) *</label>
+                    <input
+                      type="number"
+                      min="10"
+                      required
+                      value={itemFormData.price}
+                      onChange={(e) => setItemFormData({ ...itemFormData, price: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Category</label>
+                    <input
+                      type="text"
+                      value={itemFormData.categoryName}
+                      onChange={(e) => setItemFormData({ ...itemFormData, categoryName: e.target.value })}
+                      placeholder="Signature Dishes"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+                </div>
+
+                <MediaUploadInput
+                  label="Dish Photograph (Upload File or URL)"
+                  value={itemFormData.imageUrl}
+                  onChange={(url) => setItemFormData({ ...itemFormData, imageUrl: url })}
+                  placeholder="https://..."
+                  helperText="Upload appetizing photograph of the prepared dish"
+                />
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={itemFormData.isVeg}
+                      onChange={(e) => setItemFormData({ ...itemFormData, isVeg: e.target.checked })}
+                      className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"
+                    />
+                    <span className="text-xs font-semibold text-slate-700">Vegetarian Dish</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={itemFormData.isAvailable}
+                      onChange={(e) => setItemFormData({ ...itemFormData, isAvailable: e.target.checked })}
+                      className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"
+                    />
+                    <span className="text-xs font-semibold text-slate-700">In Stock</span>
+                  </label>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowItemModal(false)}
+                    className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-brand-600/20 disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Add to Menu'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Live Mobile Review on Right Side */}
+              {showModalPreview && (
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex flex-col items-center justify-center">
+                  <div className="text-[11px] font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                    <Smartphone className="w-3.5 h-3.5 text-brand-600" />
+                    <span>Real-Time Customer Mobile Interface</span>
+                  </div>
+                  <MobileDishPreview
+                    item={itemFormData}
+                    restaurantName={selectedRestaurantMenu?.restaurant?.name || 'Aajori Kitchens'}
                   />
-                  <span className="text-xs font-semibold text-slate-700">In Stock</span>
-                </label>
-              </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowItemModal(false)}
-                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-brand-600/20 disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Add to Menu'}
-                </button>
+      {/* Standalone Mobile Review Modal for Any Existing Dish */}
+      {reviewingItem && (
+        <div className="fixed inset-0 z-[70] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 border border-slate-200 flex flex-col items-center">
+            <div className="w-full flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <h4 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-brand-600" />
+                  Mobile Customer View
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Live simulation of customer smartphone interface
+                </p>
               </div>
-            </form>
+              <button
+                onClick={() => setReviewingItem(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <MobileDishPreview
+              item={reviewingItem}
+              restaurantName={selectedRestaurantMenu?.restaurant?.name || 'Aajori Restaurant'}
+            />
+
+            <button
+              onClick={() => setReviewingItem(null)}
+              className="mt-4 px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
+            >
+              Close Preview
+            </button>
           </div>
         </div>
       )}
