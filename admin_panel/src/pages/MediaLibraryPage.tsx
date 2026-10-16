@@ -13,7 +13,6 @@ import {
   FileImage,
   AlertCircle,
   Loader2,
-  HardDrive,
   Cloud,
 } from 'lucide-react';
 import { listMedia, uploadMedia, deleteMedia, MediaItem } from '../services/media.service';
@@ -30,16 +29,19 @@ export const MediaLibraryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
-  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   const loadMedia = async () => {
     setIsLoading(true);
     try {
       const res = await listMedia();
-      setMediaList(res.files);
-      setIsOfflineMode(Boolean(res.isOffline));
-    } catch {
-      toast.error('Load Error', 'Failed to retrieve media library assets');
+      if (res.success) {
+        setMediaList(res.files);
+      } else if (res.error) {
+        toast.error('Media Storage', res.error);
+        setMediaList([]);
+      }
+    } catch (e: any) {
+      toast.error('Load Error', e?.message || 'Failed to retrieve media library assets');
     } finally {
       setIsLoading(false);
     }
@@ -64,15 +66,17 @@ export const MediaLibraryPage: React.FC = () => {
         const res = await uploadMedia(file);
         if (res.success && res.data) {
           successCount++;
+        } else {
+          toast.error('Upload Failed', res.error || `Could not upload ${file.name}`);
         }
       } catch (err: any) {
-        console.error('Upload error:', err);
+        toast.error('Upload Error', err?.message || `Could not upload ${file.name}`);
       }
     }
 
     setIsUploading(false);
     if (successCount > 0) {
-      toast.success('Media Uploaded', `${successCount} asset(s) uploaded successfully!`);
+      toast.success('Media Uploaded', `${successCount} asset(s) uploaded to server!`);
       loadMedia();
     }
   };
@@ -207,7 +211,7 @@ export const MediaLibraryPage: React.FC = () => {
           </div>
           <div>
             <p className="font-bold">
-              Storage Provider: <span className="text-amber-400 font-mono">PHP Media Storage</span>
+              Storage Provider: <span className="text-amber-400 font-mono">PHP Media Storage API</span>
             </p>
             <p className="text-slate-400 text-[11px]">
               https://storage.tiwaautonomouscouncil.in/media.php
@@ -216,18 +220,11 @@ export const MediaLibraryPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {isOfflineMode ? (
-            <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 flex items-center gap-1.5">
-              <HardDrive className="w-3.5 h-3.5" />
-              <span>Local Storage Mode (Restricted Network)</span>
-            </span>
-          ) : (
-            <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Cloud Storage Active</span>
-            </span>
-          )}
-          <span className="text-slate-400 font-medium">({mediaList.length} assets)</span>
+          <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Server Endpoint Active</span>
+          </span>
+          <span className="text-slate-400 font-medium">({mediaList.length} assets on server)</span>
         </div>
       </div>
 
@@ -314,15 +311,9 @@ export const MediaLibraryPage: React.FC = () => {
 
                 {/* Storage badge */}
                 <div className="absolute top-2 left-2">
-                  {item.isLocalFallback ? (
-                    <span className="px-2 py-0.5 rounded-md bg-amber-500/90 text-white text-[10px] font-bold">
-                      Local
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-600/90 text-white text-[10px] font-bold">
-                      Cloud
-                    </span>
-                  )}
+                  <span className="px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-sm text-emerald-400 text-[10px] font-bold border border-white/10">
+                    Server Asset
+                  </span>
                 </div>
               </div>
 

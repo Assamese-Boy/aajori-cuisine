@@ -40,13 +40,9 @@ export const MediaUploadInput: React.FC<MediaUploadInputProps> = ({
       const result = await uploadMedia(file);
       if (result.success && result.data) {
         onChange(result.data.url);
-        if (result.isLocalFallback) {
-          toast.success('Image Attached', `${file.name} saved (Local storage mode)`);
-        } else {
-          toast.success('Media Uploaded', `${file.name} uploaded to Cloud Storage!`);
-        }
+        toast.success('Media Uploaded', `${file.name} uploaded to storage server successfully!`);
       } else {
-        toast.error('Upload Failed', result.error || 'Could not upload media');
+        toast.error('Upload Failed', result.error || 'Could not upload media to storage server');
       }
     } catch (err: any) {
       toast.error('Upload Error', err.message || 'Error processing file');
