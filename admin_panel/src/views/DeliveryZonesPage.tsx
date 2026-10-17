@@ -36,7 +36,7 @@ export const DeliveryZonesPage: React.FC = () => {
   const [form, setForm] = useState({
     id: '',
     name: '',
-    district: 'Kamrup Metropolitan',
+    district: 'Primary Operating Zone',
     baseFee: 25,
     baseDistanceKm: 3,
     perKmFee: 8,
@@ -51,12 +51,12 @@ export const DeliveryZonesPage: React.FC = () => {
       if (res.success && Array.isArray(res.data) && res.data.length > 0) {
         setZones(res.data);
       } else {
-        // Fallback default Guwahati operational zones
+        // Fallback default operational zones
         setZones([
           {
             id: 'zone-1',
-            name: 'Guwahati Central (Beltola, Dispur, Khanapara)',
-            district: 'Kamrup Metropolitan',
+            name: 'Central Urban Core (Downtown / Business District)',
+            district: 'Central Zone',
             baseFee: 20,
             baseDistanceKm: 3,
             perKmFee: 7.5,
@@ -65,8 +65,8 @@ export const DeliveryZonesPage: React.FC = () => {
           },
           {
             id: 'zone-2',
-            name: 'North-Central (Uzan Bazar, Panbazar, Chandmari)',
-            district: 'Kamrup Metropolitan',
+            name: 'North Sector & Residential Suburbs',
+            district: 'North Zone',
             baseFee: 25,
             baseDistanceKm: 3,
             perKmFee: 8,
@@ -75,8 +75,8 @@ export const DeliveryZonesPage: React.FC = () => {
           },
           {
             id: 'zone-3',
-            name: 'West Guwahati (Jalukbari, Maligaon, Borjhar)',
-            district: 'Kamrup Metropolitan',
+            name: 'West Sector & Logistics Corridor',
+            district: 'West Zone',
             baseFee: 30,
             baseDistanceKm: 4,
             perKmFee: 9,
@@ -85,8 +85,8 @@ export const DeliveryZonesPage: React.FC = () => {
           },
           {
             id: 'zone-4',
-            name: 'South Guwahati (Hatigaon, Kahilipara, Lokhra)',
-            district: 'Kamrup Metropolitan',
+            name: 'South Sector & Metropolitan Belt',
+            district: 'South Zone',
             baseFee: 25,
             baseDistanceKm: 3,
             perKmFee: 8,
@@ -134,7 +134,7 @@ export const DeliveryZonesPage: React.FC = () => {
         setForm({
           id: '',
           name: '',
-          district: 'Kamrup Metropolitan',
+          district: 'Primary Operating Zone',
           baseFee: 25,
           baseDistanceKm: 3,
           perKmFee: 8,
@@ -185,7 +185,7 @@ export const DeliveryZonesPage: React.FC = () => {
             setForm({
               id: '',
               name: '',
-              district: 'Kamrup Metropolitan',
+              district: 'Primary Operating Zone',
               baseFee: 25,
               baseDistanceKm: 3,
               perKmFee: 8,
@@ -204,9 +204,9 @@ export const DeliveryZonesPage: React.FC = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Primary District</span>
-          <div className="text-xl font-bold text-slate-900 mt-1">Kamrup Metro</div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Guwahati Municipal Corp</p>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Operational Scope</span>
+          <div className="text-xl font-bold text-slate-900 mt-1">Global Worldwide</div>
+          <p className="text-[11px] text-slate-400 mt-0.5">Multi-Region & Localized Delivery</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Zones</span>

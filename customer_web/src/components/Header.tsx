@@ -12,11 +12,14 @@ import {
   Package,
   Home,
   Shield,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLocationContext } from '../context/LocationContext';
 import { useSettings } from '../context/SettingsContext';
+import { useNotifications } from '../context/NotificationContext';
+import { NotificationDrawer } from './NotificationDrawer';
 
 interface HeaderProps {
   onOpenAiAssistant?: () => void;
@@ -33,10 +36,12 @@ export const Header: React.FC<HeaderProps> = ({
   const { totalItems, subtotal, openCart } = useCart();
   const { currentLocation, nearbyLocalities, setLocation } = useLocationContext();
   const { settings } = useSettings();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   const formatHeaderLocation = (raw?: string): string => {
     if (!raw) return 'Select Location';
@@ -161,6 +166,20 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
+          {/* Real-time Order Notification Bell */}
+          <button
+            onClick={() => setIsNotifOpen(true)}
+            className="flex items-center justify-center w-9 h-9 rounded-xl bg-stone-100 hover:bg-stone-200 text-slate-700 transition-colors relative cursor-pointer"
+            title="Live Notifications"
+          >
+            <Bell className="w-4 h-4 text-slate-700" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-brand-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse shadow-xs">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
           {/* Cart Floating Pill */}
           <button
             onClick={openCart}
@@ -253,6 +272,12 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Real-time Order Notification Drawer */}
+      <NotificationDrawer
+        isOpen={isNotifOpen}
+        onClose={() => setIsNotifOpen(false)}
+      />
     </header>
   );
 };

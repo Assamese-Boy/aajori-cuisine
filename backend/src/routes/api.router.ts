@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { authService } from '../modules/auth/auth.service';
 import { authenticate, optionalAuthenticate, requireRole, AuthenticatedRequest } from '../modules/auth/auth.middleware';
 import { restaurantService } from '../modules/restaurants/restaurant.service';
@@ -10,6 +11,7 @@ import { aiFoodAssistantService } from '../modules/ai/ai.service';
 import { mcpServerService } from '../modules/mcp/mcp.service';
 import { whatsAppOrderingService } from '../modules/whatsapp/whatsapp.service';
 import { whatsAppClientService } from '../modules/whatsapp/whatsapp-client.service';
+import { notificationService } from '../modules/notifications/notification.service';
 import { env } from '../config/env';
 import { adminOperationsService } from '../modules/admin/admin.service';
 import { settingsService } from '../modules/admin/settings.service';
@@ -128,7 +130,7 @@ apiRouter.get('/addresses', authenticate, async (req: AuthenticatedRequest, res:
 
 apiRouter.post('/addresses', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { label, addressLine1, addressLine2, landmark, city, postalCode, latitude, longitude } = req.body;
+    const { label, addressLine1, addressLine2, landmark, city, district, state, country, postalCode, latitude, longitude } = req.body;
     const newAddress = {
       id: `addr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       customerId: req.user!.id,
@@ -136,10 +138,12 @@ apiRouter.post('/addresses', authenticate, async (req: AuthenticatedRequest, res
       addressLine1,
       addressLine2,
       landmark,
-      city: city || 'Guwahati',
-      district: 'Kamrup Metropolitan',
-      postalCode: postalCode || '781001',
-      location: { latitude: Number(latitude || 26.182), longitude: Number(longitude || 91.751) },
+      city: city || '',
+      district: district || city || '',
+      state: state || '',
+      country: country || '',
+      postalCode: postalCode || '',
+      location: { latitude: Number(latitude || 0), longitude: Number(longitude || 0) },
       isDefault: true,
     };
     db.customerAddresses.set(newAddress.id, newAddress);
@@ -848,9 +852,12 @@ apiRouter.post('/admin/delivery-zones', authenticate, requireRole('SUPER_ADMIN',
     const id = req.body.id || uuidv4();
     const zone: DeliveryZone = {
       id,
-      name: name || 'Kamrup Metropolitan Operational Zone',
-      district: district || 'Kamrup Metropolitan',
-      centerPoint: { latitude: 26.16, longitude: 91.77 },
+      name: name || 'Primary Operational Delivery Zone',
+      district: district || 'Central Operating Region',
+      centerPoint: {
+        latitude: Number(req.body.latitude ?? req.body.centerPoint?.latitude ?? 0),
+        longitude: Number(req.body.longitude ?? req.body.centerPoint?.longitude ?? 0),
+      },
       baseFee: Number(baseFee ?? 20),
       baseDistanceKm: Number(baseDistanceKm ?? 3),
       perKmFee: Number(perKmFee ?? 7.5),
@@ -1055,4 +1062,93 @@ apiRouter.put('/admin/settings', authenticate, requireRole('SUPER_ADMIN', 'ADMIN
     next(err);
   }
 });
+
+// ============================================================================
+// REAL-TIME NOTIFICATIONS & WEB PUSH (SSE & W3C PUSH)
+// ============================================================================
+
+// 1. SSE Live Notification Stream for both Admin and Customer Web
+apiRouter.get('/notifications/stream', (req: Request, res: Response) => {
+  let userId: string | undefined = (req.query.userId as string) || undefined;
+  let role: string | undefined = (req.query.role as string) || undefined;
+  const token = (req.query.token as string) || (req.headers.authorization ? req.headers.authorization.replace('Bearer ', '') : undefined);
+
+  if (token) {
+    try {
+      const decoded: any = jwt.verify(token, env.JWT_SECRET);
+      if (decoded) {
+        userId = decoded.sub || userId;
+        role = decoded.role || role;
+      }
+    } catch (_) {}
+  }
+
+  const clientId = `sse_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  notificationService.addSseClient(clientId, res, userId, role);
+});
+
+// 2. Fetch VAPID Public Key for Client PushManager Registration
+apiRouter.get('/notifications/vapid-public-key', (req: Request, res: Response) => {
+  const publicKey = notificationService.getVapidPublicKey();
+  res.json({ success: true, data: { publicKey } });
+});
+
+// 3. Register Web Push Subscription
+apiRouter.post('/notifications/subscribe', (req: Request, res: Response) => {
+  const { subscription, userId, role } = req.body;
+  const sub = notificationService.registerPushSubscription({
+    subscription,
+    userId,
+    role,
+  });
+  res.json({ success: true, data: sub });
+});
+
+// 3. Get Notifications List & Unread Count
+apiRouter.get('/notifications', optionalAuthenticate, (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id || (req.query.userId as string);
+  const role = req.user?.role || (req.query.role as string);
+  const limit = req.query.limit ? Number(req.query.limit) : 50;
+
+  const notifications = notificationService.getNotifications(userId, role, limit);
+  const unreadCount = notificationService.getUnreadCount(userId, role);
+
+  res.json({
+    success: true,
+    data: {
+      notifications,
+      unreadCount,
+    },
+  });
+});
+
+// 4. Mark Single Notification as Read
+apiRouter.patch('/notifications/:id/read', (req: Request, res: Response) => {
+  const success = notificationService.markAsRead(req.params.id);
+  res.json({ success });
+});
+
+// 5. Mark All Notifications as Read
+apiRouter.post('/notifications/mark-all-read', optionalAuthenticate, (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id || req.body.userId;
+  const role = req.user?.role || req.body.role;
+  const count = notificationService.markAllAsRead(userId, role);
+  res.json({ success: true, count });
+});
+
+// 6. Test Web Push Notification Dispatch
+apiRouter.post('/notifications/test', async (req: Request, res: Response) => {
+  const { targetRole = 'ALL', targetUserId, title, message } = req.body;
+  const notif = await notificationService.dispatch(
+    targetUserId,
+    'TEST_NOTIFICATION',
+    title || '🔔 Test Web Push Notification',
+    message || 'Live real-time alert verified from Aajori Cuisine platform.',
+    { timestamp: Date.now() },
+    ['PUSH', 'IN_APP'],
+    targetRole
+  );
+  res.json({ success: true, data: notif });
+});
+
 

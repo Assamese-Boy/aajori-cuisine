@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useOutletContext } from '../utils/router-compat';
 import {
   ShoppingBag,
@@ -42,6 +42,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = (props) => {
 
   const [selectedLocality, setSelectedLocality] = useState<string>('ALL');
 
+  const availableLocalities = useMemo(() => {
+    const set = new Set<string>();
+    orders.forEach((o: any) => {
+      const loc = o.deliveryAddress?.city || o.deliveryAddress?.landmark || o.deliveryAddress?.addressLine1;
+      if (loc && typeof loc === 'string' && loc.trim().length > 0) {
+        set.add(loc.trim().split(',')[0]);
+      }
+    });
+    return ['ALL', ...Array.from(set).slice(0, 4)];
+  }, [orders]);
+
   const handleManageOrder = (orderId: string) => {
     if (props.onViewOrder) {
       props.onViewOrder(orderId);
@@ -56,7 +67,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Operational Overview</h2>
           <p className="text-sm text-slate-500">
-            Real-time telemetry and commercial health for Kamrup Metropolitan District
+            Real-time telemetry and commercial health across all operational zones
           </p>
         </div>
         <SkeletonMetrics />
@@ -87,7 +98,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     {
       title: 'Active Fleet / Online Riders',
       value: `${metrics?.onlineDeliveryPartners ?? 0} / ${metrics?.totalDeliveryPartners ?? 0}`,
-      sub: 'PostGIS active in Kamrup Metro',
+      sub: 'PostGIS GPS fleet active',
       icon: Bike,
       color: 'text-blue-600',
       bg: 'bg-blue-50 border-blue-200',
@@ -117,25 +128,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Operational Overview</h2>
           <p className="text-sm text-slate-500">
-            Authoritative district telemetry, verified accounting & live food order lifecycle (Kamrup Metro)
+            Authoritative fleet telemetry, verified accounting & live food order lifecycle
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 text-xs font-semibold shadow-2xs">
-            <span className="text-slate-400 pl-2">Filter:</span>
-            {['ALL', 'Ulubari', 'Silpukhuri', 'Uzan Bazar'].map((loc) => (
-              <button
-                key={loc}
-                onClick={() => setSelectedLocality(loc)}
-                className={`px-2.5 py-1 rounded-lg transition-colors ${
-                  selectedLocality === loc ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {loc}
-              </button>
-            ))}
-          </div>
+          {availableLocalities.length > 1 && (
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 text-xs font-semibold shadow-2xs">
+              <span className="text-slate-400 pl-2">Filter:</span>
+              {availableLocalities.map((loc) => (
+                <button
+                  key={loc}
+                  onClick={() => setSelectedLocality(loc)}
+                  className={`px-2.5 py-1 rounded-lg transition-colors ${
+                    selectedLocality === loc ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {loc}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-xs text-slate-600 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs shrink-0 font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>

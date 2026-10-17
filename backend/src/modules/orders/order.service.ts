@@ -127,15 +127,39 @@ export class OrderService {
       createdAt: new Date().toISOString(),
     });
 
-    // 7. Dispatch order creation notification across all channels (including WhatsApp)
+    // 7. Dispatch order creation notification across all channels (including Web Push & WhatsApp)
+    // 7a. Notify Customer
     notificationService.dispatch(
       customer.id,
       'ORDER_CREATED',
-      'Order Placed Successfully!',
+      'Order Placed Successfully! 🍲',
       `Your order #${orderNumber} has been received. Total: ₹${newOrder.pricing.totalCustomerPrice}. Waiting for restaurant confirmation.`,
-      { orderId, orderNumber },
-      ['PUSH', 'IN_APP', 'WHATSAPP']
+      { orderId, orderNumber, total: newOrder.pricing.totalCustomerPrice },
+      ['PUSH', 'IN_APP', 'WHATSAPP'],
+      'CUSTOMER'
     ).catch((err) => console.error('[Order Created Notification Error]', err));
+
+    // 7b. Notify Admin and Restaurant Operations
+    const itemsSummary = newOrder.items.map((i) => `${i.quantity}x ${i.name}`).join(', ');
+    notificationService.dispatch(
+      undefined,
+      'NEW_ORDER_RECEIVED',
+      `🚨 New Order Received #${orderNumber}`,
+      `Order from ${customer.fullName} (${customer.phone}) • Total: ₹${newOrder.pricing.totalCustomerPrice} • ${itemsSummary}`,
+      {
+        orderId,
+        orderNumber,
+        customerId: customer.id,
+        customerName: customer.fullName,
+        customerPhone: customer.phone,
+        total: newOrder.pricing.totalCustomerPrice,
+        itemsCount: newOrder.items.length,
+        itemsSummary,
+        restaurantId: input.restaurantId,
+      },
+      ['PUSH', 'IN_APP'],
+      'ADMIN'
+    ).catch((err) => console.error('[Admin Order Notification Error]', err));
 
     return newOrder;
   }
@@ -236,14 +260,27 @@ export class OrderService {
 
     const notifInfo = eventMap[toStatus];
     if (notifInfo) {
+      // Notify customer
       notificationService.dispatch(
         order.customerId,
         notifInfo.event,
         notifInfo.title,
         notifInfo.message,
         { orderId: order.id, orderNumber: order.orderNumber, status: toStatus },
-        ['PUSH', 'IN_APP', 'WHATSAPP']
+        ['PUSH', 'IN_APP', 'WHATSAPP'],
+        'CUSTOMER'
       ).catch((err) => console.error('[Order Transition Notification Error]', err));
+
+      // Also notify operations / admin
+      notificationService.dispatch(
+        undefined,
+        notifInfo.event,
+        `Order #${order.orderNumber}: ${toStatus}`,
+        `Order #${order.orderNumber} transitioned to ${toStatus}${actor ? ` by ${actor.fullName}` : ''}.`,
+        { orderId: order.id, orderNumber: order.orderNumber, status: toStatus, actorId: actor?.id },
+        ['PUSH', 'IN_APP'],
+        'ADMIN'
+      ).catch((err) => console.error('[Admin Order Transition Notification Error]', err));
     }
 
     return order;

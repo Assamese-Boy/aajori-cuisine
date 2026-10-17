@@ -170,7 +170,7 @@ export const CartPage: React.FC = () => {
               <h3 className="font-black text-slate-900 text-xs truncate leading-tight">
                 {restaurantName}
               </h3>
-              <p className="text-[11px] text-slate-500 font-medium">Kamrup Metropolitan Service Area</p>
+              <p className="text-[11px] text-slate-500 font-medium">Express Food Delivery</p>
             </div>
           </div>
 
@@ -317,7 +317,7 @@ export const CartPage: React.FC = () => {
               <span className="font-bold text-slate-900">₹{subtotal}</span>
             </div>
             <div className="flex justify-between">
-              <span>Delivery Fee (Kamrup Metro)</span>
+              <span>Delivery Fee</span>
               <span className="font-bold text-slate-900">₹{deliveryFee}</span>
             </div>
             <div className="flex justify-between">

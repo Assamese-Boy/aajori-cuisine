@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req: Request, res: Response) => {
   res.json({
     platform: 'Aajori Cuisine API',
-    district: 'Kamrup Metropolitan, Assam, India',
+    scope: 'Worldwide Multi-Region Food Commerce Platform',
     version: '1.0.0',
     status: 'OPERATIONAL',
     whatsappWebhookEndpoints: [

@@ -65,10 +65,10 @@ export const SettingsPage: React.FC = () => {
 
   const [settings, setSettings] = useState<AppSettings>({
     brandName: 'Aajori Cuisine',
-    tagline: 'Heritage Flavors of Assam',
-    topBannerDistrict: 'Kamrup Metropolitan',
+    tagline: 'Artisan Food & Gourmet Flavors',
+    topBannerDistrict: 'Worldwide Kitchens',
     topBannerTag: '⚡ 25 Mins Express',
-    topAnnouncement: '⚡ Hyperlocal Kitchens Live across Kamrup Metropolitan, Guwahati',
+    topAnnouncement: '⚡ Fresh Artisan Kitchens & Express Delivery Worldwide',
     promoCodeAnnouncement: 'Use code AAJORI50 for ₹50 off',
     supportPhone: '+91 98640 00001',
     supportEmail: 'support@aajori.in',
@@ -297,7 +297,7 @@ export const SettingsPage: React.FC = () => {
                   value={settings.topBannerDistrict}
                   onChange={(e) => setSettings({ ...settings, topBannerDistrict: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
-                  placeholder="e.g. Kamrup Metropolitan"
+                  placeholder="e.g. Worldwide Kitchens or Metro Central"
                 />
                 <p className="text-[10px] text-slate-400">
                   Displayed in mobile top bar and live delivery telemetry
@@ -327,7 +327,7 @@ export const SettingsPage: React.FC = () => {
                   value={settings.topAnnouncement}
                   onChange={(e) => setSettings({ ...settings, topAnnouncement: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
-                  placeholder="⚡ Hyperlocal Kitchens Live across Kamrup Metropolitan, Guwahati"
+                  placeholder="⚡ Fresh Artisan Kitchens & Express Delivery Worldwide"
                 />
               </div>
 

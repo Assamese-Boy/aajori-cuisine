@@ -37,12 +37,26 @@ interface LiveMapInnerProps {
 }
 
 export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
-  const guwahatiCenter: [number, number] = [26.16, 91.765];
+  const mapCenter: [number, number] = React.useMemo(() => {
+    if (mapData?.restaurants?.length > 0) {
+      const r = mapData.restaurants[0];
+      const lat = r.address?.location?.latitude ?? r.location?.latitude;
+      const lng = r.address?.location?.longitude ?? r.location?.longitude;
+      if (lat && lng) return [lat, lng];
+    }
+    if (mapData?.zones?.length > 0) {
+      const z = mapData.zones[0];
+      const lat = z.centerPoint?.latitude ?? z.center?.latitude;
+      const lng = z.centerPoint?.longitude ?? z.center?.longitude;
+      if (lat && lng) return [lat, lng];
+    }
+    return [20.5937, 78.9629];
+  }, [mapData]);
 
   return (
     <MapContainer
-      center={guwahatiCenter}
-      zoom={13}
+      center={mapCenter}
+      zoom={mapData?.restaurants?.length > 0 ? 13 : 4}
       style={{ height: '100%', width: '100%' }}
       scrollWheelZoom={true}
     >
@@ -151,7 +165,7 @@ export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
             <Popup>
               <div className="p-1 space-y-1 text-xs">
                 <p className="font-bold font-mono text-slate-900">{ord.orderNumber || ord.id}</p>
-                <p className="text-slate-600">{ord.deliveryAddress?.addressLine1 || 'Kamrup Metro'}</p>
+                <p className="text-slate-600">{ord.deliveryAddress?.addressLine1 || ord.deliveryAddress?.city || 'Customer Delivery Address'}</p>
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
                   <span className="font-semibold text-emerald-700">{ord.status || 'ACTIVE'}</span>
                   <span className="font-mono font-bold">₹{ord.pricing?.totalCustomerPrice ?? 0}</span>

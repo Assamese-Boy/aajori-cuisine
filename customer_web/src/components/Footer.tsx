@@ -15,13 +15,13 @@ export const Footer: React.FC = () => {
                   Aajori Cuisine
                 </span>
                 <span className="block text-[10px] text-brand-400 font-semibold tracking-wider uppercase">
-                  Assam Food Commerce
+                  Global Food Commerce
                 </span>
               </div>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              District-scale food commerce infrastructure preserving and delivering authentic Assamese
-              culinary heritage across Guwahati, Kamrup Metropolitan.
+              Modern food commerce infrastructure preserving and delivering authentic culinary heritage
+              and fresh artisanal dishes right to your doorstep worldwide.
             </p>
             <div className="flex items-center gap-2 text-[11px] text-amber-300 bg-amber-950/40 border border-amber-800/40 px-3 py-1.5 rounded-xl w-fit">
               <Award className="w-3.5 h-3.5" />
@@ -93,11 +93,11 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="mt-12 pt-8 border-t border-slate-900 text-center flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
-          <p>© {new Date().getFullYear()} Aajori Cuisine. District-Scale Local Commerce for Assam.</p>
+          <p>© {new Date().getFullYear()} Aajori Cuisine. Worldwide Food Commerce Platform.</p>
           <div className="flex items-center gap-1">
             <span>Crafted with</span>
             <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
-            <span>for Guwahati & Assam</span>
+            <span>Worldwide Delivery</span>
           </div>
         </div>
       </div>

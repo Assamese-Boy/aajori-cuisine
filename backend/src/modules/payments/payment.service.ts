@@ -71,7 +71,7 @@ export class PaymentService {
         amountInPaise: Math.round(order.pricing.totalCustomerPrice * 100),
         orderNumber: order.orderNumber,
         notes: {
-          district: 'Kamrup Metropolitan',
+          district: order.deliveryAddress?.district || order.deliveryAddress?.city || 'Worldwide',
         },
       },
     };

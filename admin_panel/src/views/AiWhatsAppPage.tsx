@@ -19,7 +19,7 @@ export const AiWhatsAppPage: React.FC = () => {
   const [whatsAppHistory, setWhatsAppHistory] = useState<WhatsAppHistoryItem[]>([
     {
       sender: 'bot',
-      text: '👋 *Welcome to Aajori Cuisine!* Hyperlocal food delivery for Kamrup.\nType *Menu* or ask e.g. "Duck curry under ₹400"!',
+      text: '👋 *Welcome to Aajori Cuisine!* Fresh gourmet food delivery at your fingertips worldwide.\nType *Menu* or ask e.g. "Gourmet pasta under ₹400"!',
       time: '12:00 PM',
       buttons: [
         { id: 'btn_menu', title: 'Browse Restaurants' },

@@ -40,10 +40,10 @@ const SETTINGS_FILE_PATH = path.join(__dirname, '../../data/app-settings.json');
 
 const DEFAULT_SETTINGS: AppSettings = {
   brandName: 'Aajori Cuisine',
-  tagline: 'Heritage Flavors of Assam',
-  topBannerDistrict: 'Kamrup Metropolitan',
+  tagline: 'Artisan Food & Gourmet Flavors',
+  topBannerDistrict: 'Worldwide Kitchens',
   topBannerTag: '⚡ 25 Mins Express',
-  topAnnouncement: '⚡ Hyperlocal Kitchens Live across Kamrup Metropolitan, Guwahati',
+  topAnnouncement: '⚡ Fresh Artisan Kitchens & Express Delivery Worldwide',
   promoCodeAnnouncement: 'Use code AAJORI50 for ₹50 off',
   supportPhone: '+91 98640 00001',
   supportEmail: 'support@aajori.in',

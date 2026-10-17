@@ -259,7 +259,7 @@ export const CheckoutPage: React.FC = () => {
                 {selectedAddress.landmark ? `, Near ${selectedAddress.landmark}` : ''}
               </p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                {selectedAddress.city}, Kamrup Metro - {selectedAddress.postalCode}
+                {[selectedAddress.city, selectedAddress.district, selectedAddress.postalCode].filter(Boolean).join(', ')}
               </p>
             </div>
           ) : (

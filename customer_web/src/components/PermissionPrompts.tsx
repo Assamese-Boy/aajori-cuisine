@@ -144,8 +144,8 @@ export const PermissionPrompts: React.FC<PermissionPromptsProps> = ({
               Enable Device Location
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Allow Aajori to access your location to find nearby authentic kitchens in Kamrup
-              Metropolitan and calculate precise 25-minute delivery routes.
+              Allow Aajori to access your location to find nearby authentic kitchens
+              and calculate precise delivery routes worldwide.
             </p>
           </div>
 

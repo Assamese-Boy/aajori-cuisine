@@ -43,7 +43,7 @@ export const LiveMapPage: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Live GIS Operations Map</h2>
           <p className="text-sm text-slate-500">
-            Real-time geospatial fleet tracking, restaurant nodes & active deliveries (Kamrup Metro)
+            Real-time geospatial fleet tracking, restaurant nodes & active deliveries worldwide
           </p>
         </div>
 

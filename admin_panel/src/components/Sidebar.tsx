@@ -23,7 +23,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ appSettings }) => {
-  const districtName = appSettings?.topBannerDistrict || 'Kamrup Metro';
+  const districtName = appSettings?.topBannerDistrict || 'Worldwide Operations';
   const brandName = appSettings?.brandName || 'Aajori Cuisine';
 
   const navItems = [
@@ -58,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ appSettings }) => {
       <div className="px-4 py-3 bg-slate-950/60 border-b border-slate-800/80 flex items-center justify-between text-xs">
         <span className="text-slate-400 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          District Live
+          Operations Live
         </span>
         <span className="text-slate-300 font-mono font-medium truncate max-w-[120px]">{districtName}</span>
       </div>
@@ -95,8 +95,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ appSettings }) => {
           <span className="text-emerald-400 font-medium">Operational</span>
         </div>
         <div className="flex items-center justify-between">
-          <span>District Control</span>
-          <span className="text-slate-300 font-mono">Kamrup Metro</span>
+          <span>Operational Scope</span>
+          <span className="text-slate-300 font-mono">Worldwide</span>
         </div>
       </div>
     </aside>

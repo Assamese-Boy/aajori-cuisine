@@ -418,7 +418,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               No restaurants matching &ldquo;{selectedCategory}&rdquo; in this area
             </p>
             <p className="text-xs text-slate-500">
-              Try exploring all cuisines or selecting another Guwahati locality.
+              Try exploring all cuisines or clearing the category filter.
             </p>
             <button
               onClick={() => setSelectedCategory('All')}
@@ -662,7 +662,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </span>
             <h4 className="text-xs font-black text-slate-900">Coupon BIHU20</h4>
             <p className="text-[10px] text-slate-500 font-medium leading-tight">
-              Up to ₹100 OFF on orders above ₹300 across Guwahati kitchens.
+              Up to ₹100 OFF on orders above ₹300 across partner kitchens.
             </p>
             <button
               onClick={() => handleApplyPromo('BIHU20')}
@@ -674,19 +674,19 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
-      {/* 7. DISCOVERY SECTION 4: Trending in Guwahati Metro */}
+      {/* 7. DISCOVERY SECTION 4: Trending Dishes */}
       <section className="px-4 space-y-3 pt-2">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4.5 h-4.5 text-purple-600" />
           <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-            Trending in Guwahati
+            Trending Dishes Right Now
           </h2>
         </div>
 
         <div className="p-3.5 bg-white rounded-2xl border border-stone-200/90 shadow-2xs flex items-center justify-between gap-3">
           <div className="space-y-0.5">
             <h4 className="text-xs font-black text-slate-900">Smoked Pork with Khorisa (Bamboo Shoot)</h4>
-            <p className="text-[11px] text-slate-500 font-medium">Over 140+ plates ordered this week across Kamrup Metro</p>
+            <p className="text-[11px] text-slate-500 font-medium">Over 140+ plates ordered this week in your area</p>
           </div>
           <Link
             to="/restaurant/d0000000-0000-0000-0000-000000000001"

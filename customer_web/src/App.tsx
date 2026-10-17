@@ -107,6 +107,8 @@ export const AppContent: React.FC = () => {
   );
 };
 
+import { NotificationProvider } from './context/NotificationContext';
+
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
@@ -114,9 +116,11 @@ export const App: React.FC = () => {
         <SettingsProvider>
           <LocationProvider>
             <AuthProvider>
-              <CartProvider>
-                <AppContent />
-              </CartProvider>
+              <NotificationProvider>
+                <CartProvider>
+                  <AppContent />
+                </CartProvider>
+              </NotificationProvider>
             </AuthProvider>
           </LocationProvider>
         </SettingsProvider>

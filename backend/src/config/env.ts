@@ -26,10 +26,10 @@ const envSchema = z.object({
   CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
   CLOUDFLARE_AI_TOKEN: z.string().optional(),
   CLOUDFLARE_AI_MODEL: z.string().default('@cf/meta/llama-3.2-3b-instruct'),
-  DEFAULT_DISTRICT: z.string().default('Kamrup Metropolitan'),
-  DEFAULT_CITY: z.string().default('Guwahati'),
-  DEFAULT_LAT: z.coerce.number().default(26.1550),
-  DEFAULT_LNG: z.coerce.number().default(91.7690),
+  DEFAULT_DISTRICT: z.string().default('General Operational Zone'),
+  DEFAULT_CITY: z.string().default('Central City'),
+  DEFAULT_LAT: z.coerce.number().default(0),
+  DEFAULT_LNG: z.coerce.number().default(0),
 });
 
 export const env = envSchema.parse(process.env);

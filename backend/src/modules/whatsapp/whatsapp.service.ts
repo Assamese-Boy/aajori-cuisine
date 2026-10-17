@@ -355,9 +355,9 @@ export class WhatsAppOrderingService {
           customerId: customer.id,
           label: 'WhatsApp Pin',
           addressLine1: input.location.address || input.location.name || 'WhatsApp Live Location',
-          city: 'Guwahati',
-          district: 'Kamrup Metropolitan',
-          postalCode: '781001',
+          city: input.location.name || 'Live Location',
+          district: 'GPS Pin',
+          postalCode: '',
           location: {
             latitude: input.location.latitude,
             longitude: input.location.longitude,
@@ -366,18 +366,18 @@ export class WhatsAppOrderingService {
         };
         db.customerAddresses.set(addressId, resolvedAddress);
       }
-      // Option B: Quick button "Use Guwahati Center"
-      else if (text === 'btn_use_default_address' || text === 'use guwahati center') {
+      // Option B: Quick button "Use Default Pin"
+      else if (text === 'btn_use_default_address' || text === 'use default address') {
         const addressId = uuidv4();
         resolvedAddress = {
           id: addressId,
           customerId: customer.id,
-          label: 'Guwahati Hub',
-          addressLine1: 'GS Road, Christian Basti',
-          city: 'Guwahati',
-          district: 'Kamrup Metropolitan',
-          postalCode: '781005',
-          location: { latitude: 26.1550, longitude: 91.7690 },
+          label: 'Saved Address',
+          addressLine1: 'Customer Default Location',
+          city: 'Primary City',
+          district: 'Operational Zone',
+          postalCode: '',
+          location: { latitude: 0, longitude: 0 },
           isDefault: true,
         };
         db.customerAddresses.set(addressId, resolvedAddress);
@@ -399,10 +399,10 @@ export class WhatsAppOrderingService {
             customerId: customer.id,
             label: 'Home/Office',
             addressLine1: rawText,
-            city: 'Guwahati',
-            district: 'Kamrup Metropolitan',
-            postalCode: '781001',
-            location: { latitude: 26.1550, longitude: 91.7690 },
+            city: 'Customer City',
+            district: 'Local Zone',
+            postalCode: '',
+            location: { latitude: 0, longitude: 0 },
             isDefault: true,
           };
           db.customerAddresses.set(addressId, resolvedAddress);
@@ -557,7 +557,7 @@ export class WhatsAppOrderingService {
         .join('\n');
 
       return {
-        reply: `👋 *Welcome to Aajori Cuisine!* Authentic hyperlocal food delivery for Kamrup.\n\n` +
+        reply: `👋 *Welcome to Aajori Cuisine!* Fresh gourmet food delivery at your fingertips worldwide.\n\n` +
           `Here are popular local kitchens:\n${listStr}\n\n` +
           `💡 *How to order:*\n` +
           `• Reply with restaurant number (e.g. *1*) to view dishes\n` +

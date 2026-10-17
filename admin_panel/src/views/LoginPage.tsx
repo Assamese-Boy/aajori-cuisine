@@ -67,7 +67,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">Aajori Cuisine</h1>
           <p className="text-xs text-amber-400 font-bold uppercase tracking-wider">
-            Operational Control Center • Kamrup Metro, Assam
+            Operational Control Center • Worldwide Enterprise Platform
           </p>
         </div>
 

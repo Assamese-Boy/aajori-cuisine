@@ -113,7 +113,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
                     {user.phone || user.email}
                   </p>
                   <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold">
-                    <span>★</span> Kamrup Metro Patron
+                    <span>★</span> Aajori Gourmet Club
                   </span>
                 </div>
               </div>

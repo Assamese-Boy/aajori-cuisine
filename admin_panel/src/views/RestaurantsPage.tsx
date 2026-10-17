@@ -73,13 +73,18 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
   const [restFormData, setRestFormData] = useState({
     name: '',
     addressLine: '',
-    cuisineTypes: 'Assamese, North Indian',
+    city: '',
+    district: '',
+    postalCode: '',
+    latitude: 0,
+    longitude: 0,
+    cuisineTypes: 'Traditional, Gourmet, Multi-Cuisine',
     commissionRate: 15,
     avgPrepTimeMinutes: 25,
     minOrderAmount: 150,
     coverUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
     ownerName: '',
-    ownerPhone: '+919864',
+    ownerPhone: '+91',
     ownerEmail: '',
     initialPassword: 'Aajori@Merchant2026',
     isActive: true,
@@ -136,14 +141,19 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     setEditingRest(null);
     setRestFormData({
       name: '',
-      addressLine: 'GS Road, Christian Basti, Guwahati',
-      cuisineTypes: 'Assamese, Traditional, Thali',
+      addressLine: '',
+      city: '',
+      district: '',
+      postalCode: '',
+      latitude: 0,
+      longitude: 0,
+      cuisineTypes: 'Traditional, Gourmet, Multi-Cuisine',
       commissionRate: 15,
       avgPrepTimeMinutes: 25,
       minOrderAmount: 150,
       coverUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
       ownerName: '',
-      ownerPhone: '+919864000000',
+      ownerPhone: '+91',
       ownerEmail: '',
       initialPassword: 'Aajori@Merchant2026',
       isActive: true,
@@ -156,14 +166,19 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     setEditingRest(r);
     setRestFormData({
       name: r.name,
-      addressLine: r.addressLine,
-      cuisineTypes: r.cuisineTypes?.join(', ') || 'Assamese',
+      addressLine: r.addressLine || r.address?.addressLine1 || '',
+      city: r.city || r.address?.city || '',
+      district: r.district || r.address?.district || '',
+      postalCode: r.postalCode || r.address?.postalCode || '',
+      latitude: r.location?.latitude ?? r.address?.location?.latitude ?? 0,
+      longitude: r.location?.longitude ?? r.address?.location?.longitude ?? 0,
+      cuisineTypes: r.cuisineTypes?.join(', ') || 'Traditional',
       commissionRate: r.commissionRate,
       avgPrepTimeMinutes: r.avgPrepTimeMinutes,
       minOrderAmount: r.minOrderAmount,
       coverUrl: r.coverUrl,
       ownerName: r.ownerName || '',
-      ownerPhone: r.phone || '+919864000000',
+      ownerPhone: r.phone || '',
       ownerEmail: r.email || '',
       initialPassword: '',
       isActive: r.isActive,
@@ -185,10 +200,13 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       avgPrepTimeMinutes: Number(restFormData.avgPrepTimeMinutes),
       minOrderAmount: Number(restFormData.minOrderAmount),
       packagingFee: 20,
-      city: 'Guwahati',
-      district: 'Kamrup Metropolitan',
-      postalCode: '781005',
-      location: { latitude: 26.1555, longitude: 91.7766 },
+      city: restFormData.city || 'Central City',
+      district: restFormData.district || 'Operating Zone',
+      postalCode: restFormData.postalCode || '',
+      location: {
+        latitude: Number(restFormData.latitude) || 0,
+        longitude: Number(restFormData.longitude) || 0,
+      },
       isAcceptingOrders: true,
       phone: restFormData.ownerPhone,
       email: restFormData.ownerEmail,
@@ -585,9 +603,59 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                     required
                     value={restFormData.addressLine}
                     onChange={(e) => setRestFormData({ ...restFormData, addressLine: e.target.value })}
-                    placeholder="e.g. Uzan Bazar, Riverside Road, Guwahati"
+                    placeholder="e.g. 102 Market St, Central Plaza"
                     className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">City / Municipality</label>
+                    <input
+                      type="text"
+                      value={restFormData.city}
+                      onChange={(e) => setRestFormData({ ...restFormData, city: e.target.value })}
+                      placeholder="e.g. Metro City"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">District / Region</label>
+                    <input
+                      type="text"
+                      value={restFormData.district}
+                      onChange={(e) => setRestFormData({ ...restFormData, district: e.target.value })}
+                      placeholder="e.g. Downtown Central"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">GPS Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={restFormData.latitude || ''}
+                      onChange={(e) => setRestFormData({ ...restFormData, latitude: Number(e.target.value) })}
+                      placeholder="e.g. 40.7128"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">GPS Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={restFormData.longitude || ''}
+                      onChange={(e) => setRestFormData({ ...restFormData, longitude: Number(e.target.value) })}
+                      placeholder="e.g. -74.0060"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1">

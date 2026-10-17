@@ -11,10 +11,13 @@ import {
   Loader2,
   X,
   Clock,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLocationContext, UserLocation } from '../context/LocationContext';
 import { useSettings } from '../context/SettingsContext';
+import { useNotifications } from '../context/NotificationContext';
+import { NotificationDrawer } from './NotificationDrawer';
 
 interface MobileTopBarProps {
   searchQuery?: string;
@@ -43,8 +46,10 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
     searchLocalities,
   } = useLocationContext();
   const { settings } = useSettings();
+  const { unreadCount } = useNotifications();
 
   const [isLocationSheetOpen, setIsLocationSheetOpen] = useState(false);
+  const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [addressSearchQuery, setAddressSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserLocation[]>([]);
@@ -161,12 +166,26 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
             </div>
           </button>
 
-          {/* User profile / Avatar */}
+          {/* User profile / Avatar & Notifications */}
           <div className="shrink-0 flex items-center gap-1.5">
+            {/* Real-time Order Notification Bell */}
+            <button
+              onClick={() => setIsNotifDrawerOpen(true)}
+              className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-slate-700 flex items-center justify-center shadow-xs btn-press relative cursor-pointer"
+              title="Notifications & Live Alerts"
+            >
+              <Bell className="w-4 h-4 text-slate-700" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-brand-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse shadow-xs">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
             {onOpenAi && (
               <button
                 onClick={onOpenAi}
-                className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-500 to-amber-500 text-white flex items-center justify-center shadow-xs btn-press"
+                className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-500 to-amber-500 text-white flex items-center justify-center shadow-xs btn-press cursor-pointer"
                 title="Ask Aajori AI"
               >
                 <Sparkles className="w-4 h-4 text-amber-200" />
@@ -450,6 +469,12 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
           )}
         </div>
       </div>
+
+      {/* Real-time Order Notification Drawer */}
+      <NotificationDrawer
+        isOpen={isNotifDrawerOpen}
+        onClose={() => setIsNotifDrawerOpen(false)}
+      />
     </>
   );
 };

@@ -79,7 +79,7 @@ export class AuthService {
   public async customerSignup(data: {
     fullName: string;
     phone: string;
-    email?: string;
+    email: string;
     password?: string;
     address?: {
       label?: string;
@@ -97,7 +97,7 @@ export class AuthService {
     }
 
     const cleanPhone = data.phone.trim();
-    const cleanEmail = data.email?.trim().toLowerCase();
+    const cleanEmail = data.email?.trim().toLowerCase() || `${cleanPhone.replace(/[^0-9]/g, '')}@customer.aajori.in`;
 
     // Check if user already exists
     let user = Array.from(db.users.values()).find(
@@ -111,7 +111,7 @@ export class AuthService {
     if (user) {
       // Existing auto-registered or placeholder user; update profile & set password
       user.fullName = data.fullName.trim();
-      user.email = cleanEmail || user.email;
+      user.email = cleanEmail;
       user.password = data.password || 'Aajori@2026';
       user.status = 'ACTIVE';
       db.users.set(user.id, user);
@@ -135,19 +135,28 @@ export class AuthService {
     if (rawAddr) {
       const addressId = `addr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const isString = typeof rawAddr === 'string';
+      const lat = (!isString && rawAddr.latitude !== undefined && !isNaN(Number(rawAddr.latitude)))
+        ? Number(rawAddr.latitude)
+        : 0;
+      const lng = (!isString && rawAddr.longitude !== undefined && !isNaN(Number(rawAddr.longitude)))
+        ? Number(rawAddr.longitude)
+        : 0;
+
       createdAddress = {
         id: addressId,
         customerId: user.id,
         label: (!isString && rawAddr.label) ? rawAddr.label : 'Home',
-        addressLine1: isString ? rawAddr.trim() : (rawAddr.addressLine1?.trim() || 'Guwahati Delivery Point'),
+        addressLine1: isString ? rawAddr.trim() : (rawAddr.addressLine1?.trim() || 'Primary Delivery Address'),
         addressLine2: !isString ? rawAddr.addressLine2?.trim() : undefined,
         landmark: !isString ? rawAddr.landmark?.trim() : undefined,
-        city: (!isString && rawAddr.city) ? rawAddr.city : 'Guwahati',
-        district: 'Kamrup Metropolitan',
-        postalCode: (!isString && rawAddr.postalCode) ? rawAddr.postalCode : '781001',
+        city: (!isString && rawAddr.city) ? rawAddr.city : '',
+        district: (!isString && rawAddr.district) ? rawAddr.district : (rawAddr.city || ''),
+        state: (!isString && rawAddr.state) ? rawAddr.state : undefined,
+        country: (!isString && rawAddr.country) ? rawAddr.country : undefined,
+        postalCode: (!isString && rawAddr.postalCode) ? rawAddr.postalCode : '',
         location: {
-          latitude: (!isString && rawAddr.latitude) ? rawAddr.latitude : 26.182,
-          longitude: (!isString && rawAddr.longitude) ? rawAddr.longitude : 91.751,
+          latitude: lat,
+          longitude: lng,
         },
         deliveryInstructions: undefined,
         isDefault: true,
