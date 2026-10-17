@@ -38,6 +38,7 @@ export const OrderTrackingPage: React.FC = () => {
   const [restaurant, setRestaurant] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   const fetchOrder = async (showLoading = false) => {
@@ -84,12 +85,10 @@ export const OrderTrackingPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [id]);
 
-  const handleCancelOrder = async () => {
+  const handleConfirmCancelOrder = async () => {
     if (!order) return;
-    const confirm = window.confirm('Cancel this order?');
-    if (!confirm) return;
-
     setIsCancelling(true);
+    setShowCancelConfirm(false);
     try {
       const res = await apiRequest(`/orders/${order.id}/status`, {
         method: 'PATCH',
@@ -103,10 +102,10 @@ export const OrderTrackingPage: React.FC = () => {
         toast.info('Order Cancelled', 'Order cancelled successfully');
         fetchOrder(false);
       } else {
-        toast.error('Cancellation Failed', res.error?.message);
+        toast.error('Cancellation Failed', res.error?.message || 'Could not cancel order');
       }
     } catch (e: any) {
-      toast.error('Error', e.message);
+      toast.error('Error', e?.message || 'Failed to cancel order');
     } finally {
       setIsCancelling(false);
     }
@@ -311,32 +310,32 @@ export const OrderTrackingPage: React.FC = () => {
           </div>
 
           <div className="divide-y divide-stone-100">
-            {order.items.map((it) => (
-              <div key={it.id} className="py-1.5 flex justify-between">
+            {(order.items || []).map((it) => (
+              <div key={it.id || it.menuItemId || Math.random()} className="py-1.5 flex justify-between">
                 <span>
-                  <strong>{it.quantity}x</strong> {it.name}
+                  <strong>{it.quantity}x</strong> {it.name || 'Dish'}
                 </span>
-                <span className="font-bold text-slate-900">₹{it.subtotal}</span>
+                <span className="font-bold text-slate-900">₹{it.subtotal || ((it.unitPrice || 0) * (it.quantity || 1))}</span>
               </div>
             ))}
           </div>
 
           <div className="pt-2 border-t border-stone-100 space-y-1 text-[11px] text-slate-500">
             <div className="flex justify-between">
-              <span>Delivery ({order.deliveryDistanceKm} km)</span>
-              <span>₹{order.pricing.deliveryFee}</span>
+              <span>Delivery ({order.deliveryDistanceKm || 2.5} km)</span>
+              <span>₹{order.pricing?.deliveryFee ?? 25}</span>
             </div>
             <div className="flex justify-between">
               <span>Packaging</span>
-              <span>₹{order.pricing.packagingFee}</span>
+              <span>₹{order.pricing?.packagingFee ?? 20}</span>
             </div>
             <div className="flex justify-between">
               <span>Taxes (5% GST)</span>
-              <span>₹{order.pricing.tax}</span>
+              <span>₹{order.pricing?.tax ?? 0}</span>
             </div>
             <div className="pt-1 border-t border-stone-100 flex justify-between font-black text-slate-900 text-xs">
               <span>Total Paid</span>
-              <span className="text-brand-700">₹{order.pricing.total}</span>
+              <span className="text-brand-700">₹{order.pricing?.total ?? (order as any).totalCustomerPrice ?? (order as any).total ?? 0}</span>
             </div>
           </div>
         </div>
@@ -344,12 +343,48 @@ export const OrderTrackingPage: React.FC = () => {
         {/* Cancel button if early phase */}
         {['CREATED', 'PAYMENT_CONFIRMED', 'PAYMENT_PENDING'].includes(order.status) && (
           <button
-            onClick={handleCancelOrder}
+            onClick={() => setShowCancelConfirm(true)}
             disabled={isCancelling}
-            className="w-full py-2.5 rounded-xl border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 btn-press"
+            className="w-full py-2.5 rounded-xl border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 btn-press cursor-pointer disabled:opacity-50"
           >
             {isCancelling ? 'Cancelling...' : 'Cancel Order'}
           </button>
+        )}
+
+        {/* Non-blocking Cancel Order Dialog */}
+        {showCancelConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl space-y-4 border border-stone-100">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
+                  <XCircle className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-slate-900 text-sm">Cancel Active Order?</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Are you sure you want to cancel order #{order.orderNumber}? The kitchen will stop preparation.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="px-3.5 py-2 rounded-xl border border-stone-200 text-slate-700 font-bold text-xs hover:bg-stone-50"
+                >
+                  Keep Order
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCancelOrder}
+                  disabled={isCancelling}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm shadow-rose-600/20 disabled:opacity-50"
+                >
+                  {isCancelling ? 'Cancelling...' : 'Confirm Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
 interface DeliveryZone {
   id: string;
@@ -33,6 +34,8 @@ export const DeliveryZonesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteZoneTarget, setDeleteZoneTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [form, setForm] = useState({
     id: '',
@@ -62,9 +65,12 @@ export const DeliveryZonesPage: React.FC = () => {
     }
   };
 
-  const handleDeleteZone = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete delivery zone "${name}"?`)) return;
+  const confirmDeleteZone = async () => {
+    if (!deleteZoneTarget) return;
+    const { id, name } = deleteZoneTarget;
+    setIsDeleting(true);
     try {
+      setDeleteZoneTarget(null);
       const res = await apiRequest(`/admin/delivery-zones?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
@@ -76,6 +82,8 @@ export const DeliveryZonesPage: React.FC = () => {
       }
     } catch (err: any) {
       toast.error('Error', err.message || 'Server error deleting zone');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -275,8 +283,8 @@ export const DeliveryZonesPage: React.FC = () => {
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
-                  onClick={() => handleDeleteZone(zone.id, zone.name)}
-                  className="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1"
+                  onClick={() => setDeleteZoneTarget({ id: zone.id, name: zone.name })}
+                  className="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Delete
@@ -413,6 +421,16 @@ export const DeliveryZonesPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Non-blocking Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(deleteZoneTarget)}
+        title="Delete Delivery Zone"
+        message={`Are you sure you want to delete delivery zone "${deleteZoneTarget?.name}"? Pricing and boundaries for this zone will be permanently removed.`}
+        confirmLabel="Delete Zone"
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteZone}
+        onCancel={() => !isDeleting && setDeleteZoneTarget(null)}
+      />
     </div>
   );
 };

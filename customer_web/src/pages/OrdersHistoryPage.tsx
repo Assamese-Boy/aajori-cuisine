@@ -51,18 +51,18 @@ export const OrdersHistoryPage: React.FC = () => {
       name: order.restaurantName || 'Authentic Kitchen',
     };
 
-    for (const item of order.items) {
+    for (const item of (order.items || [])) {
       addItem(
         restaurant,
         {
-          id: item.menuItemId,
+          id: item.menuItemId || item.id || `dish_${Math.random()}`,
           restaurantId: order.restaurantId,
           categoryId: 'c1',
-          name: item.name,
-          price: item.unitPrice,
+          name: item.name || 'Dish',
+          price: item.unitPrice || 180,
           isVeg: false,
         },
-        item.quantity
+        item.quantity || 1
       );
     }
 
@@ -158,17 +158,17 @@ export const OrdersHistoryPage: React.FC = () => {
                         : 'bg-amber-100 text-amber-800 animate-pulse'
                     }`}
                   >
-                    {order.status.replace(/_/g, ' ')}
+                    {(order.status || 'CREATED').replace(/_/g, ' ')}
                   </span>
                 </div>
 
                 <p className="text-xs text-slate-600 truncate leading-relaxed font-medium">
-                  {order.items.map((i) => `${i.quantity}x ${i.name}`).join(', ')}
+                  {(order.items || []).map((i) => `${i.quantity || 1}x ${i.name || 'Dish'}`).join(', ')}
                 </p>
 
                 <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between">
                   <span className="font-black text-sm text-slate-900">
-                    ₹{order.pricing.total}
+                    ₹{order.pricing?.total ?? (order as any).totalCustomerPrice ?? (order as any).total ?? (order as any).totalAmount ?? 0}
                   </span>
 
                   <div className="flex items-center gap-2">

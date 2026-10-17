@@ -185,11 +185,7 @@ function urlBase64ToUint8Array(base64String: string) {
     const user = getCurrentStoredUser();
 
     const envBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-    const apiBase = envBase
-      ? envBase.replace(/\/+$/, '')
-      : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:4000/api/v1'
-        : '/api/v1');
+    const apiBase = envBase ? envBase.replace(/\/+$/, '') : '/api/v1';
 
     try {
       const fullUrl = apiBase.startsWith('http')

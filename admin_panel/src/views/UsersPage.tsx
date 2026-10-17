@@ -19,6 +19,7 @@ import {
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { SkeletonTable, EmptyState } from '../components/SkeletonLoaders';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import {
   mergeUsers,
   recordCreatedUser,
@@ -47,6 +48,8 @@ export const UsersPage: React.FC = () => {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deleteUserTarget, setDeleteUserTarget] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -195,11 +198,12 @@ export const UsersPage: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (user: User) => {
-    if (!window.confirm(`Are you sure you want to permanently delete ${user.fullName}?`)) {
-      return;
-    }
+  const confirmDeleteUser = async () => {
+    if (!deleteUserTarget) return;
+    const user = deleteUserTarget;
+    setIsDeleting(true);
     try {
+      setDeleteUserTarget(null);
       const res = await apiRequest(`/admin/users/${user.id}`, {
         method: 'DELETE',
       });
@@ -214,6 +218,8 @@ export const UsersPage: React.FC = () => {
     } catch (e: any) {
       console.error('Delete user backend error:', e);
       toast.error('Deletion Failed', e?.message || 'Network error deleting user');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -372,9 +378,9 @@ export const UsersPage: React.FC = () => {
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteUser(u)}
+                          onClick={() => setDeleteUserTarget(u)}
                           title="Delete User"
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -509,6 +515,16 @@ export const UsersPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Non-blocking Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(deleteUserTarget)}
+        title="Delete User Account"
+        message={`Are you sure you want to permanently delete ${deleteUserTarget?.fullName} (${deleteUserTarget?.phone})? This action cannot be undone.`}
+        confirmLabel="Delete User"
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteUser}
+        onCancel={() => !isDeleting && setDeleteUserTarget(null)}
+      />
     </div>
   );
 };

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { listMedia, uploadMedia, deleteMedia, MediaItem } from '../services/media.service';
 import { useToast } from '../context/ToastContext';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
 export const MediaLibraryPage: React.FC = () => {
   const toast = useToast();
@@ -31,6 +32,8 @@ export const MediaLibraryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
+  const [deleteMediaTarget, setDeleteMediaTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadMedia = async () => {
     setIsLoading(true);
@@ -90,14 +93,23 @@ export const MediaLibraryPage: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
-    const ok = await deleteMedia(id);
-    if (ok) {
-      setMediaList((prev) => prev.filter((m) => m.id !== id));
-      toast.success('Media Removed', `Deleted "${name}"`);
-    } else {
-      toast.error('Delete Failed', 'Could not delete media');
+  const confirmDeleteMedia = async () => {
+    if (!deleteMediaTarget) return;
+    const { id, name } = deleteMediaTarget;
+    setIsDeleting(true);
+    try {
+      setDeleteMediaTarget(null);
+      const ok = await deleteMedia(id);
+      if (ok) {
+        setMediaList((prev) => prev.filter((m) => m.id !== id));
+        toast.success('Media Removed', `Deleted "${name}"`);
+      } else {
+        toast.error('Delete Failed', 'Could not delete media');
+      }
+    } catch (e: any) {
+      toast.error('Delete Error', e?.message || 'Server error removing asset');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -303,8 +315,8 @@ export const MediaLibraryPage: React.FC = () => {
                     )}
                   </button>
                   <button
-                    onClick={() => handleDelete(item.id, item.filename)}
-                    className="p-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow-md transition-transform hover:scale-110"
+                    onClick={() => setDeleteMediaTarget({ id: item.id, name: item.filename })}
+                    className="p-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow-md transition-transform hover:scale-110 cursor-pointer"
                     title="Delete asset"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -403,6 +415,16 @@ export const MediaLibraryPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Non-blocking Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(deleteMediaTarget)}
+        title="Delete Media Asset"
+        message={`Are you sure you want to delete "${deleteMediaTarget?.name}"? Any restaurants or dishes using this image may show a fallback.`}
+        confirmLabel="Delete Asset"
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteMedia}
+        onCancel={() => !isDeleting && setDeleteMediaTarget(null)}
+      />
     </div>
   );
 };

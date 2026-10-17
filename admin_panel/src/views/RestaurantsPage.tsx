@@ -29,6 +29,7 @@ import { useToast } from '../context/ToastContext';
 import { SkeletonCards, EmptyState } from '../components/SkeletonLoaders';
 import { MediaUploadInput } from '../components/MediaUploadInput';
 import { MobileDishPreview } from '../components/MobileDishPreview';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import {
   mergeRestaurants,
   recordCreatedRestaurant,
@@ -114,6 +115,9 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteRestaurantTarget, setDeleteRestaurantTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteItemTarget, setDeleteItemTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const toggleAccepting = async (restaurantId: string, currentStatus: boolean) => {
     const nextStatus = !currentStatus;
@@ -328,14 +332,15 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${text}`, '_blank');
   };
 
-  const handleDeleteRestaurant = async (restaurantId: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to permanently delete "${name}" and all its menu items?`)) {
-      return;
-    }
-    recordDeletedRestaurant(restaurantId);
-    setRestaurantsList((prev) => prev.filter((r) => r.id !== restaurantId));
-    toast.success('Restaurant Removed', `"${name}" removed from network.`);
+  const confirmDeleteRestaurant = async () => {
+    if (!deleteRestaurantTarget) return;
+    const { id: restaurantId, name } = deleteRestaurantTarget;
+    setIsDeleting(true);
     try {
+      recordDeletedRestaurant(restaurantId);
+      setRestaurantsList((prev) => prev.filter((r) => r.id !== restaurantId));
+      toast.success('Restaurant Removed', `"${name}" removed from network.`);
+      setDeleteRestaurantTarget(null);
       const res = await apiRequest(`/admin/restaurants/${restaurantId}`, {
         method: 'DELETE',
       });
@@ -344,6 +349,8 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       }
     } catch (e) {
       console.error('Delete request failed on backend:', e);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -421,18 +428,26 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     }
   };
 
-  const handleDeleteItem = async (itemId: string, itemName: string) => {
-    if (!activeRestaurantId) return;
-    if (!window.confirm(`Delete dish "${itemName}"?`)) return;
-
-    const res = await apiRequest(
-      `/admin/restaurants/${activeRestaurantId}/menu/items/${itemId}`,
-      { method: 'DELETE' }
-    );
-    if (res.success) {
-      inspectMenu(activeRestaurantId);
-    } else {
-      alert(res.error?.message || 'Failed to delete dish');
+  const confirmDeleteItem = async () => {
+    if (!deleteItemTarget || !activeRestaurantId) return;
+    const { id: itemId, name: itemName } = deleteItemTarget;
+    setIsDeleting(true);
+    try {
+      setDeleteItemTarget(null);
+      const res = await apiRequest(
+        `/admin/restaurants/${activeRestaurantId}/menu/items/${itemId}`,
+        { method: 'DELETE' }
+      );
+      if (res.success) {
+        inspectMenu(activeRestaurantId);
+        toast.success('Dish Deleted', `"${itemName}" removed successfully.`);
+      } else {
+        toast.error('Delete Failed', res.error?.message || 'Failed to delete dish');
+      }
+    } catch (e) {
+      console.error('Delete dish failed:', e);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -527,9 +542,9 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteRestaurant(r.id, r.name)}
+                      onClick={() => setDeleteRestaurantTarget({ id: r.id, name: r.name })}
                       title="Delete Restaurant"
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1034,9 +1049,9 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteItem(item.id, item.name)}
+                              onClick={() => setDeleteItemTarget({ id: item.id, name: item.name })}
                               title="Delete Dish"
-                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded"
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1247,6 +1262,27 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
           </div>
         </div>
       )}
+
+      {/* Non-blocking Confirmation Modals (Prevents main thread UI freezing) */}
+      <ConfirmationModal
+        isOpen={Boolean(deleteRestaurantTarget)}
+        title="Delete Restaurant"
+        message={`Are you sure you want to permanently delete "${deleteRestaurantTarget?.name}" and all its menu items? This action cannot be undone.`}
+        confirmLabel="Delete Restaurant"
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteRestaurant}
+        onCancel={() => !isDeleting && setDeleteRestaurantTarget(null)}
+      />
+
+      <ConfirmationModal
+        isOpen={Boolean(deleteItemTarget)}
+        title="Delete Menu Dish"
+        message={`Are you sure you want to permanently delete "${deleteItemTarget?.name}"?`}
+        confirmLabel="Delete Dish"
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteItem}
+        onCancel={() => !isDeleting && setDeleteItemTarget(null)}
+      />
     </div>
   );
 };

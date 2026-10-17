@@ -21,6 +21,8 @@ import { ProfilePage } from './pages/ProfilePage';
 import { HamburgerDrawer } from './components/HamburgerDrawer';
 import { PermissionPrompts } from './components/PermissionPrompts';
 
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+
 export const AppContent: React.FC = () => {
   const { isLoading } = useAuth();
   const location = useLocation();
@@ -52,28 +54,30 @@ export const AppContent: React.FC = () => {
           />
         )}
 
-        {/* Mobile App Screen Body with Smooth Route Transitions */}
+        {/* Mobile App Screen Body with Smooth Route Transitions & Crash Protection */}
         <main className="flex-1 animate-page-enter">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <HomePage
-                  onOpenAiAssistant={() => setIsAiModalOpen(true)}
-                  searchQuery={searchQuery}
-                  isPureVeg={isPureVeg}
-                  onTogglePureVeg={() => setIsPureVeg((prev) => !prev)}
-                />
-              }
-            />
-            <Route path="/restaurant/:id" element={<RestaurantDetailPage isPureVeg={isPureVeg} />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/orders" element={<OrdersHistoryPage />} />
-            <Route path="/orders/:id" element={<OrderTrackingPage />} />
-            <Route path="/profile" element={<ProfilePage onOpenDrawer={() => setIsDrawerOpen(true)} />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <RouteErrorBoundary routeKey={location.pathname}>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <HomePage
+                    onOpenAiAssistant={() => setIsAiModalOpen(true)}
+                    searchQuery={searchQuery}
+                    isPureVeg={isPureVeg}
+                    onTogglePureVeg={() => setIsPureVeg((prev) => !prev)}
+                  />
+                }
+              />
+              <Route path="/restaurant/:id" element={<RestaurantDetailPage isPureVeg={isPureVeg} />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/orders" element={<OrdersHistoryPage />} />
+              <Route path="/orders/:id" element={<OrderTrackingPage />} />
+              <Route path="/profile" element={<ProfilePage onOpenDrawer={() => setIsDrawerOpen(true)} />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </RouteErrorBoundary>
         </main>
 
         {/* Native Mobile Bottom Navigation Bar */}

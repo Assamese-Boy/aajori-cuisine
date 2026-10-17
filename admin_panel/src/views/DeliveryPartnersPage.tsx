@@ -19,6 +19,7 @@ import {
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { SkeletonCards, EmptyState } from '../components/SkeletonLoaders';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import {
   mergeRiders,
   recordCreatedRider,
@@ -45,6 +46,8 @@ export const DeliveryPartnersPage: React.FC = () => {
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteRiderTarget, setDeleteRiderTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchRiders = async () => {
     setLoading(true);
@@ -172,14 +175,15 @@ export const DeliveryPartnersPage: React.FC = () => {
     }
   };
 
-  const handleDeleteRider = async (riderId: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to deactivate and remove rider "${name}" from the fleet?`)) {
-      return;
-    }
-    recordDeletedRider(riderId);
-    setRiders((prev) => prev.filter((r) => r.id !== riderId));
-    toast.success('Rider Removed', `Deactivated ${name}`);
+  const confirmDeleteRider = async () => {
+    if (!deleteRiderTarget) return;
+    const { id: riderId, name } = deleteRiderTarget;
+    setIsDeleting(true);
     try {
+      recordDeletedRider(riderId);
+      setRiders((prev) => prev.filter((r) => r.id !== riderId));
+      toast.success('Rider Removed', `Deactivated ${name}`);
+      setDeleteRiderTarget(null);
       const res = await apiRequest(`/admin/delivery-partners/${riderId}`, {
         method: 'DELETE',
       });
@@ -188,6 +192,8 @@ export const DeliveryPartnersPage: React.FC = () => {
       }
     } catch (e) {
       console.error('Delete rider backend error:', e);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -281,9 +287,9 @@ export const DeliveryPartnersPage: React.FC = () => {
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => handleDeleteRider(rider.id, rider.user?.fullName)}
+                  onClick={() => setDeleteRiderTarget({ id: rider.id, name: rider.user?.fullName || 'Rider' })}
                   title="Deactivate Rider"
-                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -472,6 +478,16 @@ export const DeliveryPartnersPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Non-blocking Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(deleteRiderTarget)}
+        title="Deactivate Delivery Partner"
+        message={`Are you sure you want to deactivate and remove rider "${deleteRiderTarget?.name}" from the active fleet?`}
+        confirmLabel="Deactivate Rider"
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteRider}
+        onCancel={() => !isDeleting && setDeleteRiderTarget(null)}
+      />
     </div>
   );
 };

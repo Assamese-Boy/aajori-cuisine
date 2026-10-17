@@ -211,17 +211,33 @@ export function handleMockCustomerApi(endpoint: string, options: RequestInit = {
   // 5. Pricing Calculate
   if (clean === '/pricing/calculate') {
     const items = body.items || [];
-    const subtotal = items.reduce((sum: number, it: any) => sum + (it.price || 200) * (it.quantity || 1), 0);
+    const subtotal = items.reduce((sum: number, it: any) => sum + (it.price || 180) * (it.quantity || 1), 0);
+    const packagingFee = 20;
+    const deliveryFee = 25;
+    const tax = Math.round(subtotal * 0.05);
+    const discount = body.couponCode ? 50 : 0;
+    const total = Math.max(0, subtotal + packagingFee + deliveryFee + tax - discount);
     return {
       success: true,
       data: {
+        restaurantId: body.restaurantId || '',
+        distanceKm: 2.5,
+        pricing: {
+          subtotal,
+          deliveryFee,
+          packagingFee,
+          tax,
+          discount,
+          total,
+          distanceKm: 2.5,
+        },
         subtotal,
-        packagingFee: 20,
-        deliveryFee: 25,
+        packagingFee,
+        deliveryFee,
         platformFee: 5,
-        taxAmount: Math.round(subtotal * 0.05),
-        discountAmount: body.couponCode ? 50 : 0,
-        totalCustomerPrice: subtotal + 50 - (body.couponCode ? 50 : 0),
+        taxAmount: tax,
+        discountAmount: discount,
+        totalCustomerPrice: total,
       },
       statusCode: 200,
     };
