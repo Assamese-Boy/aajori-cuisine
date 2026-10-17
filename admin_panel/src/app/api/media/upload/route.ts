@@ -1,28 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { uploadToStorage, getProxiedMediaUrl } from '@/lib/media-storage';
 
 export const dynamic = 'force-dynamic';
-
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
-const MANIFEST_PATH = path.join(UPLOAD_DIR, 'manifest.json');
-
-async function getManifest(): Promise<any[]> {
-  try {
-    const raw = await fs.readFile(MANIFEST_PATH, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-async function saveManifest(manifest: any[]): Promise<void> {
-  try {
-    await fs.writeFile(MANIFEST_PATH, JSON.stringify(manifest, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('[Media API] Error saving manifest:', err);
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,50 +10,64 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { success: false, error: 'No file uploaded in "file" field' },
+        { success: false, error: 'No file uploaded in form field "file"' },
         { status: 400 }
       );
     }
 
-    if (!file.type.startsWith('image/')) {
+    // Permitted file types check
+    const isImage = file.type.startsWith('image/');
+    const isMedia =
+      isImage ||
+      file.type.startsWith('video/') ||
+      file.type.startsWith('audio/') ||
+      file.type === 'application/pdf';
+
+    if (!isMedia) {
       return NextResponse.json(
-        { success: false, error: 'Only image files are permitted' },
+        {
+          success: false,
+          error: 'Only image, video, audio, or PDF files are permitted for media upload',
+        },
         { status: 400 }
       );
     }
 
-    // Ensure upload dir exists
-    await fs.mkdir(UPLOAD_DIR, { recursive: true });
+    // Upload to the self-hosted PHP media storage server
+    const result = await uploadToStorage(file, file.name);
 
-    // Clean filename
-    const timestamp = Date.now();
-    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const finalFilename = `${timestamp}_${safeName}`;
-    const filePath = path.join(UPLOAD_DIR, finalFilename);
+    if (!result.success || !result.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error || 'Failed to upload media to storage server',
+        },
+        { status: 502 }
+      );
+    }
 
-    const bytes = await file.arrayBuffer();
-    await fs.writeFile(filePath, Buffer.from(bytes));
+    // Construct the safe proxied URL through the admin panel
+    const proxiedUrl = getProxiedMediaUrl(result.id, req);
 
-    const item = {
-      id: `media_${timestamp}_${Math.random().toString(36).substring(2, 7)}`,
-      url: `/uploads/${finalFilename}`,
-      filename: file.name,
-      size: file.size,
-      mimeType: file.type,
-      createdAt: new Date().toISOString(),
+    const mediaItem = {
+      id: result.id,
+      url: proxiedUrl,
+      filename: result.metadata?.original_name || file.name,
+      size: result.metadata?.size || file.size,
+      mimeType: result.metadata?.mime_type || file.type,
+      createdAt: result.metadata?.uploaded_at || new Date().toISOString(),
     };
 
-    const manifest = await getManifest();
-    manifest.unshift(item);
-    await saveManifest(manifest);
-
-    return NextResponse.json({
-      success: true,
-      data: item,
-      id: item.id,
-      url: item.url,
-      filename: item.filename,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: mediaItem,
+        id: mediaItem.id,
+        url: mediaItem.url,
+        filename: mediaItem.filename,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error('[Media Upload API Error]', error);
     return NextResponse.json(

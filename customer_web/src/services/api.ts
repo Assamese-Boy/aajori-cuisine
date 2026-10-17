@@ -1,4 +1,5 @@
 import { handleMockCustomerApi } from './mock-data';
+import { deepResolveMediaUrls } from '../utils/media';
 
 const getEffectiveApiBase = (): string => {
   const envUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || '';
@@ -91,7 +92,8 @@ async function performFetch(
 
   const contentType = res.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
-    const data = await res.json();
+    const rawData = await res.json();
+    const data = deepResolveMediaUrls(rawData);
     if (!res.ok && !data.error) {
       return {
         success: false,
