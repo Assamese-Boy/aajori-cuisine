@@ -44,6 +44,7 @@ export interface Order {
   paymentStatus: string;
   status: string;
   deliveryAddress: any;
+  customerInstructions?: string;
   createdAt: string;
   updatedAt: string;
 }

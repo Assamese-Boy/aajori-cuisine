@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       deliveryAddress: {
         addressLine1: o.deliveryAddress?.addressLine1 || o.deliveryAddress?.city || 'Customer Address',
       },
-      customerInstructions: o.customerInstructions,
+      customerInstructions: o.customerInstructions || '',
     }));
 
     return apiSuccess(mapped);
