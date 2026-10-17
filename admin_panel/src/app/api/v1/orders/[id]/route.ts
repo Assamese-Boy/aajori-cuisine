@@ -22,3 +22,21 @@ export async function GET(
     return apiError(err?.message || 'Failed to retrieve order', 500);
   }
 }
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await req.json();
+    const updated = await ServerDb.updateOrderStatus(params.id, body.status);
+    if (!updated) {
+      return apiError('Order not found or update failed', 404);
+    }
+    return apiSuccess(updated);
+  } catch (err: any) {
+    return apiError(err?.message || 'Failed to update order', 500);
+  }
+}
+
+export const PUT = PATCH;
