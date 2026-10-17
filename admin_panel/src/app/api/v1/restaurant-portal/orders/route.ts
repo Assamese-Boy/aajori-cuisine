@@ -44,4 +44,4 @@ export async function GET(req: NextRequest) {
   } catch (err: any) {
     return apiError(err?.message || 'Failed to fetch restaurant orders', 500);
   }
-}
+} 
