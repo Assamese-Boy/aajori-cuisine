@@ -39,24 +39,33 @@ interface LiveMapInnerProps {
 export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
   const mapCenter: [number, number] = React.useMemo(() => {
     if (mapData?.restaurants?.length > 0) {
-      const r = mapData.restaurants[0];
-      const lat = r.address?.location?.latitude ?? r.location?.latitude;
-      const lng = r.address?.location?.longitude ?? r.location?.longitude;
-      if (lat && lng) return [lat, lng];
+      for (const r of mapData.restaurants) {
+        const lat = r.latitude ?? r.lat ?? r.location?.latitude;
+        const lng = r.longitude ?? r.lng ?? r.location?.longitude;
+        if (lat && lng) return [lat, lng];
+      }
     }
     if (mapData?.zones?.length > 0) {
-      const z = mapData.zones[0];
-      const lat = z.centerPoint?.latitude ?? z.center?.latitude;
-      const lng = z.centerPoint?.longitude ?? z.center?.longitude;
-      if (lat && lng) return [lat, lng];
+      for (const z of mapData.zones) {
+        const lat = z.latitude ?? z.centerPoint?.latitude ?? z.center?.latitude;
+        const lng = z.longitude ?? z.centerPoint?.longitude ?? z.center?.longitude;
+        if (lat && lng) return [lat, lng];
+      }
     }
-    return [20.5937, 78.9629];
+    if (mapData?.riders?.length > 0) {
+      for (const rd of mapData.riders) {
+        const lat = rd.lat ?? rd.currentLat ?? rd.currentLocation?.latitude;
+        const lng = rd.lng ?? rd.currentLng ?? rd.currentLocation?.longitude;
+        if (lat && lng) return [lat, lng];
+      }
+    }
+    return [26.16, 91.76];
   }, [mapData]);
 
   return (
     <MapContainer
       center={mapCenter}
-      zoom={mapData?.restaurants?.length > 0 ? 13 : 4}
+      zoom={mapData?.restaurants?.length > 0 || mapData?.zones?.length > 0 ? 13 : 11}
       style={{ height: '100%', width: '100%' }}
       scrollWheelZoom={true}
     >
@@ -65,10 +74,11 @@ export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {/* Delivery Zone Radius Circles with safe coordinate fallbacks */}
+      {/* Delivery Zone Radius Circles from Database */}
       {mapData?.zones?.map((zone: any, idx: number) => {
-        const lat = zone.centerPoint?.latitude ?? zone.center?.latitude ?? 26.16;
-        const lng = zone.centerPoint?.longitude ?? zone.center?.longitude ?? 91.765;
+        const lat = zone.latitude ?? zone.centerPoint?.latitude ?? zone.center?.latitude;
+        const lng = zone.longitude ?? zone.centerPoint?.longitude ?? zone.center?.longitude;
+        if (!lat || !lng) return null;
         const radius = (zone.maxDeliveryDistanceKm ?? zone.radiusKm ?? 5) * 1000;
 
         return (
@@ -86,10 +96,11 @@ export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
         );
       })}
 
-      {/* Restaurant Pins with safe location access */}
+      {/* Restaurant Pins with Real GIS Coordinates */}
       {mapData?.restaurants?.map((r: any, idx: number) => {
-        const lat = r.location?.latitude ?? 26.16;
-        const lng = r.location?.longitude ?? 91.76;
+        const lat = r.latitude ?? r.lat ?? r.location?.latitude;
+        const lng = r.longitude ?? r.lng ?? r.location?.longitude;
+        if (!lat || !lng) return null;
 
         return (
           <Marker
@@ -100,13 +111,13 @@ export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
             <Popup>
               <div className="p-1 space-y-1 text-xs">
                 <p className="font-bold text-slate-900 text-sm">{r.name}</p>
-                <p className="text-slate-500">{r.addressLine || 'Guwahati District'}</p>
+                <p className="text-slate-500">{r.address || r.city || 'Restaurant'}</p>
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
                   <span className="font-semibold text-brand-700">
-                    Active Orders: {r.activeOrderCount ?? 0}
+                    Status: {r.isOpen ? 'Open' : 'Closed'}
                   </span>
                   <span className="text-slate-600 font-mono">
-                    Prep: ~{r.avgPrepTimeMinutes ?? 20}m
+                    Rating: {r.rating || 5.0}★
                   </span>
                 </div>
               </div>
@@ -115,21 +126,20 @@ export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
         );
       })}
 
-      {/* Online Riders Pins with safe location access */}
+      {/* Online Riders Pins with Real GIS GPS Telemetry */}
       {mapData?.riders
         ?.filter((rd: any) => {
           const status = rd.shiftStatus ?? rd.status;
           return status !== 'OFFLINE';
         })
         ?.map((rd: any, idx: number) => {
-          const lat = rd.currentLocation?.latitude ?? rd.location?.latitude;
-          const lng = rd.currentLocation?.longitude ?? rd.location?.longitude;
+          const lat = rd.lat ?? rd.currentLat ?? rd.currentLocation?.latitude ?? rd.location?.latitude;
+          const lng = rd.lng ?? rd.currentLng ?? rd.currentLocation?.longitude ?? rd.location?.longitude;
           if (!lat || !lng) return null;
 
-          const riderName = rd.user?.fullName || rd.fullName || rd.name || 'Delivery Partner';
+          const riderName = rd.name || rd.fullName || 'Delivery Partner';
           const riderStatus = rd.shiftStatus || rd.status || 'ONLINE';
           const vehicle = rd.vehicleNumber || rd.vehicleType || 'Bike';
-          const battery = rd.batteryPercentage ?? 90;
 
           return (
             <Marker
@@ -143,7 +153,7 @@ export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
                   <p className="text-slate-600">Vehicle: {vehicle}</p>
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
                     <span className="font-semibold text-blue-700">{riderStatus}</span>
-                    <span className="text-slate-600">Battery: {battery}%</span>
+                    <span className="text-slate-600 font-mono">{rd.phone}</span>
                   </div>
                 </div>
               </Popup>
@@ -153,8 +163,9 @@ export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
 
       {/* Active Orders Dropoff Pins */}
       {mapData?.activeOrders?.map((ord: any, idx: number) => {
-        const lat = ord.deliveryAddress?.location?.latitude ?? 26.155;
-        const lng = ord.deliveryAddress?.location?.longitude ?? 91.769;
+        const lat = ord.deliveryAddress?.latitude ?? ord.deliveryAddress?.location?.latitude;
+        const lng = ord.deliveryAddress?.longitude ?? ord.deliveryAddress?.location?.longitude;
+        if (!lat || !lng) return null;
 
         return (
           <Marker
@@ -165,7 +176,7 @@ export const LiveMapInner: React.FC<LiveMapInnerProps> = ({ mapData }) => {
             <Popup>
               <div className="p-1 space-y-1 text-xs">
                 <p className="font-bold font-mono text-slate-900">{ord.orderNumber || ord.id}</p>
-                <p className="text-slate-600">{ord.deliveryAddress?.addressLine1 || ord.deliveryAddress?.city || 'Customer Delivery Address'}</p>
+                <p className="text-slate-600">{ord.deliveryAddress?.addressLine1 || ord.deliveryAddress?.city || 'Delivery Address'}</p>
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
                   <span className="font-semibold text-emerald-700">{ord.status || 'ACTIVE'}</span>
                   <span className="font-mono font-bold">₹{ord.pricing?.totalCustomerPrice ?? 0}</span>

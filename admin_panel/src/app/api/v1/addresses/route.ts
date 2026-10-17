@@ -15,8 +15,7 @@ export async function GET(req: NextRequest) {
 
     let userId = '';
     if (token) {
-      const match = token.match(/^jwt_live_([^_]+_[^_]+_[^_]+)/) || token.match(/^jwt_live_([^_]+)/);
-      if (match) userId = match[1];
+      userId = token.replace(/^jwt_live_/, '').replace(/_\d+$/, '');
     }
 
     if (!userId) {
@@ -41,8 +40,7 @@ export async function POST(req: NextRequest) {
 
     let userId = body.userId;
     if (!userId && token) {
-      const match = token.match(/^jwt_live_([^_]+_[^_]+_[^_]+)/) || token.match(/^jwt_live_([^_]+)/);
-      if (match) userId = match[1];
+      userId = token.replace(/^jwt_live_/, '').replace(/_\d+$/, '');
     }
 
     if (!userId) {

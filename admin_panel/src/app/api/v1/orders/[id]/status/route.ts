@@ -14,7 +14,7 @@ export async function PATCH(
 ) {
   try {
     const body = await req.json();
-    const status = body.status;
+    const status = body.status || body.toStatus;
     if (!status) {
       return apiError('Status is required', 400);
     }

@@ -54,9 +54,24 @@ interface ReportsData {
 export const ReportsPage: React.FC = () => {
   const toast = useToast();
   const [reports, setReports] = useState<ReportsData | null>(null);
+  const [restaurantsList, setRestaurantsList] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>('ALL');
   const [selectedLocality, setSelectedLocality] = useState<string>('ALL');
+
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      try {
+        const res = await apiRequest('/restaurants');
+        if (res.success && Array.isArray(res.data)) {
+          setRestaurantsList(res.data.map((r: any) => ({ id: r.id, name: r.name })));
+        }
+      } catch (err) {
+        console.error('Failed to load restaurants for reports filter', err);
+      }
+    };
+    fetchRestaurants();
+  }, []);
 
   const fetchReports = async () => {
     setIsLoading(true);
@@ -71,83 +86,41 @@ export const ReportsPage: React.FC = () => {
       if (res.success && res.data) {
         setReports(res.data);
       } else {
-        // Fallback robust reporting structure
         setReports({
-          grossOrderValue: 24850,
-          totalDiscounts: 1850,
-          totalDeliveryAndPackaging: 3420,
-          totalTax: 1150,
+          grossOrderValue: 0,
+          totalDiscounts: 0,
+          totalDeliveryAndPackaging: 0,
+          totalTax: 0,
           totalRefunds: 0,
-          platformCommission: 3727.5,
-          restaurantNetPayout: 21122.5,
-          netSales: 26420,
-          totalOrders: 48,
-          deliveredOrders: 42,
-          cancelledOrders: 2,
-          salesByRestaurant: [
-            {
-              restaurantId: 'd0000000-0000-0000-0000-000000000001',
-              restaurantName: 'Khorikaa Ethnic Kitchen (Uzan Bazar)',
-              orderCount: 26,
-              grossSales: 14200,
-              discounts: 950,
-              restaurantNetPayout: 12070,
-              commissionEarned: 2130,
-            },
-            {
-              restaurantId: 'd0000000-0000-0000-0000-000000000002',
-              restaurantName: 'Paradise Heritage Diner (Silpukhuri)',
-              orderCount: 14,
-              grossSales: 7850,
-              discounts: 600,
-              restaurantNetPayout: 6672.5,
-              commissionEarned: 1177.5,
-            },
-            {
-              restaurantId: 'd0000000-0000-0000-0000-000000000003',
-              restaurantName: 'Brahmaputra Spice Bistro (Beltola)',
-              orderCount: 8,
-              grossSales: 2800,
-              discounts: 300,
-              restaurantNetPayout: 2380,
-              commissionEarned: 420,
-            },
-          ],
-          bestSellingDishes: [
-            {
-              name: 'Smoked Pork Khorikaa with Bamboo Shoot',
-              restaurantName: 'Khorikaa Ethnic Kitchen',
-              quantity: 42,
-              revenue: 13440,
-            },
-            {
-              name: 'Parampara Duck Curry with Ash Gourd',
-              restaurantName: 'Paradise Heritage Diner',
-              quantity: 28,
-              revenue: 10640,
-            },
-            {
-              name: 'Signature Assamese Fish Thali (Masor Tenga)',
-              restaurantName: 'Khorikaa Ethnic Kitchen',
-              quantity: 35,
-              revenue: 9800,
-            },
-            {
-              name: 'Sticky Joha Rice with Mati Dal & Pitika',
-              restaurantName: 'Brahmaputra Spice Bistro',
-              quantity: 24,
-              revenue: 3840,
-            },
-          ],
-          localityMetrics: [
-            { locality: 'Uzan Bazar & Dighalipukhuri', orders: 20, avgDistanceKm: 2.4 },
-            { locality: 'Dispur & Beltola Commercial Hub', orders: 15, avgDistanceKm: 4.1 },
-            { locality: 'Silpukhuri & Chandmari', orders: 13, avgDistanceKm: 3.2 },
-          ],
+          platformCommission: 0,
+          restaurantNetPayout: 0,
+          netSales: 0,
+          totalOrders: 0,
+          deliveredOrders: 0,
+          cancelledOrders: 0,
+          salesByRestaurant: [],
+          bestSellingDishes: [],
+          localityMetrics: [],
         });
       }
     } catch {
       toast.error('Network Error', 'Could not retrieve financial reports');
+      setReports({
+        grossOrderValue: 0,
+        totalDiscounts: 0,
+        totalDeliveryAndPackaging: 0,
+        totalTax: 0,
+        totalRefunds: 0,
+        platformCommission: 0,
+        restaurantNetPayout: 0,
+        netSales: 0,
+        totalOrders: 0,
+        deliveredOrders: 0,
+        cancelledOrders: 0,
+        salesByRestaurant: [],
+        bestSellingDishes: [],
+        localityMetrics: [],
+      });
     } finally {
       setIsLoading(false);
     }
@@ -213,9 +186,11 @@ export const ReportsPage: React.FC = () => {
             className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <option value="ALL">All Partner Kitchens</option>
-            <option value="d0000000-0000-0000-0000-000000000001">Khorikaa Ethnic Kitchen</option>
-            <option value="d0000000-0000-0000-0000-000000000002">Paradise Heritage Diner</option>
-            <option value="d0000000-0000-0000-0000-000000000003">Brahmaputra Spice Bistro</option>
+            {restaurantsList.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
           </select>
 
           <button
@@ -292,16 +267,24 @@ export const ReportsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-mono">
-                  {reports.salesByRestaurant.map((r) => (
-                    <tr key={r.restaurantId} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3.5 px-4 font-sans font-bold text-slate-800">{r.restaurantName}</td>
-                      <td className="py-3.5 px-4 text-slate-600">{r.orderCount}</td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">₹{r.grossSales.toLocaleString()}</td>
-                      <td className="py-3.5 px-4 text-emerald-600">₹{r.discounts.toLocaleString()}</td>
-                      <td className="py-3.5 px-4 text-brand-600 font-bold">₹{r.commissionEarned.toLocaleString()}</td>
-                      <td className="py-3.5 px-4 text-right font-bold text-indigo-700">₹{r.restaurantNetPayout.toLocaleString()}</td>
+                  {reports.salesByRestaurant.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-400 font-sans">
+                        No sales recorded for the selected filter.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    reports.salesByRestaurant.map((r) => (
+                      <tr key={r.restaurantId} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3.5 px-4 font-sans font-bold text-slate-800">{r.restaurantName}</td>
+                        <td className="py-3.5 px-4 text-slate-600">{r.orderCount}</td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900">₹{r.grossSales.toLocaleString()}</td>
+                        <td className="py-3.5 px-4 text-emerald-600">₹{r.discounts.toLocaleString()}</td>
+                        <td className="py-3.5 px-4 text-brand-600 font-bold">₹{r.commissionEarned.toLocaleString()}</td>
+                        <td className="py-3.5 px-4 text-right font-bold text-indigo-700">₹{r.restaurantNetPayout.toLocaleString()}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -313,21 +296,25 @@ export const ReportsPage: React.FC = () => {
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5">
               <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
                 <Flame className="w-5 h-5 text-amber-500" />
-                <h3 className="font-bold text-slate-800 text-sm">Best-Selling Assamese Delicacies</h3>
+                <h3 className="font-bold text-slate-800 text-sm">Best-Selling Delicacies</h3>
               </div>
               <div className="space-y-3">
-                {reports.bestSellingDishes.map((dish, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-xs">
-                    <div>
-                      <div className="font-bold text-slate-800">{dish.name}</div>
-                      <div className="text-[11px] text-slate-400">{dish.restaurantName}</div>
+                {reports.bestSellingDishes.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 text-xs">No dish sales recorded yet.</div>
+                ) : (
+                  reports.bestSellingDishes.map((dish, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-xs">
+                      <div>
+                        <div className="font-bold text-slate-800">{dish.name}</div>
+                        <div className="text-[11px] text-slate-400">{dish.restaurantName}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono font-bold text-slate-900">₹{dish.revenue.toLocaleString()}</div>
+                        <div className="text-[11px] text-slate-500">{dish.quantity} portions ordered</div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-mono font-bold text-slate-900">₹{dish.revenue.toLocaleString()}</div>
-                      <div className="text-[11px] text-slate-500">{dish.quantity} portions ordered</div>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -335,22 +322,26 @@ export const ReportsPage: React.FC = () => {
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5">
               <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
                 <MapPin className="w-5 h-5 text-brand-600" />
-                <h3 className="font-bold text-slate-800 text-sm">Guwahati Locality Order Density</h3>
+                <h3 className="font-bold text-slate-800 text-sm">Locality Order Density</h3>
               </div>
               <div className="space-y-3">
-                {reports.localityMetrics.map((loc, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-xs">
-                    <div>
-                      <div className="font-bold text-slate-800">{loc.locality}</div>
-                      <div className="text-[11px] text-slate-400">Avg distance: {loc.avgDistanceKm} km</div>
+                {reports.localityMetrics.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 text-xs">No delivery locality records yet.</div>
+                ) : (
+                  reports.localityMetrics.map((loc, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-xs">
+                      <div>
+                        <div className="font-bold text-slate-800">{loc.locality}</div>
+                        <div className="text-[11px] text-slate-400">Avg distance: {loc.avgDistanceKm} km</div>
+                      </div>
+                      <div className="text-right">
+                        <span className="px-2.5 py-1 bg-brand-50 text-brand-700 font-bold rounded-lg">
+                          {loc.orders} orders
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="px-2.5 py-1 bg-brand-50 text-brand-700 font-bold rounded-lg">
-                        {loc.orders} orders
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>

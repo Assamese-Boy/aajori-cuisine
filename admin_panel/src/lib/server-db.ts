@@ -48,6 +48,34 @@ export interface Order {
   updatedAt: string;
 }
 
+export function parsePostGisPoint(loc: any): { latitude: number; longitude: number } | null {
+  if (!loc) return null;
+  if (typeof loc === 'object' && loc.latitude && loc.longitude) {
+    return { latitude: Number(loc.latitude), longitude: Number(loc.longitude) };
+  }
+  if (typeof loc === 'string') {
+    const match = loc.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+    if (match) {
+      return { longitude: parseFloat(match[1]), latitude: parseFloat(match[2]) };
+    }
+    if (/^[0-9a-fA-F]{32,}$/.test(loc)) {
+      try {
+        const buf = Buffer.from(loc, 'hex');
+        if (buf.length >= 25) {
+          const lng = buf.readDoubleLE(9);
+          const lat = buf.readDoubleLE(17);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            return { latitude: Number(lat.toFixed(6)), longitude: Number(lng.toFixed(6)) };
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return null;
+}
+
 export interface DeliveryPartner {
   id: string;
   fullName: string;
@@ -55,10 +83,13 @@ export interface DeliveryPartner {
   email: string;
   vehicleType: string;
   vehicleNumber?: string;
+  drivingLicenseNumber?: string;
+  shiftStatus?: string;
   status: 'ACTIVE' | 'OFFLINE' | 'SUSPENDED';
   isOnline: boolean;
   currentLat?: number;
   currentLng?: number;
+  currentLocation?: { latitude: number; longitude: number } | null;
   rating: number;
   completedOrders: number;
   createdAt: string;
@@ -92,6 +123,9 @@ export interface Restaurant {
   city: string;
   district?: string;
   postalCode?: string;
+  location?: { latitude: number; longitude: number } | null;
+  latitude?: number;
+  longitude?: number;
   cuisineTypes: string[];
   bannerUrl: string;
   logoUrl: string;
@@ -109,7 +143,12 @@ export interface DeliveryZone {
   name: string;
   district: string;
   baseFee: number;
+  baseDistanceKm?: number;
   perKmFee: number;
+  maxDeliveryDistanceKm?: number;
+  centerPoint?: { latitude: number; longitude: number } | null;
+  latitude?: number;
+  longitude?: number;
   isActive: boolean;
   createdAt?: string;
 }
@@ -120,10 +159,16 @@ export interface Coupon {
   title?: string;
   description: string;
   discountType?: string;
+  discountValue?: number;
   discountAmount?: number;
   discountPercentage?: number;
+  minOrderAmount?: number;
   minOrderValue: number;
   maxDiscountAmount: number;
+  validFrom?: string;
+  validUntil?: string;
+  maxUses?: number;
+  currentUses?: number;
   isActive: boolean;
   createdAt?: string;
 }
@@ -293,10 +338,19 @@ export const ServerDb = {
 
   async findUserByIdentifier(identifier: string): Promise<User | null> {
     const clean = identifier.trim().toLowerCase();
-    const cleanPhone = identifier.replace(/[^0-9]/g, '');
+    const digits = identifier.replace(/[^0-9]/g, '');
+    const last10 = digits.slice(-10);
 
-    const filter = `or=(email.ilike.${clean},phone.ilike.%${cleanPhone}%)`;
-    const res = await sbFetch(`/users?${filter}&limit=1`);
+    let query = '';
+    if (clean.includes('@')) {
+      query = `email=ilike.${encodeURIComponent(clean)}`;
+    } else if (last10.length >= 7) {
+      query = `or=(phone.ilike.*${last10}*,phone.eq.${encodeURIComponent(clean)})`;
+    } else {
+      query = `or=(email.ilike.*${encodeURIComponent(clean)}*,phone.ilike.*${encodeURIComponent(clean)}*)`;
+    }
+
+    const res = await sbFetch(`/users?${query}&limit=1`);
     if (res.ok && Array.isArray(res.data) && res.data[0]) {
       const r = res.data[0];
       return {
@@ -316,7 +370,8 @@ export const ServerDb = {
       db.users.find(
         (u) =>
           u.email.toLowerCase() === clean ||
-          u.phone.replace(/[^0-9]/g, '') === cleanPhone
+          (last10.length >= 7 && u.phone.replace(/[^0-9]/g, '').slice(-10) === last10) ||
+          u.phone === clean
       ) || null
     );
   },
@@ -416,14 +471,50 @@ export const ServerDb = {
   },
 
   async deleteUser(id: string): Promise<boolean> {
-    const res = await sbFetch(`/users?id=eq.${id}`, { method: 'DELETE' });
-    if (res.ok) {
+    try {
+      // 1. Set actor_id to null in order_status_history so historical logs don't block deletion
+      await sbFetch(`/order_status_history?actor_id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ actor_id: null }),
+      });
+
+      // 2. Clear delivery_partner_id from orders if this user was a delivery partner
+      await sbFetch(`/orders?delivery_partner_id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ delivery_partner_id: null }),
+      });
+
+      // 3. For any orders placed by this customer, clean up items and status history before removing order
+      const ordersRes = await sbFetch(`/orders?customer_id=eq.${id}&select=id`);
+      if (ordersRes.ok && Array.isArray(ordersRes.data) && ordersRes.data.length > 0) {
+        for (const ord of ordersRes.data) {
+          await sbFetch(`/order_status_history?order_id=eq.${ord.id}`, { method: 'DELETE' });
+          await sbFetch(`/order_items?order_id=eq.${ord.id}`, { method: 'DELETE' });
+          await sbFetch(`/orders?id=eq.${ord.id}`, { method: 'DELETE' });
+        }
+      }
+
+      // 4. Delete dependent records across other tables
+      await sbFetch(`/customer_feedback?customer_id=eq.${id}`, { method: 'DELETE' });
+      await sbFetch(`/support_tickets?customer_id=eq.${id}`, { method: 'DELETE' });
+      await sbFetch(`/customer_loyalty?customer_id=eq.${id}`, { method: 'DELETE' });
+      await sbFetch(`/customer_addresses?customer_id=eq.${id}`, { method: 'DELETE' });
+      await sbFetch(`/delivery_partners?id=eq.${id}`, { method: 'DELETE' });
+      await sbFetch(`/restaurant_staff?user_id=eq.${id}`, { method: 'DELETE' });
+
+      // 5. Delete user from users table
+      const res = await sbFetch(`/users?id=eq.${id}`, { method: 'DELETE' });
+
+      // Clean local db fallback if present
       const db = await loadDb();
       db.users = db.users.filter((u) => u.id !== id);
       await saveDb(db);
-      return true;
+
+      return res.ok || res.status === 204 || res.status === 200;
+    } catch (err) {
+      console.error('ServerDb.deleteUser error:', err);
+      return false;
     }
-    return false;
   },
 
   // --------------------------------------------------------------------------
@@ -513,6 +604,9 @@ export const ServerDb = {
         city: r.city || 'Guwahati',
         district: r.district || 'Kamrup Metropolitan',
         postalCode: r.postal_code || '',
+        location: parsePostGisPoint(r.location),
+        latitude: parsePostGisPoint(r.location)?.latitude,
+        longitude: parsePostGisPoint(r.location)?.longitude,
         cuisineTypes: r.cuisine_types || ['Assamese Ethnic'],
         logoUrl: r.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200',
         bannerUrl: r.cover_url || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1000',
@@ -608,14 +702,36 @@ export const ServerDb = {
   },
 
   async deleteRestaurant(id: string): Promise<boolean> {
-    const res = await sbFetch(`/restaurants?id=eq.${id}`, { method: 'DELETE' });
-    if (res.ok) {
+    try {
+      // 1. Clean up associated orders, order items, and status history
+      const ordersRes = await sbFetch(`/orders?restaurant_id=eq.${id}&select=id`);
+      if (ordersRes.ok && Array.isArray(ordersRes.data) && ordersRes.data.length > 0) {
+        for (const ord of ordersRes.data) {
+          await sbFetch(`/order_status_history?order_id=eq.${ord.id}`, { method: 'DELETE' });
+          await sbFetch(`/order_items?order_id=eq.${ord.id}`, { method: 'DELETE' });
+          await sbFetch(`/orders?id=eq.${ord.id}`, { method: 'DELETE' });
+        }
+      }
+
+      // 2. Clean up associated restaurant child records
+      await sbFetch(`/menu_items?restaurant_id=eq.${id}`, { method: 'DELETE' });
+      await sbFetch(`/restaurant_staff?restaurant_id=eq.${id}`, { method: 'DELETE' });
+      await sbFetch(`/restaurant_operating_hours?restaurant_id=eq.${id}`, { method: 'DELETE' });
+      await sbFetch(`/restaurant_bank_accounts?restaurant_id=eq.${id}`, { method: 'DELETE' });
+      await sbFetch(`/restaurant_documents?restaurant_id=eq.${id}`, { method: 'DELETE' });
+
+      // 3. Delete restaurant row
+      const res = await sbFetch(`/restaurants?id=eq.${id}`, { method: 'DELETE' });
+
       const db = await loadDb();
       db.restaurants = db.restaurants.filter((r) => r.id !== id);
       await saveDb(db);
-      return true;
+
+      return res.ok || res.status === 204 || res.status === 200;
+    } catch (err) {
+      console.error('ServerDb.deleteRestaurant error:', err);
+      return false;
     }
-    return false;
   },
 
   async toggleRestaurantAccepting(id: string, isAccepting: boolean): Promise<boolean> {
@@ -721,16 +837,16 @@ export const ServerDb = {
   // ORDERS
   // --------------------------------------------------------------------------
   async getAllOrders(): Promise<Order[]> {
-    const res = await sbFetch('/orders?select=*,order_items(*)&order=created_at.desc');
+    const res = await sbFetch('/orders?select=*,order_items(*),restaurants(name),users(full_name,phone)&order=created_at.desc');
     if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
       return res.data.map((o: any) => ({
         id: o.id,
         orderNumber: o.order_number,
         customerId: o.customer_id,
-        customerName: o.customer_name || 'Customer',
-        customerPhone: o.customer_phone || '',
+        customerName: o.users?.full_name || o.customer_name || 'Customer',
+        customerPhone: o.users?.phone || o.customer_phone || '',
         restaurantId: o.restaurant_id,
-        restaurantName: o.restaurant_name || 'Kitchen Partner',
+        restaurantName: o.restaurants?.name || o.restaurant_name || 'Kitchen Partner',
         deliveryPartnerId: o.delivery_partner_id,
         items: o.order_items || [],
         subtotal: Number(o.subtotal) || 0,
@@ -742,6 +858,7 @@ export const ServerDb = {
         paymentStatus: o.payment_status || 'PENDING',
         status: o.status || 'CREATED',
         deliveryAddress: o.delivery_address || {},
+        customerInstructions: o.customer_instructions || '',
         createdAt: o.created_at || new Date().toISOString(),
         updatedAt: o.updated_at || new Date().toISOString(),
       }));
@@ -749,6 +866,19 @@ export const ServerDb = {
 
     const db = await loadDb();
     return db.orders;
+  },
+
+  async getOrdersByRestaurant(restaurantId: string): Promise<Order[]> {
+    const orders = await this.getAllOrders();
+    return orders.filter((o) => o.restaurantId === restaurantId);
+  },
+
+  async updateMenuItemStock(itemId: string, isAvailable: boolean): Promise<boolean> {
+    const res = await sbFetch(`/menu_items?id=eq.${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_available: isAvailable }),
+    });
+    return res.ok;
   },
 
   async getOrderById(id: string): Promise<Order | null> {
@@ -854,8 +984,13 @@ export const ServerDb = {
         email: p.users?.email || '',
         vehicleType: p.vehicle_type || 'Motorcycle',
         vehicleNumber: p.vehicle_number || '',
+        drivingLicenseNumber: p.driving_license_number || '',
+        shiftStatus: p.shift_status || 'ONLINE_IDLE',
         status: p.shift_status === 'OFFLINE' ? 'OFFLINE' : 'ACTIVE',
         isOnline: p.shift_status !== 'OFFLINE',
+        currentLat: parsePostGisPoint(p.current_location)?.latitude,
+        currentLng: parsePostGisPoint(p.current_location)?.longitude,
+        currentLocation: parsePostGisPoint(p.current_location),
         rating: Number(p.rating) || 5.0,
         completedOrders: p.total_completed_orders || 0,
         createdAt: p.created_at || new Date().toISOString(),
@@ -938,9 +1073,30 @@ export const ServerDb = {
   },
 
   async deleteDeliveryPartner(id: string): Promise<boolean> {
-    await sbFetch(`/delivery_partners?id=eq.${id}`, { method: 'DELETE' });
-    const res = await sbFetch(`/users?id=eq.${id}`, { method: 'DELETE' });
-    return res.ok;
+    try {
+      // 1. Clear partner reference in active orders & history
+      await sbFetch(`/orders?delivery_partner_id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ delivery_partner_id: null }),
+      });
+      await sbFetch(`/order_status_history?actor_id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ actor_id: null }),
+      });
+
+      // 2. Delete partner record & corresponding user
+      await sbFetch(`/delivery_partners?id=eq.${id}`, { method: 'DELETE' });
+      const res = await sbFetch(`/users?id=eq.${id}`, { method: 'DELETE' });
+
+      const db = await loadDb();
+      db.deliveryPartners = db.deliveryPartners.filter((p) => p.id !== id);
+      await saveDb(db);
+
+      return res.ok || res.status === 204 || res.status === 200;
+    } catch (err) {
+      console.error('ServerDb.deleteDeliveryPartner error:', err);
+      return false;
+    }
   },
 
   // --------------------------------------------------------------------------
@@ -949,15 +1105,23 @@ export const ServerDb = {
   async getAllDeliveryZones(): Promise<DeliveryZone[]> {
     const res = await sbFetch('/delivery_zones?select=*&order=created_at.desc');
     if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
-      return res.data.map((z: any) => ({
-        id: z.id,
-        name: z.name,
-        district: z.district || 'Kamrup Metropolitan',
-        baseFee: Number(z.base_fee) || 20,
-        perKmFee: Number(z.per_km_fee) || 5,
-        isActive: Boolean(z.is_active),
-        createdAt: z.created_at,
-      }));
+      return res.data.map((z: any) => {
+        const center = parsePostGisPoint(z.center_point);
+        return {
+          id: z.id,
+          name: z.name,
+          district: z.district || 'Kamrup Metropolitan',
+          baseFee: Number(z.base_fee) || 20,
+          baseDistanceKm: Number(z.base_distance_km) || 3,
+          perKmFee: Number(z.per_km_fee) || 5,
+          maxDeliveryDistanceKm: Number(z.max_delivery_distance_km) || 10,
+          centerPoint: center,
+          latitude: center?.latitude,
+          longitude: center?.longitude,
+          isActive: Boolean(z.is_active),
+          createdAt: z.created_at,
+        };
+      });
     }
 
     const db = await loadDb();
@@ -1028,10 +1192,16 @@ export const ServerDb = {
         title: `${c.code} Discount`,
         description: c.description || '',
         discountType: c.discount_type || 'PERCENTAGE',
+        discountValue: Number(c.discount_value) || 0,
         discountPercentage: c.discount_type === 'PERCENTAGE' ? Number(c.discount_value) : 0,
         discountAmount: c.discount_type === 'FLAT' ? Number(c.discount_value) : 0,
+        minOrderAmount: Number(c.min_order_amount) || 0,
         minOrderValue: Number(c.min_order_amount) || 0,
         maxDiscountAmount: Number(c.max_discount_amount) || 0,
+        validFrom: c.valid_from || c.created_at,
+        validUntil: c.valid_until || new Date(Date.now() + 30 * 86400000).toISOString(),
+        maxUses: c.max_uses || 1000,
+        currentUses: c.current_uses || 0,
         isActive: Boolean(c.is_active),
         createdAt: c.created_at,
       }));
@@ -1109,4 +1279,80 @@ export const ServerDb = {
       recentOrders: orders.slice(0, 10),
     };
   },
+
+  // --------------------------------------------------------------------------
+  // AUDIT LOGS
+  // --------------------------------------------------------------------------
+  async getAuditLogs(): Promise<any[]> {
+    const [alRes, oshRes] = await Promise.all([
+      sbFetch('/audit_logs?select=*&order=created_at.desc&limit=50'),
+      sbFetch('/order_status_history?select=*&order=created_at.desc&limit=50'),
+    ]);
+
+    const logs: any[] = [];
+
+    if (alRes.ok && Array.isArray(alRes.data)) {
+      alRes.data.forEach((al: any) => {
+        logs.push({
+          id: al.id,
+          createdAt: al.created_at,
+          actorEmail: al.actor_email || 'admin@aajori.in',
+          action: al.action,
+          entityType: al.entity_type,
+          entityId: al.entity_id,
+          oldValues: al.old_values,
+          newValues: al.new_values,
+          ipAddress: al.ip_address,
+          userAgent: al.user_agent,
+        });
+      });
+    }
+
+    if (oshRes.ok && Array.isArray(oshRes.data)) {
+      oshRes.data.forEach((osh: any) => {
+        logs.push({
+          id: osh.id,
+          createdAt: osh.created_at,
+          actorEmail: osh.actor_role + (osh.actor_id ? ` (${osh.actor_id.slice(0, 8)})` : ''),
+          action: `ORDER_${osh.to_status}`,
+          entityType: 'ORDER',
+          entityId: osh.order_id,
+          oldValues: { from_status: osh.from_status },
+          newValues: { to_status: osh.to_status, reason: osh.reason, metadata: osh.metadata },
+        });
+      });
+    }
+
+    logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return logs;
+  },
+
+  async createAuditLog(log: {
+    actorId?: string;
+    actorEmail?: string;
+    action: string;
+    entityType: string;
+    entityId: string;
+    oldValues?: any;
+    newValues?: any;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<boolean> {
+    const res = await sbFetch('/audit_logs', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_id: log.actorId || null,
+        actor_email: log.actorEmail || 'admin@aajori.in',
+        action: log.action,
+        entity_type: log.entityType,
+        entity_id: log.entityId,
+        old_values: log.oldValues || null,
+        new_values: log.newValues || null,
+        ip_address: log.ipAddress || null,
+        user_agent: log.userAgent || null,
+      }),
+    });
+    return res.ok;
+  },
 };
+

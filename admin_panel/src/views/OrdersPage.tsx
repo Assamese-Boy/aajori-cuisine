@@ -55,6 +55,15 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
   }, [orderId, orders]);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [fleetRiders, setFleetRiders] = useState<any[]>([]);
+
+  useEffect(() => {
+    apiRequest('/admin/delivery-partners').then((res) => {
+      if (res.success && Array.isArray(res.data)) {
+        setFleetRiders(res.data);
+      }
+    });
+  }, []);
 
   const filteredOrders = orders.filter((o) => {
     if (filterStatus === 'ALL') return true;
@@ -186,11 +195,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
 
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <span className="font-medium text-slate-700 truncate max-w-[200px]">
-                      {order.restaurantId === 'd0000000-0000-0000-0000-000000000001'
-                        ? 'Khorikaa Ethnic Kitchen'
-                        : order.restaurantId === 'd0000000-0000-0000-0000-000000000002'
-                        ? 'Paradise Heritage Diner'
-                        : 'Brahmaputra Spice Bistro'}
+                      {order.restaurantName || order.restaurant?.name || 'Restaurant Partner'}
                     </span>
                     <span className="font-semibold text-brand-700 bg-brand-100/60 px-2 py-0.5 rounded-full">
                       {order.status.replace(/_/g, ' ')}
@@ -407,13 +412,15 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
                     </span>
                   </div>
                   <p className="text-emerald-700 text-[11px]">
-                    Customer Phone: <span className="font-mono font-medium">{selectedOrder.customerPhone || '+91 94350 12345'}</span>
+                    Customer Phone: <span className="font-mono font-medium">{selectedOrder.customerPhone || 'Not provided'}</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      const trackUrl = `${window.location.protocol}//${window.location.hostname}:5174/orders/track/${selectedOrder.trackingToken || selectedOrder.id}`;
+                      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                      const customerBase = isLocal ? `${window.location.protocol}//${window.location.hostname}:5174` : 'https://cuisine.aajori.in';
+                      const trackUrl = `${customerBase}/orders/track/${selectedOrder.trackingToken || selectedOrder.id}`;
                       navigator.clipboard.writeText(trackUrl);
                       toast.success('Tracking Link Copied', 'Secure public URL copied to clipboard');
                     }}
@@ -449,9 +456,11 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
                     className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   >
                     <option value="" disabled>Select Delivery Partner to Assign...</option>
-                    <option value="d0000000-0000-0000-0000-000000000011">Ranjit Barman (Two Wheeler - AS-01-ED-4421) - Online</option>
-                    <option value="d0000000-0000-0000-0000-000000000012">Bikash Saikia (Electric Scooter - AS-01-EE-8812) - Online</option>
-                    <option value="d0000000-0000-0000-0000-000000000013">Dhruba Kalita (Motorcycle - AS-01-EF-1903) - Online</option>
+                    {fleetRiders.map((rider) => (
+                      <option key={rider.id} value={rider.id}>
+                        {rider.fullName || rider.user?.fullName} ({rider.vehicleType || 'Bike'} - {rider.vehicleNumber || 'Standard'}) - {rider.status || (rider.isOnline ? 'Online' : 'Offline')}
+                      </option>
+                    ))}
                   </select>
                   <button
                     onClick={async () => {

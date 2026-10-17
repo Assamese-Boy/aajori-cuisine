@@ -33,3 +33,18 @@ export async function POST(req: NextRequest) {
     return apiError(err?.message || 'Failed to create delivery zone', 500);
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return apiError('Zone ID is required', 400);
+    }
+    const ok = await ServerDb.deleteDeliveryZone(id);
+    return apiSuccess({ success: ok });
+  } catch (err: any) {
+    return apiError(err?.message || 'Failed to delete zone', 500);
+  }
+}
+

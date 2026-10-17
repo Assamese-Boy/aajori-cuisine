@@ -58,54 +58,11 @@ export const PromotionsPage: React.FC = () => {
       if (res.success && Array.isArray(res.data)) {
         setCoupons(res.data);
       } else {
-        // Fallback default coupons if server returned empty
-        setCoupons([
-          {
-            id: 'c1',
-            code: 'AAJORI50',
-            description: 'Flat ₹50 off on authentic Assamese meals above ₹299',
-            discountType: 'FLAT',
-            discountValue: 50,
-            minOrderAmount: 299,
-            maxDiscountAmount: 50,
-            validFrom: new Date().toISOString(),
-            validUntil: new Date(Date.now() + 30 * 86400000).toISOString(),
-            maxUses: 1000,
-            currentUses: 142,
-            isActive: true,
-          },
-          {
-            id: 'c2',
-            code: 'BIHU20',
-            description: '20% off on traditional Khorikaa feasts',
-            discountType: 'PERCENTAGE',
-            discountValue: 20,
-            minOrderAmount: 399,
-            maxDiscountAmount: 100,
-            validFrom: new Date().toISOString(),
-            validUntil: new Date(Date.now() + 30 * 86400000).toISOString(),
-            maxUses: 500,
-            currentUses: 89,
-            isActive: true,
-          },
-          {
-            id: 'c3',
-            code: 'FIRSTMEAL',
-            description: 'Flat ₹75 off welcome voucher for first-time diners',
-            discountType: 'FLAT',
-            discountValue: 75,
-            minOrderAmount: 249,
-            maxDiscountAmount: 75,
-            validFrom: new Date().toISOString(),
-            validUntil: new Date(Date.now() + 60 * 86400000).toISOString(),
-            maxUses: 2000,
-            currentUses: 310,
-            isActive: true,
-          },
-        ]);
+        setCoupons([]);
       }
     } catch {
       toast.error('Network Error', 'Could not retrieve promotional vouchers');
+      setCoupons([]);
     } finally {
       setIsLoading(false);
     }

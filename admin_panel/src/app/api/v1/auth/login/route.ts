@@ -27,6 +27,13 @@ export async function POST(req: NextRequest) {
       return apiError('This account has been suspended. Please contact support.', 403);
     }
 
+    // Verify password if account has password_hash and caller supplied password
+    if (user.password && password) {
+      if (user.password !== password) {
+        return apiError('Incorrect password. Please check your credentials and try again.', 401);
+      }
+    }
+
     const token = `jwt_live_${user.id}_${Date.now()}`;
     const { password: _, ...safeUser } = user;
 

@@ -1,4 +1,6 @@
-import { apiSuccess, handleOptions } from '@/lib/api-helper';
+import { NextRequest } from 'next/server';
+import { ServerDb } from '@/lib/server-db';
+import { apiSuccess, apiError, handleOptions } from '@/lib/api-helper';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,22 +9,23 @@ export async function OPTIONS() {
 }
 
 export async function GET() {
-  return apiSuccess([
-    {
-      id: 'log_001',
-      actor: 'Manabendra Sarma (Super Admin)',
-      action: 'SYSTEM_SYNC',
-      target: 'Supabase PostgreSQL Cloud Cluster',
-      timestamp: new Date().toISOString(),
-      status: 'SUCCESS',
-    },
-    {
-      id: 'log_002',
-      actor: 'System Daemon',
-      action: 'GEO_RELOAD',
-      target: 'Kamrup Metropolitan Dispatch Grid',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      status: 'SUCCESS',
-    },
-  ]);
+  try {
+    const logs = await ServerDb.getAuditLogs();
+    return apiSuccess(logs);
+  } catch (err: any) {
+    return apiError(err?.message || 'Failed to retrieve audit logs', 500);
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    if (!body.action || !body.entityType) {
+      return apiError('action and entityType are required', 400);
+    }
+    const ok = await ServerDb.createAuditLog(body);
+    return apiSuccess({ success: ok });
+  } catch (err: any) {
+    return apiError(err?.message || 'Failed to create audit log', 500);
+  }
 }

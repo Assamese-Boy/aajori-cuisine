@@ -22,9 +22,9 @@ const PRIMARY_LIVE_API = 'https://cuisine-admin.aajori.in/api/v1';
 
 const RAW_CANDIDATES = [
   getEffectiveApiBase(),
-  '/api/v1',
+  isLocalEnv ? 'http://localhost:3000/api/v1' : PRIMARY_LIVE_API,
   PRIMARY_LIVE_API,
-  isLocalEnv ? 'http://localhost:3000/api/v1' : '',
+  '/api/v1',
 ].filter(Boolean);
 
 const CANDIDATE_API_BASES = RAW_CANDIDATES.filter(

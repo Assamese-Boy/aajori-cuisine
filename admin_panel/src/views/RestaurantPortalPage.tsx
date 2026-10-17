@@ -48,7 +48,8 @@ interface Order {
 
 export const RestaurantPortalPage: React.FC = () => {
   const toast = useToast();
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('d0000000-0000-0000-0000-000000000001');
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
+  const [restaurantsList, setRestaurantsList] = useState<{ id: string; name: string }[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -60,7 +61,25 @@ export const RestaurantPortalPage: React.FC = () => {
   const [rejectOrderId, setRejectOrderId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<string>('Kitchen at maximum capacity');
 
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      try {
+        const res = await apiRequest('/restaurants');
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setRestaurantsList(res.data.map((r: any) => ({ id: r.id, name: r.name })));
+          if (!selectedRestaurantId) {
+            setSelectedRestaurantId(res.data[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load restaurants for portal', err);
+      }
+    };
+    fetchRestaurants();
+  }, []);
+
   const loadPortalData = async () => {
+    if (!selectedRestaurantId) return;
     setIsLoading(true);
     try {
       const [ordersRes, metricsRes, menuRes] = await Promise.all([
@@ -86,7 +105,9 @@ export const RestaurantPortalPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadPortalData();
+    if (selectedRestaurantId) {
+      loadPortalData();
+    }
   }, [selectedRestaurantId]);
 
   const handleAcceptOrder = async (orderId: string, prepMinutes: number = 25) => {
@@ -212,9 +233,15 @@ export const RestaurantPortalPage: React.FC = () => {
             onChange={(e) => setSelectedRestaurantId(e.target.value)}
             className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            <option value="d0000000-0000-0000-0000-000000000001">Khorikaa Ethnic Kitchen (Uzan Bazar)</option>
-            <option value="d0000000-0000-0000-0000-000000000002">Paradise Heritage Diner (Silpukhuri)</option>
-            <option value="d0000000-0000-0000-0000-000000000003">Brahmaputra Spice Bistro (Beltola)</option>
+            {restaurantsList.length === 0 ? (
+              <option value="">Loading kitchens...</option>
+            ) : (
+              restaurantsList.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))
+            )}
           </select>
 
           <button

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs/promises';
+import path from 'path';
 
 export const dynamic = 'force-dynamic';
+
+const SETTINGS_FILE_PATH = path.join(
+  process.env.VERCEL ? '/tmp' : path.join(process.cwd(), '.data'),
+  'app_settings.json'
+);
 
 const DEFAULT_SETTINGS = {
   brandName: 'Aajori Cuisine',
@@ -68,26 +75,64 @@ const DEFAULT_SETTINGS = {
   ],
 };
 
-let currentSettings = { ...DEFAULT_SETTINGS };
-
-export async function GET(req: NextRequest) {
-  // If remote backend URL is provided, try proxying to it
-  const remoteBackend = process.env.BACKEND_URL;
-  if (remoteBackend && !remoteBackend.includes('localhost') && !remoteBackend.includes('127.0.0.1')) {
-    try {
-      const cleanUrl = remoteBackend.replace(/\/+$/, '');
-      const remoteRes = await fetch(`${cleanUrl}/api/v1/settings`);
-      if (remoteRes.ok) {
-        const data = await remoteRes.json();
-        return NextResponse.json(data);
-      }
-    } catch {
-      // Fall through to native store
-    }
+async function loadPersistedSettings() {
+  try {
+    const raw = await fs.readFile(SETTINGS_FILE_PATH, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_SETTINGS, ...parsed };
+  } catch {
+    return DEFAULT_SETTINGS;
   }
+}
 
-  return NextResponse.json({
-    success: true,
-    data: currentSettings,
+async function savePersistedSettings(settings: any) {
+  try {
+    await fs.mkdir(path.dirname(SETTINGS_FILE_PATH), { recursive: true });
+    await fs.writeFile(SETTINGS_FILE_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('Failed to persist settings file:', err);
+    return false;
+  }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
   });
 }
+
+export async function GET() {
+  const current = await loadPersistedSettings();
+  return NextResponse.json({
+    success: true,
+    data: current,
+  });
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const current = await loadPersistedSettings();
+    const updated = { ...current, ...body };
+    await savePersistedSettings(updated);
+
+    return NextResponse.json({
+      success: true,
+      data: updated,
+      message: 'Platform settings saved successfully',
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: { message: error?.message || 'Failed to save settings' } },
+      { status: 500 }
+    );
+  }
+}
+
+export const POST = PUT;

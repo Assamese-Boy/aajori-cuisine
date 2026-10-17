@@ -11,6 +11,7 @@ import {
   IndianRupee,
   Navigation,
   Settings,
+  Trash2,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -48,57 +49,33 @@ export const DeliveryZonesPage: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await apiRequest('/admin/delivery-zones');
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res.success && Array.isArray(res.data)) {
         setZones(res.data);
       } else {
-        // Fallback default operational zones
-        setZones([
-          {
-            id: 'zone-1',
-            name: 'Central Urban Core (Downtown / Business District)',
-            district: 'Central Zone',
-            baseFee: 20,
-            baseDistanceKm: 3,
-            perKmFee: 7.5,
-            maxDeliveryDistanceKm: 10,
-            isActive: true,
-          },
-          {
-            id: 'zone-2',
-            name: 'North Sector & Residential Suburbs',
-            district: 'North Zone',
-            baseFee: 25,
-            baseDistanceKm: 3,
-            perKmFee: 8,
-            maxDeliveryDistanceKm: 10,
-            isActive: true,
-          },
-          {
-            id: 'zone-3',
-            name: 'West Sector & Logistics Corridor',
-            district: 'West Zone',
-            baseFee: 30,
-            baseDistanceKm: 4,
-            perKmFee: 9,
-            maxDeliveryDistanceKm: 15,
-            isActive: true,
-          },
-          {
-            id: 'zone-4',
-            name: 'South Sector & Metropolitan Belt',
-            district: 'South Zone',
-            baseFee: 25,
-            baseDistanceKm: 3,
-            perKmFee: 8,
-            maxDeliveryDistanceKm: 12,
-            isActive: true,
-          },
-        ]);
+        setZones([]);
       }
     } catch {
       toast.error('Network Error', 'Could not load delivery zones');
+      setZones([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteZone = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete delivery zone "${name}"?`)) return;
+    try {
+      const res = await apiRequest(`/admin/delivery-zones?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (res.success) {
+        toast.success('Zone Deleted', `Delivery zone "${name}" deleted`);
+        fetchZones();
+      } else {
+        toast.error('Delete Failed', res.error?.message || 'Could not delete zone');
+      }
+    } catch (err: any) {
+      toast.error('Error', err.message || 'Server error deleting zone');
     }
   };
 
@@ -202,88 +179,119 @@ export const DeliveryZonesPage: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Operational Scope</span>
-          <div className="text-xl font-bold text-slate-900 mt-1">Global Worldwide</div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Multi-Region & Localized Delivery</p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Zones</span>
-          <div className="text-2xl font-bold font-mono text-emerald-600 mt-1">
-            {zones.filter((z) => z.isActive).length}
+      {(() => {
+        const minFee = zones.length > 0 ? Math.min(...zones.map((z) => z.baseFee)) : 0;
+        const maxFee = zones.length > 0 ? Math.max(...zones.map((z) => z.baseFee)) : 0;
+        const maxRadius = zones.length > 0 ? Math.max(...zones.map((z) => z.maxDeliveryDistanceKm || 0)) : 0;
+        const activeCount = zones.filter((z) => z.isActive).length;
+        const uniqueDistricts = new Set(zones.map((z) => z.district).filter(Boolean)).size;
+
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Operational Scope</span>
+              <div className="text-xl font-bold text-slate-900 mt-1">{zones.length} Configured Zones</div>
+              <p className="text-[11px] text-slate-400 mt-0.5">{uniqueDistricts} District{uniqueDistricts === 1 ? '' : 's'} Covered</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Zones</span>
+              <div className="text-2xl font-bold font-mono text-emerald-600 mt-1">
+                {activeCount}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">Out of {zones.length} total zones</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Base Delivery Fee</span>
+              <div className="text-2xl font-bold font-mono text-slate-900 mt-1">
+                {zones.length === 0 ? '₹0' : minFee === maxFee ? `₹${minFee}` : `₹${minFee} - ₹${maxFee}`}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">Starting delivery charge</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fleet Coverage</span>
+              <div className="text-2xl font-bold font-mono text-indigo-600 mt-1">
+                {maxRadius > 0 ? `${maxRadius} km max` : '0 km'}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">Max dispatch radius</p>
+            </div>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Accepting orders</p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Base Delivery Fee</span>
-          <div className="text-2xl font-bold font-mono text-slate-900 mt-1">₹20 - ₹30</div>
-          <p className="text-[11px] text-slate-400 mt-0.5">First 3 km included</p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fleet Coverage</span>
-          <div className="text-2xl font-bold font-mono text-indigo-600 mt-1">15 km max</div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Guaranteed delivery radius</p>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Zones Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {zones.map((zone) => (
-          <div
-            key={zone.id}
-            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 transition-colors"
-          >
-            <div>
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-brand-600 shrink-0" />
-                    {zone.name}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{zone.district}</p>
+      {zones.length === 0 && !isLoading ? (
+        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+          <Compass className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-700">No Delivery Zones Configured</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            Delivery zones define local operational coverage, base fees, and distance tariffs. Click "Add Service Zone" above to configure your first delivery perimeter.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {zones.map((zone) => (
+            <div
+              key={zone.id}
+              className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 transition-colors"
+            >
+              <div>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-brand-600 shrink-0" />
+                      {zone.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{zone.district}</p>
+                  </div>
+                  {zone.isActive ? (
+                    <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold">
+                      Active
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-[10px] font-bold">
+                      Paused
+                    </span>
+                  )}
                 </div>
-                {zone.isActive ? (
-                  <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold">
-                    Active
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-[10px] font-bold">
-                    Paused
-                  </span>
-                )}
-              </div>
 
-              <div className="grid grid-cols-2 gap-2 mt-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div>
-                  <span className="text-slate-400 text-[10px] uppercase font-bold">Base Delivery Charge</span>
-                  <div className="font-mono font-bold text-slate-800 text-sm">
-                    ₹{zone.baseFee}{' '}
-                    <span className="text-xs font-normal text-slate-500">({zone.baseDistanceKm} km)</span>
+                <div className="grid grid-cols-2 gap-2 mt-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">Base Delivery Charge</span>
+                    <div className="font-mono font-bold text-slate-800 text-sm">
+                      ₹{zone.baseFee}{' '}
+                      <span className="text-xs font-normal text-slate-500">({zone.baseDistanceKm} km)</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">Additional Distance</span>
+                    <div className="font-mono font-bold text-slate-800 text-sm">₹{zone.perKmFee}/km</div>
+                  </div>
+                  <div className="col-span-2 pt-1 border-t border-slate-200/60 flex items-center justify-between text-slate-600">
+                    <span>Max Delivery Service Distance:</span>
+                    <span className="font-mono font-bold text-slate-800">{zone.maxDeliveryDistanceKm} km</span>
                   </div>
                 </div>
-                <div>
-                  <span className="text-slate-400 text-[10px] uppercase font-bold">Additional Distance</span>
-                  <div className="font-mono font-bold text-slate-800 text-sm">₹{zone.perKmFee}/km</div>
-                </div>
-                <div className="col-span-2 pt-1 border-t border-slate-200/60 flex items-center justify-between text-slate-600">
-                  <span>Max Delivery Service Distance:</span>
-                  <span className="font-mono font-bold text-slate-800">{zone.maxDeliveryDistanceKm} km</span>
-                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => handleDeleteZone(zone.id, zone.name)}
+                  className="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </button>
+                <button
+                  onClick={() => handleEdit(zone)}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Configure Pricing
+                </button>
               </div>
             </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                onClick={() => handleEdit(zone)}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-              >
-                Configure Pricing
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Edit/Create Zone Modal */}
       {isModalOpen && (

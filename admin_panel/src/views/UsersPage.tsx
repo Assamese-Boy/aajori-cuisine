@@ -199,18 +199,21 @@ export const UsersPage: React.FC = () => {
     if (!window.confirm(`Are you sure you want to permanently delete ${user.fullName}?`)) {
       return;
     }
-    recordDeletedUser(user.id);
-    setUsers((prev) => prev.filter((u) => u.id !== user.id));
-    toast.success('User Deleted', `Removed ${user.fullName} from directory`);
     try {
       const res = await apiRequest(`/admin/users/${user.id}`, {
         method: 'DELETE',
       });
       if (res.success) {
+        recordDeletedUser(user.id);
+        setUsers((prev) => prev.filter((u) => u.id !== user.id));
+        toast.success('User Deleted', `Removed ${user.fullName} from directory`);
         fetchUsers();
+      } else {
+        toast.error('Deletion Failed', res.error?.message || 'Could not delete user from database');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Delete user backend error:', e);
+      toast.error('Deletion Failed', e?.message || 'Network error deleting user');
     }
   };
 
