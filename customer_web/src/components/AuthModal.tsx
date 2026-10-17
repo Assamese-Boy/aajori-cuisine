@@ -10,12 +10,8 @@ import {
   EyeOff,
   Navigation,
   CheckCircle2,
-  Sparkles,
   ArrowRight,
   ShieldCheck,
-  Compass,
-  Search,
-  Globe,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLocationContext } from '../context/LocationContext';
@@ -47,47 +43,40 @@ export const AuthModal: React.FC = () => {
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Universal Sign up form state (global, no hardcoded cities or coordinates)
+  // Clean, simple Sign up form state (location is completely optional, no lat/lng inputs)
   const [signupForm, setSignupForm] = useState({
     fullName: '',
     phone: '',
     email: '',
     password: '',
-    addressLine1: '',
-    addressLine2: '',
-    landmark: '',
+    address: '', // Plain text location/area entered manually or filled by GPS
     city: '',
-    state: '',
-    country: '',
-    postalCode: '',
-    latitude: '' as string | number,
-    longitude: '' as string | number,
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
   });
 
   const [isGpsDetecting, setIsGpsDetecting] = useState(false);
-  const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
-  const [isGpsLocked, setIsGpsLocked] = useState(false);
-  const [showCoordinateDetails, setShowCoordinateDetails] = useState(false);
+  const [isLocationAttached, setIsLocationAttached] = useState(false);
 
-  // Initialize with location from LocationContext if user already detected GPS
+  // If user previously already permitted GPS in LocationContext, pre-populate friendly area
   useEffect(() => {
-    if (currentLocation && currentLocation.latitude && currentLocation.longitude) {
+    if (currentLocation && currentLocation.latitude && currentLocation.longitude && !signupForm.address) {
+      const friendlyName = currentLocation.addressLine || currentLocation.name || '';
       setSignupForm((prev) => ({
         ...prev,
-        latitude: Number(currentLocation.latitude.toFixed(6)),
-        longitude: Number(currentLocation.longitude.toFixed(6)),
+        address: friendlyName !== 'Current Location' ? friendlyName : prev.address,
         city: currentLocation.city || prev.city,
-        postalCode: currentLocation.postalCode || prev.postalCode,
-        landmark: currentLocation.name !== 'Current Location' ? currentLocation.name : prev.landmark,
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
       }));
-      setIsGpsLocked(true);
+      setIsLocationAttached(true);
     }
   }, [currentLocation]);
 
-  // Global High-Accuracy GPS Detection (Any location worldwide)
+  // Optional Device GPS Location (Only if user chooses to click)
   const handleDetectLiveGps = async () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
-      toast.error('Location Error', 'Geolocation is not supported by your browser.');
+      toast.info('Location Unsupported', 'Device geolocation is not available in your browser.');
       return;
     }
 
@@ -104,9 +93,9 @@ export const AuthModal: React.FC = () => {
           latitude: lat,
           longitude: lng,
         }));
-        setIsGpsLocked(true);
+        setIsLocationAttached(true);
 
-        // Global reverse geocoding via OpenStreetMap Nominatim
+        // Reverse geocoding into plain readable address text
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
@@ -116,94 +105,47 @@ export const AuthModal: React.FC = () => {
             const data = await res.json();
             const addr = data.address || {};
             const road = addr.road || addr.pedestrian || addr.street || '';
-            const locality = addr.suburb || addr.neighbourhood || addr.city_district || addr.hamlet || '';
-            const city = addr.city || addr.town || addr.village || addr.county || '';
-            const state = addr.state || addr.province || addr.region || '';
+            const locality = addr.suburb || addr.neighbourhood || addr.city_district || '';
+            const city = addr.city || addr.town || addr.village || '';
             const country = addr.country || '';
-            const postcode = addr.postcode || '';
+
+            const friendlyName = [road, locality, city, country].filter(Boolean).join(', ');
+            const resolvedAddressText = friendlyName || data.display_name?.split(',').slice(0, 3).join(', ') || `Location (${lat}, ${lng})`;
 
             setSignupForm((prev) => ({
               ...prev,
-              addressLine1: prev.addressLine1 || road || locality || data.display_name?.split(',')[0] || `Point (${lat}, ${lng})`,
-              landmark: prev.landmark || locality || road || '',
+              address: resolvedAddressText,
               city: city || prev.city,
-              state: state || prev.state,
-              country: country || prev.country,
-              postalCode: postcode || prev.postalCode,
             }));
 
             // Sync with global location context
             setLocation({
-              name: locality || road || city || 'Current Location',
-              addressLine: data.display_name || `${road}, ${city}`,
+              name: locality || city || 'Current Location',
+              addressLine: resolvedAddressText,
               latitude: lat,
               longitude: lng,
               isGps: true,
               city,
-              postalCode: postcode,
             });
 
-            toast.success(
-              '📍 Coordinates Acquired!',
-              `Lat: ${lat}, Long: ${lng} (${city ? `${city}, ` : ''}${country})`
-            );
+            toast.success('📍 Location Attached!', friendlyName || `${city || 'Area'}, ${country}`);
           }
         } catch (_) {
-          toast.success('📍 Coordinates Acquired!', `Lat: ${lat}, Long: ${lng}`);
+          toast.success('📍 Location Attached!', 'Device coordinates recorded.');
         } finally {
           setIsGpsDetecting(false);
         }
       },
       (err) => {
         setIsGpsDetecting(false);
-        console.warn('GPS detection warning:', err);
+        console.warn('GPS detection skipped or denied:', err);
         toast.info(
-          'GPS Access Not Allowed',
-          'Please enter your street address and click "Lookup Coordinates", or type Lat/Long directly.'
+          'Location Not Enabled',
+          'No problem! Location is optional. You can type your location manually, or leave it blank.'
         );
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
-  };
-
-  // Forward Geocoding: Lookup coordinates from any written address globally
-  const handleLookupCoordinatesFromAddress = async () => {
-    const queryParts = [signupForm.addressLine1, signupForm.landmark, signupForm.city, signupForm.state, signupForm.country, signupForm.postalCode]
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (queryParts.length === 0) {
-      toast.info('Enter Address', 'Please type your street, city or postal code first.');
-      return;
-    }
-
-    setIsGeocodingAddress(true);
-    try {
-      const q = encodeURIComponent(queryParts.join(', '));
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=1`, {
-        headers: { 'Accept-Language': 'en' },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.length > 0) {
-          const lat = Number(parseFloat(data[0].lat).toFixed(6));
-          const lng = Number(parseFloat(data[0].lon).toFixed(6));
-          setSignupForm((prev) => ({
-            ...prev,
-            latitude: lat,
-            longitude: lng,
-          }));
-          setIsGpsLocked(true);
-          toast.success('📍 Coordinates Resolved!', `Locked at ${lat}, ${lng}`);
-          return;
-        }
-      }
-      toast.info('Coordinate Lookup', 'Could not resolve exact coordinates. You can enter them manually below.');
-    } catch (e) {
-      console.warn('Geocoding error', e);
-    } finally {
-      setIsGeocodingAddress(false);
-    }
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -231,6 +173,7 @@ export const AuthModal: React.FC = () => {
     e.preventDefault();
     setErrorMsg(null);
 
+    // Required fields
     if (!signupForm.fullName.trim()) {
       setErrorMsg('Please enter your full name');
       return;
@@ -247,13 +190,18 @@ export const AuthModal: React.FC = () => {
       setErrorMsg('Please set a password with at least 6 characters');
       return;
     }
-    if (!signupForm.addressLine1.trim()) {
-      setErrorMsg('Please enter your delivery street/building address');
-      return;
-    }
 
-    const latVal = typeof signupForm.latitude === 'number' ? signupForm.latitude : parseFloat(signupForm.latitude as string);
-    const lngVal = typeof signupForm.longitude === 'number' ? signupForm.longitude : parseFloat(signupForm.longitude as string);
+    // Location is 100% OPTIONAL
+    let addressPayload = undefined;
+    if (signupForm.address.trim() || signupForm.latitude !== undefined) {
+      addressPayload = {
+        label: 'Home',
+        addressLine1: signupForm.address.trim() || 'My Delivery Address',
+        city: signupForm.city.trim() || undefined,
+        latitude: signupForm.latitude,
+        longitude: signupForm.longitude,
+      };
+    }
 
     setIsSubmitting(true);
     const res = await signup({
@@ -261,16 +209,7 @@ export const AuthModal: React.FC = () => {
       phone: signupForm.phone.trim(),
       email: signupForm.email.trim().toLowerCase(),
       password: signupForm.password,
-      address: {
-        label: 'Home',
-        addressLine1: signupForm.addressLine1.trim(),
-        addressLine2: signupForm.addressLine2.trim() || undefined,
-        landmark: signupForm.landmark.trim() || undefined,
-        city: signupForm.city.trim() || undefined,
-        postalCode: signupForm.postalCode.trim() || undefined,
-        latitude: !isNaN(latVal) ? latVal : undefined,
-        longitude: !isNaN(lngVal) ? lngVal : undefined,
-      },
+      address: addressPayload,
     });
     setIsSubmitting(false);
 
@@ -313,8 +252,8 @@ export const AuthModal: React.FC = () => {
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               {tab === 'signin'
-                ? 'Sign in directly with your email or phone and password (No OTP).'
-                : 'Instant account setup with live delivery coordinates (No OTP).'}
+                ? 'Sign in directly with your email or phone (No OTP needed).'
+                : 'Simple, direct registration with zero OTP required.'}
             </p>
           </div>
 
@@ -364,7 +303,7 @@ export const AuthModal: React.FC = () => {
           )}
 
           {tab === 'signin' ? (
-            /* ==================== SIGN IN (NO OTP) ==================== */
+            /* ==================== SIGN IN ==================== */
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -426,7 +365,7 @@ export const AuthModal: React.FC = () => {
               </div>
             </form>
           ) : (
-            /* ==================== SIGN UP (NO OTP, GLOBAL DETAILS) ==================== */
+            /* ==================== SIGN UP (NO OTP, OPTIONAL LOCATION) ==================== */
             <form onSubmit={handleSignupSubmit} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
@@ -453,7 +392,7 @@ export const AuthModal: React.FC = () => {
                       required
                       value={signupForm.phone}
                       onChange={(e) => setSignupForm({ ...signupForm, phone: e.target.value })}
-                      placeholder="e.g. +1 555... or +91 98..."
+                      placeholder="e.g. +91 98... or +1..."
                       className="w-full pl-10 pr-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white font-medium"
                     />
                   </div>
@@ -490,22 +429,22 @@ export const AuthModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Delivery Address & GPS Coordinates */}
+              {/* Optional Delivery Address / Location */}
               <div className="pt-2 border-t border-stone-200/80 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                    <MapPin className="w-4 h-4 text-brand-600" />
-                    <span>Delivery Location & GPS Coordinates *</span>
-                  </div>
-                  {isGpsLocked && (
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-brand-600" />
+                    <span>Delivery Location (Optional)</span>
+                  </label>
+                  {isLocationAttached && (
                     <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                       <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                      GPS Locked
+                      Location Attached
                     </span>
                   )}
                 </div>
 
-                {/* Detect GPS Button */}
+                {/* Optional Detect GPS Button */}
                 <button
                   type="button"
                   onClick={handleDetectLiveGps}
@@ -514,120 +453,25 @@ export const AuthModal: React.FC = () => {
                 >
                   <Navigation className={`w-3.5 h-3.5 text-brand-600 ${isGpsDetecting ? 'animate-spin' : ''}`} />
                   <span>
-                    {isGpsDetecting ? 'Detecting Precise Satellite GPS...' : '📍 Detect My Current GPS Location'}
+                    {isGpsDetecting ? 'Detecting Location...' : '📍 Use My Current Location (Optional)'}
                   </span>
                 </button>
 
-                {/* Street Address */}
+                {/* Manual Text Address Input */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Street Address / Apartment / Building *
-                  </label>
                   <input
                     type="text"
-                    required
-                    value={signupForm.addressLine1}
-                    onChange={(e) => setSignupForm({ ...signupForm, addressLine1: e.target.value })}
-                    placeholder="House/Apt No., Street Name, Area"
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 focus:bg-white font-medium"
+                    value={signupForm.address}
+                    onChange={(e) => {
+                      setSignupForm({ ...signupForm, address: e.target.value });
+                      if (!e.target.value) setIsLocationAttached(false);
+                    }}
+                    placeholder="e.g. Apartment, House No., Street, City (Optional)"
+                    className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white font-medium placeholder:text-stone-400"
                   />
-                </div>
-
-                {/* City, State, Country, Postal Code */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">City / Town</label>
-                    <input
-                      type="text"
-                      value={signupForm.city}
-                      onChange={(e) => setSignupForm({ ...signupForm, city: e.target.value })}
-                      placeholder="e.g. City"
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-brand-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">State / Province</label>
-                    <input
-                      type="text"
-                      value={signupForm.state}
-                      onChange={(e) => setSignupForm({ ...signupForm, state: e.target.value })}
-                      placeholder="e.g. State"
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-brand-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Postal Code (ZIP/PIN)</label>
-                    <input
-                      type="text"
-                      value={signupForm.postalCode}
-                      onChange={(e) => setSignupForm({ ...signupForm, postalCode: e.target.value })}
-                      placeholder="ZIP / Postal code"
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-brand-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Coordinate details panel */}
-                <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-800">
-                      <Compass className="w-3.5 h-3.5 text-brand-600" />
-                      <span>Latitude & Longitude</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleLookupCoordinatesFromAddress}
-                        disabled={isGeocodingAddress}
-                        className="text-[10px] font-bold text-brand-600 hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        <Search className="w-3 h-3" />
-                        <span>{isGeocodingAddress ? 'Looking up...' : 'Lookup from Address'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowCoordinateDetails(!showCoordinateDetails)}
-                        className="text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
-                      >
-                        {showCoordinateDetails ? 'Collapse' : 'Manual Coords'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Lat/Long values */}
-                  <div className="flex items-center justify-between text-[11px] font-mono bg-white p-2 rounded-xl border border-stone-200 text-slate-700">
-                    <span className="truncate">Lat: {signupForm.latitude !== '' ? signupForm.latitude : 'Not set'}</span>
-                    <span className="text-stone-300">•</span>
-                    <span className="truncate">Long: {signupForm.longitude !== '' ? signupForm.longitude : 'Not set'}</span>
-                  </div>
-
-                  {showCoordinateDetails && (
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <div>
-                        <label className="block text-[10px] text-slate-500 font-bold mb-0.5">Latitude</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={signupForm.latitude}
-                          onChange={(e) => setSignupForm({ ...signupForm, latitude: e.target.value })}
-                          placeholder="e.g. 40.7128"
-                          className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-xs font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-500 font-bold mb-0.5">Longitude</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={signupForm.longitude}
-                          onChange={(e) => setSignupForm({ ...signupForm, longitude: e.target.value })}
-                          placeholder="e.g. -74.0060"
-                          className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-xs font-mono"
-                        />
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Location is optional. You can enter your address now or set it later during checkout.
+                  </p>
                 </div>
               </div>
 
@@ -661,7 +505,7 @@ export const AuthModal: React.FC = () => {
 
           <div className="pt-2 text-center text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Instant Login • Global Geolocation • Zero OTP</span>
+            <span>Instant Login • Simple Registration • Zero OTP</span>
           </div>
         </div>
       </div>

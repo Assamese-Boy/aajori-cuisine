@@ -141,11 +141,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true };
       }
 
-      const errMsg = res.error?.message || 'Sign up failed. Please check your inputs.';
+      const errMsg =
+        res.error?.message ||
+        (typeof res.error === 'string' ? res.error : undefined) ||
+        (typeof res.message === 'string' ? res.message : undefined) ||
+        'Sign up failed. Please verify your details.';
       toast.error('Registration Failed', errMsg);
       return { success: false, error: errMsg };
     } catch (err: any) {
-      const errMsg = err.message || 'Network error during sign up';
+      const errMsg = err?.message || 'Network error during sign up';
       toast.error('Registration Error', errMsg);
       return { success: false, error: errMsg };
     }

@@ -244,19 +244,72 @@ export function handleMockCustomerApi(endpoint: string, options: RequestInit = {
     return { success: true, data: [], statusCode: 200 };
   }
 
-  // 7. Auth endpoints
-  if (clean === '/auth/request-otp') {
-    return { success: true, message: 'OTP sent successfully to your mobile number' };
+  // 7. Customer Auth & Profile Endpoints
+  if (clean === '/auth/signup' || clean === '/auth/customer-signup') {
+    const userId = `usr_${Date.now()}`;
+    const cleanPhone = (body.phone || '+919864000020').trim();
+    const cleanEmail = (body.email || `${cleanPhone.replace(/[^0-9]/g, '')}@customer.aajori.in`).trim().toLowerCase();
+    const cleanName = (body.fullName || 'Aajori Customer').trim();
+
+    const user = {
+      id: userId,
+      phone: cleanPhone,
+      fullName: cleanName,
+      email: cleanEmail,
+      role: 'CUSTOMER',
+      status: 'ACTIVE',
+    };
+
+    let createdAddress = undefined;
+    if (body.address && (body.address.addressLine1 || body.address.city)) {
+      createdAddress = {
+        id: `addr_${Date.now()}`,
+        customerId: userId,
+        label: body.address.label || 'Home',
+        addressLine1: body.address.addressLine1 || body.address.city || 'Delivery Address',
+        addressLine2: body.address.addressLine2 || '',
+        landmark: body.address.landmark || '',
+        city: body.address.city || '',
+        postalCode: body.address.postalCode || '',
+        location: {
+          latitude: Number(body.address.latitude) || 0,
+          longitude: Number(body.address.longitude) || 0,
+        },
+        isDefault: true,
+      };
+
+      try {
+        if (typeof window !== 'undefined') {
+          const stored = JSON.parse(localStorage.getItem('aajori_mock_customer_addresses') || '[]');
+          stored.unshift(createdAddress);
+          localStorage.setItem('aajori_mock_customer_addresses', JSON.stringify(stored));
+        }
+      } catch (_) {}
+    }
+
+    return {
+      success: true,
+      data: {
+        token: `mock_cust_token_${Date.now()}`,
+        user,
+        address: createdAddress,
+      },
+      statusCode: 201,
+    };
   }
 
-  if (clean === '/auth/verify-otp' || clean === '/auth/customer-login' || clean === '/auth/customer-signup') {
+  if (clean === '/auth/login' || clean === '/auth/customer-login' || clean === '/auth/verify-otp') {
+    const identifier = (body.identifier || body.email || body.phone || '+919864000020').trim();
+    const isEmail = identifier.includes('@');
     const user = {
       id: 'cust_001',
-      phone: body.phone || '+919864000020',
-      fullName: body.fullName || 'Aajori Customer',
-      email: body.email || 'customer@aajori.in',
+      phone: isEmail ? '+919864000020' : identifier,
+      fullName: 'Aajori Customer',
+      email: isEmail ? identifier.toLowerCase() : `${identifier.replace(/[^0-9]/g, '')}@customer.aajori.in`,
       role: 'CUSTOMER',
+      status: 'ACTIVE',
     };
+
     return {
       success: true,
       data: {
@@ -265,6 +318,68 @@ export function handleMockCustomerApi(endpoint: string, options: RequestInit = {
       },
       statusCode: 200,
     };
+  }
+
+  if (clean === '/auth/me') {
+    let currentUser = null;
+    try {
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('aajori_customer_user');
+        if (raw) currentUser = JSON.parse(raw);
+      }
+    } catch (_) {}
+
+    return {
+      success: true,
+      data: currentUser || {
+        id: 'cust_001',
+        phone: '+919864000020',
+        fullName: 'Aajori Customer',
+        email: 'customer@aajori.in',
+        role: 'CUSTOMER',
+      },
+      statusCode: 200,
+    };
+  }
+
+  if (clean === '/addresses' && method === 'GET') {
+    let addrs: any[] = [];
+    try {
+      if (typeof window !== 'undefined') {
+        addrs = JSON.parse(localStorage.getItem('aajori_mock_customer_addresses') || '[]');
+      }
+    } catch (_) {}
+    return { success: true, data: addrs, statusCode: 200 };
+  }
+
+  if (clean === '/addresses' && method === 'POST') {
+    const newAddr = {
+      id: `addr_${Date.now()}`,
+      customerId: 'cust_001',
+      label: body.label || 'Home',
+      addressLine1: body.addressLine1 || 'Delivery Address',
+      addressLine2: body.addressLine2 || '',
+      landmark: body.landmark || '',
+      city: body.city || '',
+      postalCode: body.postalCode || '',
+      location: {
+        latitude: Number(body.latitude) || 0,
+        longitude: Number(body.longitude) || 0,
+      },
+      isDefault: true,
+    };
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = JSON.parse(localStorage.getItem('aajori_mock_customer_addresses') || '[]');
+        stored.unshift(newAddr);
+        localStorage.setItem('aajori_mock_customer_addresses', JSON.stringify(stored));
+      }
+    } catch (_) {}
+    return { success: true, data: newAddr, statusCode: 201 };
+  }
+
+  if (clean === '/auth/request-otp') {
+    return { success: true, message: 'OTP sent successfully to your mobile number' };
   }
 
   // 8. AI Recommendations
