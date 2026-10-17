@@ -108,6 +108,29 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
           </div>
         </div>
 
+        {/* Test Notification Action Bar - Always visible */}
+        <div className="p-3 bg-stone-50 border-b border-stone-200 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-slate-700">
+            <span className={`w-2 h-2 rounded-full ${isPermissionGranted ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+            <span className="text-[11px] font-semibold text-slate-600">
+              Push Alerts: {isPermissionGranted ? 'Active 🟢' : 'Permission Needed 🟡'}
+            </span>
+          </div>
+          <button
+            onClick={async () => {
+              if (!isPermissionGranted) {
+                const granted = await requestNotificationPermission();
+                if (!granted) return;
+              }
+              await triggerTestNotification();
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-xs shadow-xs transition-colors cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Test Web Push</span>
+          </button>
+        </div>
+
         {/* Permission Request Prompt if not granted */}
         {!isPermissionGranted && (
           <div className="p-3 bg-amber-50 border-b border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2">

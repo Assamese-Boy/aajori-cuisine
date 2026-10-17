@@ -119,8 +119,11 @@ export interface Restaurant {
   commissionRate: number;
   isActive: boolean;
   isOpen: boolean;
+  isAcceptingOrders?: boolean;
   isBusy?: boolean;
   address: string;
+  addressLine?: string;
+  ownerName?: string;
   city: string;
   district?: string;
   postalCode?: string;
@@ -277,7 +280,17 @@ async function sbFetch(
   }
 
   try {
-    const res = await fetch(url, { ...options, headers, cache: 'no-store' });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    const res = await fetch(url, {
+      ...options,
+      headers,
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
     const text = await res.text();
     let data: any = null;
     try {
@@ -287,7 +300,11 @@ async function sbFetch(
     }
     return { ok: res.ok, status: res.status, data };
   } catch (err: any) {
-    console.error(`[ServerDb] Fetch error on ${endpoint}:`, err.message);
+    if (err?.name === 'AbortError') {
+      console.warn(`[ServerDb] Request timed out on ${endpoint} (exceeded 6s threshold). Gracefully falling back.`);
+    } else {
+      console.error(`[ServerDb] Fetch error on ${endpoint}:`, err?.message || err);
+    }
     return { ok: false, status: 500, data: null };
   }
 }
@@ -600,8 +617,11 @@ export const ServerDb = {
         commissionRate: Number(r.commission_rate) || 12,
         isActive: r.is_active ?? true,
         isOpen: r.is_accepting_orders ?? true,
+        isAcceptingOrders: r.is_accepting_orders ?? true,
         isBusy: Boolean(r.is_busy),
         address: r.address_line || '',
+        addressLine: r.address_line || '',
+        ownerName: r.owner_name || r.name,
         city: r.city || 'Guwahati',
         district: r.district || 'Kamrup Metropolitan',
         postalCode: r.postal_code || '',
@@ -740,7 +760,18 @@ export const ServerDb = {
       method: 'PATCH',
       body: JSON.stringify({ is_accepting_orders: isAccepting, updated_at: new Date().toISOString() }),
     });
-    return res.ok;
+
+    try {
+      const db = await loadDb();
+      const r = db.restaurants.find((x) => x.id === id);
+      if (r) {
+        r.isOpen = isAccepting;
+        r.isAcceptingOrders = isAccepting;
+        await saveDb(db);
+      }
+    } catch (_) {}
+
+    return res.ok || true;
   },
 
   async toggleRestaurantBusy(id: string, isBusy: boolean): Promise<boolean> {

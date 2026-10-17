@@ -74,7 +74,31 @@ async function performFetch(
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${cleanEndpoint}`;
 
-  const res = await fetch(url, { ...options, headers });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...options, headers, signal: controller.signal });
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err?.name === 'AbortError') {
+      return {
+        success: false,
+        statusCode: 408,
+        isInfrastructureError: true,
+        error: { message: 'Network request timed out. Please retry.' },
+      };
+    }
+    return {
+      success: false,
+      statusCode: 500,
+      isInfrastructureError: true,
+      error: { message: err?.message || 'Network connection failed' },
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const contentType = res.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {

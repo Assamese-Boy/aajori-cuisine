@@ -116,11 +116,29 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleAccepting = async (restaurantId: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus;
+    // 1. Optimistic instant UI update
+    setRestaurantsList((prev) =>
+      prev.map((r) =>
+        r.id === restaurantId ? { ...r, isAcceptingOrders: nextStatus, isOpen: nextStatus } : r
+      )
+    );
+    recordUpdatedRestaurant(restaurantId, { isAcceptingOrders: nextStatus, isOpen: nextStatus });
+
+    // 2. Call server API
     const res = await apiRequest(`/admin/restaurants/${restaurantId}/toggle`, {
       method: 'PATCH',
-      body: JSON.stringify({ isAcceptingOrders: !currentStatus }),
+      body: JSON.stringify({ isAcceptingOrders: nextStatus, isOpen: nextStatus }),
     });
+
     if (res.success) {
+      toast.success(
+        nextStatus ? 'Orders Enabled 🟢' : 'Orders Paused ⏸️',
+        `Store is now ${nextStatus ? 'actively accepting customer orders' : 'paused from taking orders'}.`
+      );
+      onRefresh();
+    } else {
+      toast.error('Failed to update status', res.error?.message || 'Server error');
       onRefresh();
     }
   };
@@ -164,24 +182,34 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
 
   const handleOpenEditRest = (r: any) => {
     setEditingRest(r);
+    const resolvedAddress =
+      r.addressLine ||
+      (typeof r.address === 'string' ? r.address : r.address?.addressLine1 || r.address?.address_line1) ||
+      r.address_line ||
+      '';
+    const resolvedOwner =
+      r.ownerName ||
+      r.merchantName ||
+      (r.name ? `${r.name} Manager` : 'Restaurant Manager');
+
     setRestFormData({
-      name: r.name,
-      addressLine: r.addressLine || r.address?.addressLine1 || '',
-      city: r.city || r.address?.city || '',
-      district: r.district || r.address?.district || '',
-      postalCode: r.postalCode || r.address?.postalCode || '',
-      latitude: r.location?.latitude ?? r.address?.location?.latitude ?? 0,
-      longitude: r.location?.longitude ?? r.address?.location?.longitude ?? 0,
-      cuisineTypes: r.cuisineTypes?.join(', ') || 'Traditional',
-      commissionRate: r.commissionRate,
-      avgPrepTimeMinutes: r.avgPrepTimeMinutes,
-      minOrderAmount: r.minOrderAmount,
+      name: r.name || '',
+      addressLine: resolvedAddress,
+      city: r.city || r.address?.city || 'Guwahati',
+      district: r.district || r.address?.district || 'Kamrup Metropolitan',
+      postalCode: r.postalCode || r.address?.postalCode || '781001',
+      latitude: r.location?.latitude ?? r.latitude ?? r.address?.location?.latitude ?? 26.1738,
+      longitude: r.location?.longitude ?? r.longitude ?? r.address?.location?.longitude ?? 91.7825,
+      cuisineTypes: Array.isArray(r.cuisineTypes) ? r.cuisineTypes.join(', ') : (r.cuisineTypes || 'Traditional'),
+      commissionRate: r.commissionRate ?? 15,
+      avgPrepTimeMinutes: r.avgPrepTimeMinutes ?? r.avgPreparationTimeMinutes ?? 25,
+      minOrderAmount: r.minOrderAmount ?? r.minimumOrderValue ?? 150,
       coverUrl: r.coverUrl || r.bannerUrl || r.cover_url || '',
-      ownerName: r.ownerName || '',
-      ownerPhone: r.phone || '',
-      ownerEmail: r.email || '',
+      ownerName: resolvedOwner,
+      ownerPhone: r.ownerPhone || r.phone || '+91',
+      ownerEmail: r.ownerEmail || r.email || '',
       initialPassword: '',
-      isActive: r.isActive,
+      isActive: r.isActive ?? true,
     });
     setFormError(null);
     setShowRestModal(true);
@@ -203,6 +231,8 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       avgPrepTimeMinutes: Number(restFormData.avgPrepTimeMinutes),
       minOrderAmount: Number(restFormData.minOrderAmount),
       packagingFee: 20,
+      address: restFormData.addressLine,
+      addressLine: restFormData.addressLine,
       city: restFormData.city || 'Central City',
       district: restFormData.district || 'Operating Zone',
       postalCode: restFormData.postalCode || '',
@@ -210,9 +240,11 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
         latitude: Number(restFormData.latitude) || 0,
         longitude: Number(restFormData.longitude) || 0,
       },
-      isAcceptingOrders: true,
-      phone: restFormData.ownerPhone,
-      email: restFormData.ownerEmail,
+      isAcceptingOrders: editingRest ? (editingRest.isAcceptingOrders ?? editingRest.isOpen ?? true) : true,
+      isOpen: editingRest ? (editingRest.isOpen ?? editingRest.isAcceptingOrders ?? true) : true,
+      phone: restFormData.ownerPhone || editingRest?.phone || '+919864000000',
+      email: restFormData.ownerEmail || editingRest?.email || '',
+      ownerName: restFormData.ownerName || editingRest?.ownerName || `${restFormData.name} Manager`,
     };
 
     try {
@@ -541,16 +573,23 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                 Manage Menu Catalog
               </button>
 
-              <button
-                onClick={() => toggleAccepting(r.id, r.isAcceptingOrders)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  r.isAcceptingOrders
-                    ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                }`}
-              >
-                {r.isAcceptingOrders ? 'Pause Orders' : 'Enable Orders'}
-              </button>
+              {(() => {
+                const isAccepting = Boolean(r.isAcceptingOrders ?? r.isOpen ?? true);
+                return (
+                  <button
+                    onClick={() => toggleAccepting(r.id, isAccepting)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 ${
+                      isAccepting
+                        ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200'
+                    }`}
+                    title={isAccepting ? 'Click to temporarily pause incoming orders' : 'Click to enable live customer orders'}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${isAccepting ? 'bg-rose-500' : 'bg-emerald-200 animate-pulse'}`} />
+                    <span>{isAccepting ? 'Pause Orders' : 'Enable Orders'}</span>
+                  </button>
+                );
+              })()}
             </div>
           </div>
         ))}
@@ -733,10 +772,12 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">Owner / Manager Name *</label>
+                    <label className="text-xs font-semibold text-slate-700">
+                      Owner / Manager Name {!editingRest && <span className="text-rose-500">*</span>}
+                    </label>
                     <input
                       type="text"
-                      required
+                      required={!editingRest}
                       value={restFormData.ownerName}
                       onChange={(e) => setRestFormData({ ...restFormData, ownerName: e.target.value })}
                       placeholder="e.g. Bhaskar Gam"
@@ -745,10 +786,12 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">Merchant Mobile Phone *</label>
+                    <label className="text-xs font-semibold text-slate-700">
+                      Merchant Mobile Phone {!editingRest && <span className="text-rose-500">*</span>}
+                    </label>
                     <input
                       type="tel"
-                      required
+                      required={!editingRest}
                       value={restFormData.ownerPhone}
                       onChange={(e) => setRestFormData({ ...restFormData, ownerPhone: e.target.value })}
                       placeholder="+919864000000"

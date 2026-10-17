@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { ServerDb } from '@/lib/server-db';
 import { apiSuccess, apiError, handleOptions } from '@/lib/api-helper';
+import { notificationService } from '@/lib/notification-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,30 @@ export async function POST(req: NextRequest) {
       status: 'PENDING',
       deliveryAddress: body.deliveryAddress || {},
     });
+
+    // 1. Dispatch alert to Operations Staff & Admins via Push & SSE
+    notificationService.dispatch(
+      undefined,
+      'NEW_ORDER_RECEIVED',
+      `🚨 New Order #${order.orderNumber}`,
+      `₹${order.total} • ${order.customerName || 'Customer'} ordered from ${order.restaurantName || 'Aajori Kitchen'}`,
+      { orderId: order.id, orderNumber: order.orderNumber, total: order.total },
+      ['PUSH', 'IN_APP'],
+      'ADMIN'
+    ).catch(() => {});
+
+    // 2. Dispatch confirmation to Customer
+    if (order.customerId) {
+      notificationService.dispatch(
+        order.customerId,
+        'ORDER_CREATED',
+        `🍲 Order #${order.orderNumber} Placed!`,
+        `Your delicious meal from ${order.restaurantName || 'Aajori Cuisine'} has been placed successfully.`,
+        { orderId: order.id, orderNumber: order.orderNumber },
+        ['PUSH', 'IN_APP'],
+        'CUSTOMER'
+      ).catch(() => {});
+    }
 
     return apiSuccess(order, 201);
   } catch (err: any) {

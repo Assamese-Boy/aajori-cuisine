@@ -1093,11 +1093,12 @@ apiRouter.get('/notifications/vapid-public-key', (req: Request, res: Response) =
   res.json({ success: true, data: { publicKey } });
 });
 
-// 3. Register Web Push Subscription
+// 3. Register Web Push Subscription / Firebase FCM Token
 apiRouter.post('/notifications/subscribe', (req: Request, res: Response) => {
-  const { subscription, userId, role } = req.body;
+  const { subscription, fcmToken, userId, role } = req.body;
   const sub = notificationService.registerPushSubscription({
     subscription,
+    fcmToken,
     userId,
     role,
   });

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useToast } from './ToastContext';
 import { soundService } from '../services/soundEffects';
 import { apiRequest, getAuthToken, getCurrentStoredUser } from '../services/api';
+import { requestFcmToken, listenForFcmMessages } from '../services/firebase';
 
 export interface AdminNotificationItem {
   id: string;
@@ -74,17 +75,19 @@ function urlBase64ToUint8Array(base64String: string) {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker
-        .register('/sw.js')
+        .register('/firebase-messaging-sw.js')
         .then((reg) => {
-          console.log('[Admin SW] Registered:', reg.scope);
+          console.log('[Admin FCM SW] Registered:', reg.scope);
         })
-        .catch((err) => {
-          console.warn('[Admin SW] Registration skipped/failed:', err);
+        .catch(() => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.warn('[Admin SW] Registration skipped/failed:', err);
+          });
         });
     }
   }, []);
 
-  // Request browser Notification permission
+  // Request browser Notification permission & register FCM token
   const requestNotificationPermission = useCallback(async (): Promise<boolean> => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       toast.info('Not Supported', 'Browser does not support desktop notifications');
@@ -98,8 +101,27 @@ function urlBase64ToUint8Array(base64String: string) {
 
       if (granted) {
         toast.success('Live Order Alerts Enabled! 🚨', 'Admin Operations Control will alert you on every incoming order.');
+        const user = getCurrentStoredUser();
 
-        // Attempt native W3C VAPID push registration (zero 3rd party required)
+        // 1. Register with Firebase Cloud Messaging (FCM)
+        try {
+          const fcmToken = await requestFcmToken();
+          if (fcmToken) {
+            await apiRequest('/notifications/subscribe', {
+              method: 'POST',
+              body: JSON.stringify({
+                fcmToken,
+                role: user?.role || 'SUPER_ADMIN',
+                userId: user?.id,
+              }),
+            });
+            console.log('[Admin NotificationContext] FCM token registered with server.');
+          }
+        } catch (fcmErr) {
+          console.info('[Admin NotificationContext] FCM registration note:', fcmErr);
+        }
+
+        // 2. Also register native W3C VAPID push registration as fallback
         try {
           if ('serviceWorker' in navigator && 'PushManager' in window) {
             const reg = await navigator.serviceWorker.ready;
@@ -110,7 +132,6 @@ function urlBase64ToUint8Array(base64String: string) {
                 userVisibleOnly: true,
                 applicationServerKey: convertedKey,
               });
-              const user = getCurrentStoredUser();
               await apiRequest('/notifications/subscribe', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -122,7 +143,7 @@ function urlBase64ToUint8Array(base64String: string) {
             }
           }
         } catch (pushErr) {
-          console.info('[PushManager] Admin VAPID registration gracefully skipped (SSE & In-tab active):', pushErr);
+          console.info('[PushManager] Admin VAPID registration gracefully skipped (FCM/SSE active):', pushErr);
         }
 
         try {
@@ -243,6 +264,42 @@ function urlBase64ToUint8Array(base64String: string) {
     } catch (sseErr) {
       console.info('[Admin SSE] EventSource skipped or unreachable:', sseErr);
     }
+  }, [soundEnabled, toast, onNewOrderReceived]);
+
+  // Listen for foreground Firebase Cloud Messaging push events
+  useEffect(() => {
+    const unsub = listenForFcmMessages((payload) => {
+      const title = payload.notification?.title || (payload.data as any)?.title || '🚨 Live Operations Alert';
+      const body = payload.notification?.body || (payload.data as any)?.message || 'New activity on Aajori Operations.';
+
+      if (soundEnabled) {
+        soundService.playAdminOrderChime();
+      }
+
+      toast.info(title, body);
+
+      if (onNewOrderReceived) {
+        onNewOrderReceived();
+      }
+
+      const newItem: AdminNotificationItem = {
+        id: (payload.data as any)?.id || `fcm_${Date.now()}`,
+        event: (payload.data as any)?.event || 'ORDER_ALERT',
+        title,
+        message: body,
+        data: payload.data as any,
+        channels: ['PUSH'],
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      setNotifications((prev) => [newItem, ...prev]);
+      setUnreadCount((c) => c + 1);
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, [soundEnabled, toast, onNewOrderReceived]);
 
   const markAsRead = async (id: string) => {

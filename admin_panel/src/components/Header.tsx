@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { RefreshCw, Shield, LogOut, ShoppingBag, ExternalLink, Bell } from 'lucide-react';
+import { RefreshCw, Shield, LogOut, ShoppingBag, ExternalLink, Bell, Sparkles } from 'lucide-react';
 import { useAdminNotifications } from '../context/NotificationContext';
 import { AdminNotificationDropdown } from './AdminNotificationDropdown';
 
@@ -23,7 +23,12 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   isLoading,
 }) => {
-  const { unreadCount } = useAdminNotifications();
+  const {
+    unreadCount,
+    isPermissionGranted,
+    requestNotificationPermission,
+    triggerTestNotification,
+  } = useAdminNotifications();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   const districtName = appSettings?.topBannerDistrict || 'Global Worldwide Operations';
@@ -72,6 +77,22 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Customer Storefront</span>
           <ExternalLink className="w-3 h-3 text-slate-400" />
         </a>
+
+        {/* Direct Test Push Notification Button */}
+        <button
+          onClick={async () => {
+            if (!isPermissionGranted) {
+              const granted = await requestNotificationPermission();
+              if (!granted) return;
+            }
+            await triggerTestNotification();
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:scale-102"
+          title="Click to dispatch a live test Web Push alert"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+          <span className="hidden sm:inline">Test Push</span>
+        </button>
 
         {/* Real-time Order Notification Bell with Popover */}
         <div className="relative">

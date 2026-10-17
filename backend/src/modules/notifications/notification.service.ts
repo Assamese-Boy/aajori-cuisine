@@ -4,6 +4,7 @@ import webpush from 'web-push';
 import { db } from '../../data/mock-db';
 import { whatsAppClientService } from '../whatsapp/whatsapp-client.service';
 import { env } from '../../config/env';
+import { sendFcmNotification } from './firebase-admin.service';
 
 export type NotificationEvent =
   | 'ORDER_CREATED'
@@ -43,7 +44,8 @@ export interface WebPushSubscription {
   id: string;
   userId?: string;
   role?: string;
-  subscription: {
+  fcmToken?: string;
+  subscription?: {
     endpoint: string;
     keys: {
       p256dh: string;
@@ -182,18 +184,16 @@ export class NotificationService {
   }
 
   /**
-   * Sends encrypted payload via standard W3C Web Push to browser vendor push services (Google, Apple, Mozilla)
+   * Sends encrypted payload via standard W3C Web Push & Firebase FCM to browser push services
    */
   private async dispatchWebPush(notification: NotificationPayload): Promise<void> {
-    const payloadString = JSON.stringify({
-      title: notification.title,
-      message: notification.message,
-      event: notification.event,
-      data: notification.data,
-      createdAt: notification.createdAt,
-    });
-
     const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_OWNER', 'RESTAURANT_MANAGER'];
+    const targetUrl = notification.data?.orderId
+      ? (notification.recipientRole === 'ADMIN' ? '/orders' : `/order/${notification.data.orderId}`)
+      : '/orders';
+
+    const fcmTokensToSend: string[] = [];
+    const webPushSubsToSend: any[] = [];
 
     for (const [subId, subRecord] of this.pushSubscriptions.entries()) {
       let isRecipient = false;
@@ -210,13 +210,61 @@ export class NotificationService {
         isRecipient = true;
       }
 
-      if (isRecipient && subRecord.subscription && subRecord.subscription.endpoint) {
+      if (isRecipient) {
+        if (subRecord.fcmToken) {
+          fcmTokensToSend.push(subRecord.fcmToken);
+        } else if (subRecord.subscription && subRecord.subscription.endpoint) {
+          webPushSubsToSend.push({ subId, sub: subRecord.subscription });
+        }
+      }
+    }
+
+    // 1. Dispatch via Firebase Cloud Messaging (FCM)
+    if (fcmTokensToSend.length > 0) {
+      await sendFcmNotification({
+        tokens: fcmTokensToSend,
+        title: notification.title,
+        body: notification.message,
+        data: {
+          event: notification.event,
+          orderId: notification.data?.orderId || '',
+          url: targetUrl,
+        },
+        link: targetUrl,
+      }).catch((err) => console.warn('[FCM Dispatch Note]', err?.message || err));
+    }
+
+    // Also dispatch to Firebase topic if role is ADMIN
+    if (notification.recipientRole === 'ADMIN' || notification.recipientRole === 'ALL') {
+      await sendFcmNotification({
+        topic: 'admin_orders',
+        title: notification.title,
+        body: notification.message,
+        data: {
+          event: notification.event,
+          orderId: notification.data?.orderId || '',
+          url: targetUrl,
+        },
+        link: targetUrl,
+      }).catch(() => {});
+    }
+
+    // 2. Dispatch via native W3C Web Push
+    if (webPushSubsToSend.length > 0) {
+      const payloadString = JSON.stringify({
+        title: notification.title,
+        message: notification.message,
+        event: notification.event,
+        data: { ...notification.data, url: targetUrl },
+        createdAt: notification.createdAt,
+      });
+
+      for (const item of webPushSubsToSend) {
         try {
-          await webpush.sendNotification(subRecord.subscription as any, payloadString);
+          await webpush.sendNotification(item.sub as any, payloadString);
         } catch (error: any) {
-          // If subscription has expired (HTTP 410 or 404), clean it up
           if (error?.statusCode === 410 || error?.statusCode === 404) {
-            this.pushSubscriptions.delete(subId);
+            this.pushSubscriptions.delete(item.subId);
           }
         }
       }
@@ -263,18 +311,20 @@ export class NotificationService {
   }
 
   /**
-   * Registers a client device's PushSubscription object from PushManager.subscribe()
+   * Registers a client device's PushSubscription object or Firebase FCM token
    */
   public registerPushSubscription(subData: {
     userId?: string;
     role?: string;
-    subscription: any;
+    fcmToken?: string;
+    subscription?: any;
   }): WebPushSubscription {
     const id = uuidv4();
     const record: WebPushSubscription = {
       id,
       userId: subData.userId,
       role: subData.role,
+      fcmToken: subData.fcmToken,
       subscription: subData.subscription,
       createdAt: new Date().toISOString(),
     };

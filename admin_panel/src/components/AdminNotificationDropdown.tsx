@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Bell,
   X,
@@ -39,6 +39,20 @@ export const AdminNotificationDropdown: React.FC<AdminNotificationDropdownProps>
   } = useAdminNotifications();
 
   const navigate = useNavigate();
+  const [isTesting, setIsTesting] = useState(false);
+
+  const handleTestClick = async () => {
+    setIsTesting(true);
+    try {
+      if (!isPermissionGranted) {
+        const granted = await requestNotificationPermission();
+        if (!granted) return;
+      }
+      await triggerTestNotification();
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -102,6 +116,24 @@ export const AdminNotificationDropdown: React.FC<AdminNotificationDropdownProps>
             <X className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* Test Notification Action Bar - Always visible */}
+      <div className="p-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-xs text-slate-700">
+          <span className={`w-2 h-2 rounded-full ${isPermissionGranted ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          <span className="text-[11px] font-semibold text-slate-600">
+            Push Alerts: {isPermissionGranted ? 'Active 🟢' : 'Permission Needed 🟡'}
+          </span>
+        </div>
+        <button
+          onClick={handleTestClick}
+          disabled={isTesting}
+          className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>{isTesting ? 'Sending...' : 'Test Push Alert'}</span>
+        </button>
       </div>
 
       {/* Permission Bar */}

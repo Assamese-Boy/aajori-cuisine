@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { soundService } from '../services/soundEffects';
 import { apiRequest } from '../services/api';
+import { requestFcmToken, listenForFcmMessages } from '../services/firebase';
 
 export interface NotificationItem {
   id: string;
@@ -72,17 +73,19 @@ function urlBase64ToUint8Array(base64String: string) {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker
-        .register('/sw.js')
+        .register('/firebase-messaging-sw.js')
         .then((reg) => {
-          console.log('[Aajori SW] Registered successfully:', reg.scope);
+          console.log('[Aajori FCM SW] Registered successfully:', reg.scope);
         })
-        .catch((err) => {
-          console.warn('[Aajori SW] Registration skipped/failed:', err);
+        .catch(() => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.warn('[Aajori SW] Registration skipped:', err);
+          });
         });
     }
   }, []);
 
-  // Request native browser notification permission
+  // Request native browser notification permission & register FCM token
   const requestNotificationPermission = useCallback(async (): Promise<boolean> => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       toast.info('Not Supported', 'Browser does not support desktop notifications');
@@ -97,7 +100,25 @@ function urlBase64ToUint8Array(base64String: string) {
       if (granted) {
         toast.success('Live Alerts Enabled! 🔔', 'You will receive real-time push updates for your food orders.');
 
-        // Attempt native W3C VAPID push registration (zero 3rd party required)
+        // 1. Try Firebase Cloud Messaging (FCM) first
+        try {
+          const fcmToken = await requestFcmToken();
+          if (fcmToken) {
+            await apiRequest('/notifications/subscribe', {
+              method: 'POST',
+              body: JSON.stringify({
+                fcmToken,
+                role: 'CUSTOMER',
+                userId: user?.id,
+              }),
+            });
+            console.log('[NotificationContext] Successfully registered FCM device token.');
+          }
+        } catch (fcmErr) {
+          console.info('[NotificationContext] Firebase FCM skipped/error:', fcmErr);
+        }
+
+        // 2. Also register native W3C VAPID push subscription as robust backup
         try {
           if ('serviceWorker' in navigator && 'PushManager' in window) {
             const reg = await navigator.serviceWorker.ready;
@@ -119,10 +140,10 @@ function urlBase64ToUint8Array(base64String: string) {
             }
           }
         } catch (pushErr) {
-          console.info('[PushManager] VAPID registration gracefully skipped (SSE & In-tab active):', pushErr);
+          console.info('[PushManager] VAPID registration gracefully skipped (FCM/SSE active):', pushErr);
         }
 
-        // Show test confirmation
+        // Show test confirmation toast/notification
         try {
           new Notification('Aajori Cuisine', {
             body: 'Web push notifications are now active!',
@@ -227,6 +248,38 @@ function urlBase64ToUint8Array(base64String: string) {
       console.info('[SSE] EventSource skipped or unreachable:', sseErr);
     }
   }, [user?.id, token, soundEnabled, toast]);
+
+  // Listen for foreground Firebase Cloud Messaging push events
+  useEffect(() => {
+    const unsub = listenForFcmMessages((payload) => {
+      const title = payload.notification?.title || (payload.data as any)?.title || 'Aajori Cuisine Alert';
+      const body = payload.notification?.body || (payload.data as any)?.message || 'Update on your food order.';
+
+      if (soundEnabled) {
+        soundService.playCustomerChime();
+      }
+
+      toast.info(title, body);
+
+      const newItem: NotificationItem = {
+        id: (payload.data as any)?.id || `fcm_${Date.now()}`,
+        event: (payload.data as any)?.event || 'ORDER_UPDATE',
+        title,
+        message: body,
+        data: payload.data as any,
+        channels: ['PUSH'],
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      setNotifications((prev) => [newItem, ...prev]);
+      setUnreadCount((c) => c + 1);
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [soundEnabled, toast]);
 
   const markAsRead = async (id: string) => {
     try {
