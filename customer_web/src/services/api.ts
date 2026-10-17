@@ -18,8 +18,12 @@ const isLocalEnv =
     window.location.hostname === '127.0.0.1' ||
     window.location.hostname.endsWith('.local'));
 
+const PRIMARY_LIVE_API = 'https://cuisine-admin.aajori.in/api/v1';
+
 const RAW_CANDIDATES = [
   getEffectiveApiBase(),
+  '/api/v1',
+  PRIMARY_LIVE_API,
   isLocalEnv ? 'http://localhost:4000/api/v1' : '',
 ].filter(Boolean);
 

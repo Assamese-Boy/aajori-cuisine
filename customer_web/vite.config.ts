@@ -7,8 +7,9 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: 'https://cuisine-admin.aajori.in',
         changeOrigin: true,
+        secure: false,
       },
       '/storage-api': {
         target: 'https://storage.tiwaautonomouscouncil.in',

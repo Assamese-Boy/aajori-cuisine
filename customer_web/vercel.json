@@ -17,7 +17,11 @@
       "destination": "https://storage.tiwaautonomouscouncil.in/:path*"
     },
     {
-      "source": "/((?!storage-api/|assets/|.*\\..*).*)",
+      "source": "/api/v1/:path*",
+      "destination": "https://cuisine-admin.aajori.in/api/v1/:path*"
+    },
+    {
+      "source": "/((?!storage-api/|api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]

@@ -38,7 +38,7 @@ interface User {
 
 export const UsersPage: React.FC = () => {
   const toast = useToast();
-  const [users, setUsers] = useState<User[]>(() => mergeUsers([]));
+  const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,9 +61,11 @@ export const UsersPage: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await apiRequest('/admin/users');
-      if (res.success && res.data) {
-        setUsers(mergeUsers(res.data));
+      if (res.success && Array.isArray(res.data)) {
+        setUsers(res.data);
       }
+    } catch (err) {
+      console.error('Failed to load users:', err);
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +158,7 @@ export const UsersPage: React.FC = () => {
             createdAt: new Date().toISOString(),
           };
           recordCreatedUser(newUser);
-          setUsers((prev) => mergeUsers([newUser, ...prev]));
+          setUsers((prev) => [newUser, ...prev.filter((u) => u.id !== newUser.id)]);
           toast.success('User Created', `${formData.fullName} added to district roster`);
           setShowAddModal(false);
           fetchUsers();
