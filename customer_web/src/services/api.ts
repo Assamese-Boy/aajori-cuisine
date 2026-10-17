@@ -24,7 +24,7 @@ const RAW_CANDIDATES = [
   getEffectiveApiBase(),
   '/api/v1',
   PRIMARY_LIVE_API,
-  isLocalEnv ? 'http://localhost:4000/api/v1' : '',
+  isLocalEnv ? 'http://localhost:3000/api/v1' : '',
 ].filter(Boolean);
 
 const CANDIDATE_API_BASES = RAW_CANDIDATES.filter(
