@@ -108,7 +108,7 @@ interface PlatformDbSchema {
   coupons: any[];
 }
 
-// System baseline data (NO fake dummy customers)
+// Baseline Administrator (Super Admin)
 const INITIAL_SUPER_ADMIN: User = {
   id: 'usr_super_admin_001',
   fullName: 'Manabendra Sarma (Super Admin)',
@@ -306,12 +306,36 @@ const INITIAL_COUPONS = [
   },
 ];
 
+// ============================================================================
+// SUPABASE POSTGREST INTEGRATION
+// ============================================================================
+
+function getSupabaseConfig(): { url: string; key: string } | null {
+  const url =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    '';
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    '';
+
+  if (url && key && !url.includes('your-supabase-project')) {
+    return {
+      url: url.replace(/\/+$/, ''),
+      key,
+    };
+  }
+  return null;
+}
+
+// Local filesystem fallback
 const DB_FILE_PATH = path.join(
   process.env.VERCEL ? '/tmp' : path.join(process.cwd(), '.data'),
   'aajori_platform_db.json'
 );
 
-// In-memory cache across invocations on warm Lambdas
 let cachedDb: PlatformDbSchema | null = null;
 
 async function loadDb(): Promise<PlatformDbSchema> {
@@ -323,7 +347,6 @@ async function loadDb(): Promise<PlatformDbSchema> {
     const raw = await fs.readFile(DB_FILE_PATH, 'utf-8');
     const parsed = JSON.parse(raw);
     if (parsed && Array.isArray(parsed.users)) {
-      // Ensure super admin always exists
       if (!parsed.users.some((u: User) => u.email === 'admin@aajori.in')) {
         parsed.users.unshift(INITIAL_SUPER_ADMIN);
       }
@@ -331,11 +354,11 @@ async function loadDb(): Promise<PlatformDbSchema> {
       return parsed;
     }
   } catch {
-    // File doesn't exist yet or corrupt, initialize clean database
+    // initialize clean database
   }
 
   const initialDb: PlatformDbSchema = {
-    users: [INITIAL_SUPER_ADMIN], // Only legitimate super admin, NO fake dummy users
+    users: [INITIAL_SUPER_ADMIN],
     addresses: [],
     orders: [],
     restaurants: INITIAL_RESTAURANTS,
@@ -360,17 +383,83 @@ async function saveDb(data: PlatformDbSchema): Promise<void> {
 }
 
 // ============================================================================
-// REPOSITORY METHODS
+// HYBRID REPOSITORY (SUPABASE LIVE + LOCAL RESILIENCE)
 // ============================================================================
 
 export const ServerDb = {
   // --- USERS ---
   async getAllUsers(): Promise<User[]> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/users?select=*&order=created_at.desc`, {
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows)) {
+            const mappedUsers: User[] = rows.map((r: any) => ({
+              id: r.id,
+              fullName: r.full_name || r.fullName || 'User',
+              phone: r.phone || '',
+              email: r.email || '',
+              role: r.role || 'CUSTOMER',
+              status: r.status || 'ACTIVE',
+              createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+            }));
+
+            // Sync with local fallback cache
+            const db = await loadDb();
+            db.users = mappedUsers;
+            await saveDb(db);
+
+            return mappedUsers;
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase users fetch failed, reading local store:', err);
+      }
+    }
+
     const db = await loadDb();
     return db.users.map(({ password, ...u }) => u as User);
   },
 
   async getUserById(id: string): Promise<User | null> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/users?id=eq.${id}&limit=1`, {
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows[0]) {
+            const r = rows[0];
+            return {
+              id: r.id,
+              fullName: r.full_name || r.fullName || 'User',
+              phone: r.phone || '',
+              email: r.email || '',
+              role: r.role || 'CUSTOMER',
+              status: r.status || 'ACTIVE',
+              createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase getUserById error:', err);
+      }
+    }
+
     const db = await loadDb();
     const user = db.users.find((u) => u.id === id);
     if (!user) return null;
@@ -379,12 +468,46 @@ export const ServerDb = {
   },
 
   async findUserByIdentifier(identifier: string): Promise<User | null> {
-    const db = await loadDb();
+    const sb = getSupabaseConfig();
     const clean = identifier.trim().toLowerCase();
+    const cleanPhone = identifier.replace(/[^0-9]/g, '');
+
+    if (sb) {
+      try {
+        const filter = `or=(email.ilike.${clean},phone.ilike.%${cleanPhone}%)`;
+        const res = await fetch(`${sb.url}/rest/v1/users?${filter}&limit=1`, {
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows[0]) {
+            const r = rows[0];
+            return {
+              id: r.id,
+              fullName: r.full_name || r.fullName || 'User',
+              phone: r.phone || '',
+              email: r.email || '',
+              password: r.password_hash,
+              role: r.role || 'CUSTOMER',
+              status: r.status || 'ACTIVE',
+              createdAt: r.created_at || r.createdAt,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase findUserByIdentifier error:', err);
+      }
+    }
+
+    const db = await loadDb();
     const user = db.users.find(
       (u) =>
         u.email.toLowerCase() === clean ||
-        u.phone.replace(/[^0-9]/g, '') === clean.replace(/[^0-9]/g, '')
+        u.phone.replace(/[^0-9]/g, '') === cleanPhone
     );
     return user || null;
   },
@@ -397,11 +520,59 @@ export const ServerDb = {
     role?: 'SUPER_ADMIN' | 'ADMIN' | 'CUSTOMER' | 'DELIVERY_PARTNER' | 'RESTAURANT_OWNER';
     status?: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
   }): Promise<User> {
-    const db = await loadDb();
     const cleanPhone = input.phone.trim();
     const cleanEmail = input.email.trim().toLowerCase();
+    const sb = getSupabaseConfig();
 
-    // Check duplicate
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/users`, {
+          method: 'POST',
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            email: cleanEmail,
+            full_name: input.fullName.trim(),
+            password_hash: input.password || 'Customer@2026',
+            role: input.role || 'CUSTOMER',
+            status: input.status || 'ACTIVE',
+          }),
+        });
+
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows[0]) {
+            const r = rows[0];
+            const createdUser: User = {
+              id: r.id,
+              fullName: r.full_name || input.fullName,
+              phone: r.phone || cleanPhone,
+              email: r.email || cleanEmail,
+              role: r.role || input.role || 'CUSTOMER',
+              status: r.status || input.status || 'ACTIVE',
+              createdAt: r.created_at || new Date().toISOString(),
+            };
+
+            // Mirror to local cache
+            const db = await loadDb();
+            db.users.unshift(createdUser);
+            await saveDb(db);
+
+            return createdUser;
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase createUser error:', err);
+      }
+    }
+
+    // Local / fallback insertion
+    const db = await loadDb();
     const existing = db.users.find(
       (u) =>
         u.email.toLowerCase() === cleanEmail ||
@@ -416,7 +587,7 @@ export const ServerDb = {
       fullName: input.fullName.trim(),
       phone: cleanPhone,
       email: cleanEmail,
-      password: input.password || 'Aajori@2026',
+      password: input.password || 'Customer@2026',
       role: input.role || 'CUSTOMER',
       status: input.status || 'ACTIVE',
       createdAt: new Date().toISOString(),
@@ -433,6 +604,47 @@ export const ServerDb = {
     id: string,
     updates: Partial<Omit<User, 'id' | 'createdAt'>>
   ): Promise<User | null> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const payload: any = {};
+        if (updates.fullName) payload.full_name = updates.fullName;
+        if (updates.phone) payload.phone = updates.phone;
+        if (updates.email) payload.email = updates.email;
+        if (updates.role) payload.role = updates.role;
+        if (updates.status) payload.status = updates.status;
+
+        const res = await fetch(`${sb.url}/rest/v1/users?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows[0]) {
+            const r = rows[0];
+            return {
+              id: r.id,
+              fullName: r.full_name || updates.fullName || '',
+              phone: r.phone || updates.phone || '',
+              email: r.email || updates.email || '',
+              role: r.role || updates.role || 'CUSTOMER',
+              status: r.status || updates.status || 'ACTIVE',
+              createdAt: r.created_at || new Date().toISOString(),
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase updateUser error:', err);
+      }
+    }
+
     const db = await loadDb();
     const index = db.users.findIndex((u) => u.id === id);
     if (index === -1) return null;
@@ -448,6 +660,21 @@ export const ServerDb = {
   },
 
   async deleteUser(id: string): Promise<boolean> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        await fetch(`${sb.url}/rest/v1/users?id=eq.${id}`, {
+          method: 'DELETE',
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+        });
+      } catch (err) {
+        console.warn('[Server DB] Supabase deleteUser error:', err);
+      }
+    }
+
     const db = await loadDb();
     const initialLen = db.users.length;
     db.users = db.users.filter((u) => u.id !== id);
@@ -460,11 +687,85 @@ export const ServerDb = {
 
   // --- ADDRESSES ---
   async getAddressesByUserId(userId: string): Promise<CustomerAddress[]> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/customer_addresses?customer_id=eq.${userId}&order=created_at.desc`, {
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            return rows.map((r: any) => ({
+              id: r.id,
+              userId: r.customer_id,
+              label: r.label || 'Home',
+              addressLine1: r.address_line1 || '',
+              city: r.city || 'Guwahati',
+              isDefault: r.is_default ?? false,
+              createdAt: r.created_at || new Date().toISOString(),
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase getAddresses error:', err);
+      }
+    }
+
     const db = await loadDb();
     return db.addresses.filter((a) => a.userId === userId);
   },
 
   async createAddress(address: Omit<CustomerAddress, 'id' | 'createdAt'>): Promise<CustomerAddress> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/customer_addresses`, {
+          method: 'POST',
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify({
+            customer_id: address.userId,
+            label: address.label || 'Home',
+            address_line1: address.addressLine1,
+            city: address.city || 'Guwahati',
+            district: 'Kamrup Metropolitan',
+            postal_code: '781001',
+            location: `POINT(${address.longitude || 91.75} ${address.latitude || 26.18})`,
+            is_default: address.isDefault ?? true,
+          }),
+        });
+
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows[0]) {
+            const r = rows[0];
+            return {
+              id: r.id,
+              userId: r.customer_id,
+              label: r.label,
+              addressLine1: r.address_line1,
+              city: r.city,
+              latitude: address.latitude,
+              longitude: address.longitude,
+              isDefault: r.is_default,
+              createdAt: r.created_at,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase createAddress error:', err);
+      }
+    }
+
     const db = await loadDb();
     const newAddress: CustomerAddress = {
       ...address,
@@ -472,7 +773,6 @@ export const ServerDb = {
       createdAt: new Date().toISOString(),
     };
 
-    // If marked default, unset others for this user
     if (newAddress.isDefault) {
       db.addresses.forEach((a) => {
         if (a.userId === newAddress.userId) a.isDefault = false;
@@ -485,6 +785,21 @@ export const ServerDb = {
   },
 
   async deleteAddress(id: string, userId: string): Promise<boolean> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        await fetch(`${sb.url}/rest/v1/customer_addresses?id=eq.${id}&customer_id=eq.${userId}`, {
+          method: 'DELETE',
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+        });
+      } catch (err) {
+        console.warn('[Server DB] Supabase deleteAddress error:', err);
+      }
+    }
+
     const db = await loadDb();
     const len = db.addresses.length;
     db.addresses = db.addresses.filter((a) => a.id !== id || a.userId !== userId);
@@ -497,13 +812,67 @@ export const ServerDb = {
 
   // --- RESTAURANTS ---
   async getAllRestaurants(): Promise<Restaurant[]> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/restaurants?select=*,menu_items(*)`, {
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            return rows.map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              slug: r.slug,
+              tagline: r.tagline || '',
+              description: r.description || '',
+              phone: r.phone,
+              email: r.email || '',
+              commissionRate: Number(r.commission_rate) || 12,
+              isActive: r.is_active ?? true,
+              isOpen: r.is_accepting_orders ?? true,
+              address: r.address_line || '',
+              city: r.city || 'Guwahati',
+              cuisineTypes: r.cuisine_types || ['Assamese Ethnic'],
+              logoUrl: r.logo_url || '',
+              bannerUrl: r.banner_url || '',
+              rating: Number(r.rating) || 4.8,
+              ratingCount: Number(r.rating_count) || 10,
+              avgPreparationTimeMinutes: r.avg_preparation_time_minutes || 25,
+              minimumOrderValue: Number(r.minimum_order_value) || 100,
+              deliveryFee: Number(r.delivery_fee) || 20,
+              menu: (r.menu_items || []).map((m: any) => ({
+                id: m.id,
+                restaurantId: m.restaurant_id || r.id,
+                name: m.name,
+                description: m.description || '',
+                price: Number(m.price) || 0,
+                isVeg: Boolean(m.is_veg),
+                isAvailable: Boolean(m.is_available),
+                category: m.category || 'Dishes',
+                imageUrl: m.image_url,
+              })),
+              createdAt: r.created_at || new Date().toISOString(),
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase restaurants fetch error:', err);
+      }
+    }
+
     const db = await loadDb();
     return db.restaurants;
   },
 
   async getRestaurantById(id: string): Promise<Restaurant | null> {
-    const db = await loadDb();
-    return db.restaurants.find((r) => r.id === id) || null;
+    const list = await this.getAllRestaurants();
+    return list.find((r) => r.id === id) || null;
   },
 
   async saveRestaurant(restaurant: Partial<Restaurant> & { name: string }): Promise<Restaurant> {
@@ -551,18 +920,105 @@ export const ServerDb = {
 
   // --- ORDERS ---
   async getAllOrders(): Promise<Order[]> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/orders?select=*,order_items(*)&order=created_at.desc`, {
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            return rows.map((o: any) => ({
+              id: o.id,
+              orderNumber: o.order_number,
+              customerId: o.customer_id,
+              customerName: o.customer_name || 'Customer',
+              customerPhone: o.customer_phone || '',
+              restaurantId: o.restaurant_id,
+              restaurantName: o.restaurant_name || 'Kitchen',
+              items: o.order_items || [],
+              subtotal: Number(o.subtotal) || 0,
+              tax: Number(o.tax_amount) || 0,
+              deliveryFee: Number(o.delivery_fee) || 0,
+              discount: Number(o.discount_amount) || 0,
+              total: Number(o.total_amount) || 0,
+              paymentMethod: o.payment_method || 'COD',
+              paymentStatus: o.payment_status || 'PENDING',
+              status: o.status || 'PENDING',
+              deliveryAddress: o.delivery_address || {},
+              createdAt: o.created_at || new Date().toISOString(),
+              updatedAt: o.updated_at || new Date().toISOString(),
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase orders fetch error:', err);
+      }
+    }
+
     const db = await loadDb();
     return db.orders;
   },
 
   async getOrderById(id: string): Promise<Order | null> {
-    const db = await loadDb();
-    return db.orders.find((o) => o.id === id) || null;
+    const list = await this.getAllOrders();
+    return list.find((o) => o.id === id) || null;
   },
 
   async createOrder(input: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>): Promise<Order> {
-    const db = await loadDb();
     const orderNumber = `AJR-${Date.now().toString().slice(-6)}`;
+    const sb = getSupabaseConfig();
+
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/orders`, {
+          method: 'POST',
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify({
+            order_number: orderNumber,
+            customer_id: input.customerId,
+            restaurant_id: input.restaurantId,
+            status: 'CREATED',
+            subtotal: input.subtotal,
+            tax_amount: input.tax,
+            delivery_fee: input.deliveryFee,
+            discount_amount: input.discount,
+            total_amount: input.total,
+            payment_method: input.paymentMethod || 'CASH_ON_DELIVERY',
+            payment_status: input.paymentStatus || 'PENDING',
+          }),
+        });
+
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows[0]) {
+            const r = rows[0];
+            return {
+              ...input,
+              id: r.id,
+              orderNumber: r.order_number,
+              status: 'PENDING',
+              createdAt: r.created_at,
+              updatedAt: r.updated_at,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase createOrder error:', err);
+      }
+    }
+
+    const db = await loadDb();
     const newOrder: Order = {
       ...input,
       id: `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -580,6 +1036,23 @@ export const ServerDb = {
     id: string,
     status: Order['status']
   ): Promise<Order | null> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        await fetch(`${sb.url}/rest/v1/orders?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status, updated_at: new Date().toISOString() }),
+        });
+      } catch (err) {
+        console.warn('[Server DB] Supabase updateOrderStatus error:', err);
+      }
+    }
+
     const db = await loadDb();
     const order = db.orders.find((o) => o.id === id);
     if (!order) return null;
@@ -592,6 +1065,38 @@ export const ServerDb = {
 
   // --- DELIVERY PARTNERS ---
   async getAllDeliveryPartners(): Promise<DeliveryPartner[]> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/delivery_partners?select=*,users(*)`, {
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            return rows.map((p: any) => ({
+              id: p.id,
+              fullName: p.users?.full_name || 'Delivery Partner',
+              phone: p.users?.phone || '',
+              email: p.users?.email || '',
+              vehicleType: p.vehicle_type || 'Motorcycle',
+              status: p.shift_status === 'OFFLINE' ? 'OFFLINE' : 'ACTIVE',
+              isOnline: p.shift_status !== 'OFFLINE',
+              rating: Number(p.rating) || 5.0,
+              completedOrders: p.total_completed_orders || 0,
+              createdAt: p.created_at || new Date().toISOString(),
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase deliveryPartners fetch error:', err);
+      }
+    }
+
     const db = await loadDb();
     return db.deliveryPartners;
   },
@@ -631,6 +1136,37 @@ export const ServerDb = {
 
   // --- COUPONS ---
   async getAllCoupons(): Promise<any[]> {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const res = await fetch(`${sb.url}/rest/v1/coupons?select=*&is_active=eq.true`, {
+          headers: {
+            apikey: sb.key,
+            Authorization: `Bearer ${sb.key}`,
+          },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            return rows.map((c: any) => ({
+              id: c.id,
+              code: c.code,
+              title: c.title || `${c.code} Discount`,
+              description: c.description || '',
+              discountAmount: Number(c.discount_amount) || 0,
+              discountPercentage: Number(c.discount_percentage) || 0,
+              minOrderValue: Number(c.min_order_value) || 0,
+              maxDiscountAmount: Number(c.max_discount_amount) || 0,
+              isActive: Boolean(c.is_active),
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn('[Server DB] Supabase coupons fetch error:', err);
+      }
+    }
+
     const db = await loadDb();
     return db.coupons;
   },

@@ -19,6 +19,7 @@ interface LocationContextType {
   isDetecting: boolean;
   detectGpsLocation: () => Promise<UserLocation | null>;
   setLocation: (loc: UserLocation) => void;
+  updateManualLocation: (name: string, addressLine?: string, city?: string) => void;
   searchLocalities: (query: string) => Promise<UserLocation[]>;
   fetchNearbyPlaces: (lat: number, lng: number) => Promise<UserLocation[]>;
 }
@@ -97,6 +98,24 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return updated;
     });
   }, []);
+
+  const updateManualLocation = useCallback(
+    (name: string, addressLine?: string, city?: string) => {
+      const cleanName = cleanLocationString(name) || 'Custom Location';
+      const cleanAddress = cleanLocationString(addressLine) || cleanName;
+      const updated: UserLocation = {
+        name: cleanName,
+        addressLine: cleanAddress,
+        latitude: currentLocation?.latitude || 26.18,
+        longitude: currentLocation?.longitude || 91.75,
+        isGps: false,
+        city: city || cleanName,
+      };
+      setLocation(updated);
+      toast.success('Location Updated', cleanName);
+    },
+    [currentLocation, setLocation, toast]
+  );
 
   // Free API 1: Fetch nearby places/localities around coordinates from OpenStreetMap Nominatim/Photon
   const fetchNearbyPlaces = useCallback(async (lat: number, lng: number): Promise<UserLocation[]> => {
@@ -315,7 +334,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 60000,
+          maximumAge: 0,
         }
       );
     });
@@ -420,6 +439,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isDetecting,
         detectGpsLocation,
         setLocation,
+        updateManualLocation,
         searchLocalities,
         fetchNearbyPlaces,
       }}

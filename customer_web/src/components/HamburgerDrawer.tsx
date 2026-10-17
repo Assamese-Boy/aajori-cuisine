@@ -415,7 +415,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
         {/* Dynamic Footer */}
         <div className="p-3.5 bg-stone-100 border-t border-stone-200 text-center safe-bottom">
           <p className="text-xs font-bold text-slate-700">{settings.brandName} Mobile App</p>
-          <p className="text-xs text-slate-500">{settings.topBannerDistrict} District, Assam</p>
+          <p className="text-xs text-slate-500">{settings.topBannerDistrict}</p>
         </div>
       </div>
     </div>

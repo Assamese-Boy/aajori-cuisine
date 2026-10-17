@@ -14,13 +14,13 @@ export async function GET(req: NextRequest) {
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
 
     if (token) {
-      // Check token pattern: jwt_live_<userId>_<timestamp>
-      const match = token.match(/^jwt_live_([^_]+_[^_]+_[^_]+)/) || token.match(/^jwt_live_([^_]+)/);
-      if (match) {
-        const userId = match[1];
+      // Clean token and extract userId (tokens are jwt_live_<userId>_<timestamp>)
+      const userId = token.replace(/^jwt_live_/, '').replace(/_\d+$/, '');
+      if (userId) {
         const user = await ServerDb.getUserById(userId);
         if (user) {
-          return apiSuccess(user);
+          const { password: _, ...safeUser } = user;
+          return apiSuccess(safeUser);
         }
       }
     }
