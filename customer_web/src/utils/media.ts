@@ -68,7 +68,19 @@ export function deepResolveMediaUrls<T = any>(obj: T): T {
   }
 
   const result: any = { ...obj };
-  const mediaKeys = ['imageUrl', 'coverUrl', 'logoUrl', 'image_url', 'cover_image', 'logo_url', 'image', 'url'];
+  const mediaKeys = [
+    'imageUrl',
+    'coverUrl',
+    'logoUrl',
+    'image_url',
+    'cover_url',
+    'cover_image',
+    'logo_url',
+    'image',
+    'url',
+    'bannerUrl',
+    'banner_url',
+  ];
 
   for (const [key, val] of Object.entries(result)) {
     if (typeof val === 'string' && mediaKeys.includes(key)) {
@@ -78,5 +90,20 @@ export function deepResolveMediaUrls<T = any>(obj: T): T {
     }
   }
 
+  // Cross-pollinate coverUrl / bannerUrl so components always find the image
+  const unifiedCover = result.coverUrl || result.bannerUrl || result.cover_url || result.cover_image;
+  if (unifiedCover && typeof unifiedCover === 'string') {
+    result.coverUrl = resolveMediaUrl(unifiedCover);
+    result.bannerUrl = result.coverUrl;
+    result.cover_url = result.coverUrl;
+  }
+
+  const unifiedLogo = result.logoUrl || result.logo_url;
+  if (unifiedLogo && typeof unifiedLogo === 'string') {
+    result.logoUrl = resolveMediaUrl(unifiedLogo);
+    result.logo_url = result.logoUrl;
+  }
+
   return result;
+
 }

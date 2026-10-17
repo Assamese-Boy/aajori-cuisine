@@ -82,7 +82,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     commissionRate: 15,
     avgPrepTimeMinutes: 25,
     minOrderAmount: 150,
-    coverUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+    coverUrl: '',
     ownerName: '',
     ownerPhone: '+91',
     ownerEmail: '',
@@ -151,7 +151,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       commissionRate: 15,
       avgPrepTimeMinutes: 25,
       minOrderAmount: 150,
-      coverUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+      coverUrl: '',
       ownerName: '',
       ownerPhone: '+91',
       ownerEmail: '',
@@ -176,7 +176,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       commissionRate: r.commissionRate,
       avgPrepTimeMinutes: r.avgPrepTimeMinutes,
       minOrderAmount: r.minOrderAmount,
-      coverUrl: r.coverUrl,
+      coverUrl: r.coverUrl || r.bannerUrl || r.cover_url || '',
       ownerName: r.ownerName || '',
       ownerPhone: r.phone || '',
       ownerEmail: r.email || '',
@@ -194,6 +194,9 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
 
     const payload = {
       ...restFormData,
+      coverUrl: restFormData.coverUrl,
+      bannerUrl: restFormData.coverUrl,
+      cover_url: restFormData.coverUrl,
       slug: restFormData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       cuisineTypes: restFormData.cuisineTypes.split(',').map((c) => c.trim()).filter(Boolean),
       commissionRate: Number(restFormData.commissionRate),
@@ -445,12 +448,17 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
             <div>
               <div className="h-40 w-full relative bg-slate-100 overflow-hidden">
                 <img
-                  src={r.coverUrl}
+                  src={
+                    r.coverUrl ||
+                    r.bannerUrl ||
+                    r.cover_url ||
+                    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="700" height="400" viewBox="0 0 700 400"><rect fill="%23f1f5f9" width="700" height="400"/><text fill="%2394a3b8" font-family="sans-serif" font-size="24" font-weight="bold" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">Restaurant Cover</text></svg>'
+                  }
                   alt={r.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src =
-                      'https://images.unsplash.com/photo-1544025162-d76694265947?w=700';
+                      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="700" height="400" viewBox="0 0 700 400"><rect fill="%23f1f5f9" width="700" height="400"/><text fill="%2394a3b8" font-family="sans-serif" font-size="24" font-weight="bold" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">Restaurant Cover</text></svg>';
                   }}
                 />
                 <div className="absolute top-3 right-3 flex items-center gap-2">

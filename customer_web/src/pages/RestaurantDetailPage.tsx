@@ -203,13 +203,15 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
           <img
             src={
               restaurant.coverUrl ||
-              'https://images.unsplash.com/photo-1544025162-d76694265947?w=700'
+              (restaurant as any).bannerUrl ||
+              (restaurant as any).cover_url ||
+              'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect fill="%23f1f5f9" width="800" height="500"/><text fill="%2394a3b8" font-family="sans-serif" font-size="28" font-weight="bold" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">Restaurant Cover</text></svg>'
             }
             alt={restaurant.name}
             className="w-full h-full object-cover"
             onError={(e) => {
               (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1544025162-d76694265947?w=700';
+                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect fill="%23f1f5f9" width="800" height="500"/><text fill="%2394a3b8" font-family="sans-serif" font-size="28" font-weight="bold" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">Restaurant Cover</text></svg>';
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent"></div>
@@ -379,12 +381,15 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
                 <div className="relative shrink-0 w-24 flex flex-col items-center pb-2">
                   <div className="w-24 h-24 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200/80 shadow-2xs relative">
                     <img
-                      src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300'}
+                      src={
+                        dish.imageUrl ||
+                        'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect fill="%23f8fafc" width="200" height="200"/><text fill="%2394a3b8" font-family="sans-serif" font-size="16" font-weight="bold" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">Dish</text></svg>'
+                      }
                       alt={dish.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src =
-                          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300';
+                          'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect fill="%23f8fafc" width="200" height="200"/><text fill="%2394a3b8" font-family="sans-serif" font-size="16" font-weight="bold" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">Dish</text></svg>';
                       }}
                     />
                   </div>
