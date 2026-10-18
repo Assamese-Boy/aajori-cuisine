@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { ServerDb } from '@/lib/server-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,73 +75,93 @@ const DEFAULT_SETTINGS = {
     { name: 'Snacks', icon: '🥟', color: 'from-orange-400 to-amber-500' },
     { name: 'Beverages', icon: '🍵', color: 'from-teal-600 to-emerald-700' },
   ],
-  trendingDishes: [
-    {
-      id: 'trend-1',
-      name: 'Smoked Pork with Khorisa (Bamboo Shoot)',
-      tagline: 'Authentic wood-smoked pork infused with wild fermented bamboo shoots',
-      price: 320,
-      imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600',
-      restaurantId: 'd0000000-0000-0000-0000-000000000001',
-      restaurantName: 'Heritage Khorikaa Kitchen',
-      isVeg: false,
-      orderCountText: '🔥 140+ orders this week',
-      isActive: true,
-    },
-    {
-      id: 'trend-2',
-      name: 'Grand Parampara Non-Veg Thali',
-      tagline: 'Complete royal feast with Joha rice, Khar, Pitika, Masor Tenga & Kaji Nemu',
-      price: 380,
-      imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600',
-      restaurantId: 'd0000000-0000-0000-0000-000000000002',
-      restaurantName: 'Paradise Heritage Thali',
-      isVeg: false,
-      orderCountText: '👑 #1 Best Seller',
-      isActive: true,
-    },
-    {
-      id: 'trend-3',
-      name: 'Riverfront Duck Curry with Black Sesame',
-      tagline: 'Slow-simmered tender country duck in aromatic roasted Til gravies',
-      price: 360,
-      imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600',
-      restaurantId: 'd0000000-0000-0000-0000-000000000003',
-      restaurantName: 'Riverfront Ethnic Flavors',
-      isVeg: false,
-      orderCountText: '⚡ Top Rated in City',
-      isActive: true,
-    },
-    {
-      id: 'trend-4',
-      name: 'Brahmaputra Rohu Masor Tenga',
-      tagline: 'Tangy heirloom fish curry infused with elephant apple (Ou Tenga) and fresh herbs',
-      price: 260,
-      imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=600',
-      restaurantId: 'd0000000-0000-0000-0000-000000000001',
-      restaurantName: 'Heritage Khorikaa Kitchen',
-      isVeg: false,
-      orderCountText: '🍋 Chef Choice',
-      isActive: true,
-    },
-  ],
+  trendingDishes: [] as any[],
 };
 
+// Check if a dish is a legacy hardcoded mock item
+function isLegacyMockDish(d: any): boolean {
+  if (!d || !d.name) return true;
+  const name = String(d.name).toLowerCase();
+  const restId = String(d.restaurantId || '');
+  if (restId.startsWith('d0000000-')) return true;
+  if (name.includes('smoked pork with khorisa')) return true;
+  if (name.includes('grand parampara non-veg thali')) return true;
+  if (name.includes('riverfront duck curry')) return true;
+  if (name.includes('brahmaputra rohu masor tenga')) return true;
+  return false;
+}
+
 async function loadPersistedSettings() {
+  let settings: any = { ...DEFAULT_SETTINGS };
   try {
     const raw = await fs.readFile(SETTINGS_FILE_PATH, 'utf-8');
     const parsed = JSON.parse(raw);
-    return {
+    settings = {
       ...DEFAULT_SETTINGS,
       ...parsed,
       heroBanners: Array.isArray(parsed.heroBanners) ? parsed.heroBanners : DEFAULT_SETTINGS.heroBanners,
       culinaryCategories: Array.isArray(parsed.culinaryCategories) ? parsed.culinaryCategories : DEFAULT_SETTINGS.culinaryCategories,
-      trendingDishes: Array.isArray(parsed.trendingDishes) ? parsed.trendingDishes : DEFAULT_SETTINGS.trendingDishes,
+      trendingDishes: Array.isArray(parsed.trendingDishes) ? parsed.trendingDishes : [],
     };
   } catch {
-    await savePersistedSettings(DEFAULT_SETTINGS);
-    return DEFAULT_SETTINGS;
+    // First run or file not written yet
   }
+
+  // Filter out any legacy dummy mock dishes
+  if (Array.isArray(settings.trendingDishes)) {
+    settings.trendingDishes = settings.trendingDishes.filter((d: any) => !isLegacyMockDish(d));
+  } else {
+    settings.trendingDishes = [];
+  }
+
+  // If trendingDishes is empty, dynamically auto-populate from real Supabase restaurants & menu items
+  if (settings.trendingDishes.length === 0) {
+    try {
+      const realRestaurants = await ServerDb.getAllRestaurants();
+      const realDishes: any[] = [];
+      for (const r of realRestaurants) {
+        if (Array.isArray(r.menu) && r.menu.length > 0) {
+          for (const m of r.menu) {
+            realDishes.push({
+              id: `trend-${m.id}`,
+              name: m.name,
+              tagline: m.description || `Specialty dish from ${r.name}`,
+              price: m.price || 0,
+              imageUrl: m.imageUrl || '',
+              restaurantId: r.id,
+              restaurantName: r.name,
+              isVeg: Boolean(m.isVeg),
+              orderCountText: '🔥 Popular Choice',
+              isActive: true,
+            });
+          }
+        }
+      }
+      settings.trendingDishes = realDishes;
+      // Persist real dishes
+      if (realDishes.length > 0) {
+        await savePersistedSettings(settings);
+      }
+    } catch (_) {}
+  }
+
+  // Sanitize hero banners if they point to dummy UUIDs
+  if (Array.isArray(settings.heroBanners)) {
+    try {
+      const rests = await ServerDb.getAllRestaurants();
+      const firstRealId = rests[0]?.id || '';
+      if (firstRealId) {
+        settings.heroBanners = settings.heroBanners.map((b: any) => {
+          if (b.restaurantId?.startsWith('d0000000-')) {
+            return { ...b, restaurantId: firstRealId };
+          }
+          return b;
+        });
+      }
+    } catch (_) {}
+  }
+
+  return settings;
 }
 
 async function savePersistedSettings(settings: any) {
@@ -167,10 +188,19 @@ export async function OPTIONS() {
 
 export async function GET() {
   const current = await loadPersistedSettings();
-  return NextResponse.json({
-    success: true,
-    data: current,
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      data: current,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
+    }
+  );
 }
 
 export async function PUT(req: NextRequest) {

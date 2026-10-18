@@ -112,6 +112,8 @@ export const HomePage: React.FC<HomePageProps> = ({
       ? settings.heroBanners
       : MOBILE_PROMO_SLIDES;
   const trendingDishes = (settings.trendingDishes || []).filter((d) => {
+    if (!d || !d.name) return false;
+    if (d.restaurantId?.startsWith('d0000000-')) return false;
     if (d.isActive === false) return false;
     if (isPureVeg && !d.isVeg) return false;
     return true;

@@ -57,12 +57,46 @@ export const TrendingDishesManager: React.FC = () => {
         apiRequest('/restaurants'),
       ]);
 
-      if (settingsRes.success && Array.isArray(settingsRes.data?.trendingDishes)) {
-        setDishes(settingsRes.data.trendingDishes);
+      const loadedRestaurants = Array.isArray(restRes.data) ? restRes.data : [];
+      if (restRes.success) {
+        setRestaurants(loadedRestaurants);
       }
-      if (restRes.success && Array.isArray(restRes.data)) {
-        setRestaurants(restRes.data);
+
+      let loadedDishes = Array.isArray(settingsRes.data?.trendingDishes) ? settingsRes.data.trendingDishes : [];
+      // Clean out any legacy mock dishes with dummy IDs or dummy names
+      loadedDishes = loadedDishes.filter((d: any) => {
+        if (!d || !d.name) return false;
+        const n = String(d.name).toLowerCase();
+        const rId = String(d.restaurantId || '');
+        if (rId.startsWith('d0000000-')) return false;
+        if (n.includes('smoked pork with khorisa')) return false;
+        if (n.includes('grand parampara non-veg thali')) return false;
+        if (n.includes('riverfront duck curry')) return false;
+        if (n.includes('brahmaputra rohu masor tenga')) return false;
+        return true;
+      });
+
+      // If no valid real dishes found, auto-populate from loaded real restaurants!
+      if (loadedDishes.length === 0 && loadedRestaurants.length > 0) {
+        for (const r of loadedRestaurants) {
+          for (const m of r.menu || []) {
+            loadedDishes.push({
+              id: `trend-${m.id}`,
+              name: m.name,
+              tagline: m.description || `Specialty dish from ${r.name}`,
+              price: m.price || 0,
+              imageUrl: m.imageUrl || '',
+              restaurantId: r.id,
+              restaurantName: r.name,
+              isVeg: Boolean(m.isVeg),
+              orderCountText: '🔥 Popular Choice',
+              isActive: true,
+            });
+          }
+        }
       }
+
+      setDishes(loadedDishes);
     } catch {
       toast.error('Load Error', 'Failed to retrieve trending dishes');
     } finally {
