@@ -17,12 +17,14 @@ import {
   Image,
   ExternalLink,
   CheckCircle,
+  TrendingUp,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { MediaUploadInput } from '../components/MediaUploadInput';
 import { HeroBannersManager } from '../components/HeroBannersManager';
 import { CulinaryCategoriesManager } from '../components/CulinaryCategoriesManager';
+import { TrendingDishesManager } from '../components/TrendingDishesManager';
 
 interface HeroBanner {
   id: string;
@@ -64,12 +66,13 @@ export const SettingsPage: React.FC = () => {
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'BRANDING' | 'BANNERS' | 'CATEGORIES'>(() => {
+  const [activeTab, setActiveTab] = useState<'BRANDING' | 'BANNERS' | 'CATEGORIES' | 'TRENDING'>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tab = (params.get('tab') || '').toUpperCase();
       if (tab === 'BANNERS') return 'BANNERS';
       if (tab === 'CATEGORIES') return 'CATEGORIES';
+      if (tab === 'TRENDING') return 'TRENDING';
     }
     return 'BRANDING';
   });
@@ -271,6 +274,18 @@ export const SettingsPage: React.FC = () => {
           <Layers className="w-4 h-4 text-brand-600" />
           <span>Culinary Categories ({settings.culinaryCategories?.length || 0})</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('TRENDING')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+            activeTab === 'TRENDING'
+              ? 'bg-white text-slate-900 shadow-sm font-black'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4 text-purple-600" />
+          <span>Trending Dishes</span>
+        </button>
       </div>
 
       {/* TAB 1: Headers & District Bar */}
@@ -435,6 +450,9 @@ export const SettingsPage: React.FC = () => {
 
       {/* TAB 3: Culinary Categories */}
       {activeTab === 'CATEGORIES' && <CulinaryCategoriesManager />}
+
+      {/* TAB 4: Trending Dishes */}
+      {activeTab === 'TRENDING' && <TrendingDishesManager />}
     </div>
   );
 };

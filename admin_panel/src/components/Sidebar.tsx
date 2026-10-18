@@ -17,6 +17,7 @@ import {
   BarChart3,
   Sliders,
   Layers,
+  TrendingUp,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -36,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ appSettings }) => {
     { path: '/delivery-zones', label: 'Zones & Charges', icon: Compass },
     { path: '/banners', label: 'Hero Promo Banners', icon: Image },
     { path: '/categories', label: 'Culinary Categories', icon: Layers },
+    { path: '/trending-dishes', label: 'Trending Dishes', icon: TrendingUp },
     { path: '/promotions', label: 'Vouchers & Discounts', icon: Tag },
     { path: '/settings', label: 'Storefront & District Bar', icon: Sliders },
     { path: '/reports', label: 'Reports & Reconciliation', icon: BarChart3 },

@@ -74,6 +74,56 @@ const DEFAULT_SETTINGS = {
     { name: 'Snacks', icon: '🥟', color: 'from-orange-400 to-amber-500' },
     { name: 'Beverages', icon: '🍵', color: 'from-teal-600 to-emerald-700' },
   ],
+  trendingDishes: [
+    {
+      id: 'trend-1',
+      name: 'Smoked Pork with Khorisa (Bamboo Shoot)',
+      tagline: 'Authentic wood-smoked pork infused with wild fermented bamboo shoots',
+      price: 320,
+      imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600',
+      restaurantId: 'd0000000-0000-0000-0000-000000000001',
+      restaurantName: 'Heritage Khorikaa Kitchen',
+      isVeg: false,
+      orderCountText: '🔥 140+ orders this week',
+      isActive: true,
+    },
+    {
+      id: 'trend-2',
+      name: 'Grand Parampara Non-Veg Thali',
+      tagline: 'Complete royal feast with Joha rice, Khar, Pitika, Masor Tenga & Kaji Nemu',
+      price: 380,
+      imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600',
+      restaurantId: 'd0000000-0000-0000-0000-000000000002',
+      restaurantName: 'Paradise Heritage Thali',
+      isVeg: false,
+      orderCountText: '👑 #1 Best Seller',
+      isActive: true,
+    },
+    {
+      id: 'trend-3',
+      name: 'Riverfront Duck Curry with Black Sesame',
+      tagline: 'Slow-simmered tender country duck in aromatic roasted Til gravies',
+      price: 360,
+      imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600',
+      restaurantId: 'd0000000-0000-0000-0000-000000000003',
+      restaurantName: 'Riverfront Ethnic Flavors',
+      isVeg: false,
+      orderCountText: '⚡ Top Rated in City',
+      isActive: true,
+    },
+    {
+      id: 'trend-4',
+      name: 'Brahmaputra Rohu Masor Tenga',
+      tagline: 'Tangy heirloom fish curry infused with elephant apple (Ou Tenga) and fresh herbs',
+      price: 260,
+      imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=600',
+      restaurantId: 'd0000000-0000-0000-0000-000000000001',
+      restaurantName: 'Heritage Khorikaa Kitchen',
+      isVeg: false,
+      orderCountText: '🍋 Chef Choice',
+      isActive: true,
+    },
+  ],
 };
 
 async function loadPersistedSettings() {
@@ -85,6 +135,7 @@ async function loadPersistedSettings() {
       ...parsed,
       heroBanners: Array.isArray(parsed.heroBanners) ? parsed.heroBanners : DEFAULT_SETTINGS.heroBanners,
       culinaryCategories: Array.isArray(parsed.culinaryCategories) ? parsed.culinaryCategories : DEFAULT_SETTINGS.culinaryCategories,
+      trendingDishes: Array.isArray(parsed.trendingDishes) ? parsed.trendingDishes : DEFAULT_SETTINGS.trendingDishes,
     };
   } catch {
     await savePersistedSettings(DEFAULT_SETTINGS);

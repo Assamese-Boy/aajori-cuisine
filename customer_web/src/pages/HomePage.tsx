@@ -111,6 +111,11 @@ export const HomePage: React.FC<HomePageProps> = ({
     settings.heroBanners && settings.heroBanners.length > 0
       ? settings.heroBanners
       : MOBILE_PROMO_SLIDES;
+  const trendingDishes = (settings.trendingDishes || []).filter((d) => {
+    if (d.isActive === false) return false;
+    if (isPureVeg && !d.isVeg) return false;
+    return true;
+  });
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [featuredDishes, setFeaturedDishes] = useState<MenuItem[]>([]);
@@ -726,27 +731,90 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* 7. DISCOVERY SECTION 4: Trending Dishes */}
-      <section className="px-4 space-y-3 pt-2">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="w-4.5 h-4.5 text-purple-600" />
-          <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-            Trending Dishes Right Now
-          </h2>
-        </div>
-
-        <div className="p-3.5 bg-white rounded-2xl border border-stone-200/90 shadow-2xs flex items-center justify-between gap-3">
-          <div className="space-y-0.5">
-            <h4 className="text-xs font-black text-slate-900">Smoked Pork with Khorisa (Bamboo Shoot)</h4>
-            <p className="text-[11px] text-slate-500 font-medium">Over 140+ plates ordered this week in your area</p>
+      {trendingDishes.length > 0 && (
+        <section className="px-4 space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4.5 h-4.5 text-purple-600" />
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                Trending Dishes Right Now
+              </h2>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+              Live Popularity
+            </span>
           </div>
-          <Link
-            to="/restaurant/d0000000-0000-0000-0000-000000000001"
-            className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-xl text-xs font-extrabold shrink-0 border border-brand-200 btn-press"
-          >
-            View
-          </Link>
-        </div>
-      </section>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {trendingDishes.map((dish) => (
+              <div
+                key={dish.id}
+                className="p-3 bg-white rounded-2xl border border-stone-200/90 shadow-2xs hover:shadow-xs transition-shadow flex items-center justify-between gap-3 group"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {dish.imageUrl && (
+                    <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-stone-100 border border-stone-200">
+                      <img
+                        src={dish.imageUrl}
+                        alt={dish.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                      <span
+                        className={`absolute bottom-1 left-1 w-3.5 h-3.5 rounded-md border flex items-center justify-center bg-white/95 ${
+                          dish.isVeg ? 'border-emerald-600' : 'border-rose-600'
+                        }`}
+                        title={dish.isVeg ? 'Vegetarian' : 'Non-Vegetarian'}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            dish.isVeg ? 'bg-emerald-600' : 'bg-rose-600'
+                          }`}
+                        />
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <h4 className="text-xs font-black text-slate-900 truncate">
+                      {dish.name}
+                    </h4>
+
+                    <p className="text-[11px] text-slate-500 font-medium line-clamp-1">
+                      {dish.tagline}
+                    </p>
+
+                    <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                      {dish.orderCountText && (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200">
+                          {dish.orderCountText}
+                        </span>
+                      )}
+                      {dish.price !== undefined && dish.price > 0 && (
+                        <span className="text-[11px] font-black text-slate-900">
+                          {settings.currencySymbol || '₹'}{dish.price}
+                        </span>
+                      )}
+                      {dish.restaurantName && (
+                        <span className="text-[10px] text-slate-600 font-semibold truncate">
+                          • {dish.restaurantName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <Link
+                  to={`/restaurant/${dish.restaurantId}`}
+                  className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-xl text-xs font-extrabold shrink-0 border border-brand-200 btn-press transition-colors"
+                >
+                  Order
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

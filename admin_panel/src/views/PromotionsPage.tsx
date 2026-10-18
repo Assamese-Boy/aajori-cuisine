@@ -14,11 +14,13 @@ import {
   Sparkles,
   Image,
   Layers,
+  TrendingUp,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { HeroBannersManager } from '../components/HeroBannersManager';
 import { CulinaryCategoriesManager } from '../components/CulinaryCategoriesManager';
+import { TrendingDishesManager } from '../components/TrendingDishesManager';
 
 interface Coupon {
   id: string;
@@ -36,18 +38,19 @@ interface Coupon {
 }
 
 interface PromotionsPageProps {
-  defaultTab?: 'BANNERS' | 'CATEGORIES' | 'COUPONS';
+  defaultTab?: 'BANNERS' | 'CATEGORIES' | 'TRENDING' | 'COUPONS';
 }
 
 export const PromotionsPage: React.FC<PromotionsPageProps> = ({ defaultTab }) => {
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<'BANNERS' | 'CATEGORIES' | 'COUPONS'>(() => {
+  const [activeTab, setActiveTab] = useState<'BANNERS' | 'CATEGORIES' | 'TRENDING' | 'COUPONS'>(() => {
     if (defaultTab) return defaultTab;
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = (params.get('tab') || '').toUpperCase();
       if (tabParam === 'COUPONS') return 'COUPONS';
       if (tabParam === 'CATEGORIES') return 'CATEGORIES';
+      if (tabParam === 'TRENDING') return 'TRENDING';
     }
     return 'BANNERS';
   });
@@ -191,6 +194,19 @@ export const PromotionsPage: React.FC<PromotionsPageProps> = ({ defaultTab }) =>
 
         <button
           type="button"
+          onClick={() => setActiveTab('TRENDING')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'TRENDING'
+              ? 'bg-white text-slate-900 shadow-sm font-black'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4 text-purple-600" />
+          <span>Trending Dishes</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('COUPONS')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'COUPONS'
@@ -209,7 +225,10 @@ export const PromotionsPage: React.FC<PromotionsPageProps> = ({ defaultTab }) =>
       {/* Tab 2: Culinary Categories */}
       {activeTab === 'CATEGORIES' && <CulinaryCategoriesManager />}
 
-      {/* Tab 3: Discount Vouchers & Coupons */}
+      {/* Tab 3: Trending Dishes */}
+      {activeTab === 'TRENDING' && <TrendingDishesManager />}
+
+      {/* Tab 4: Discount Vouchers & Coupons */}
       {activeTab === 'COUPONS' && (
         <div className="space-y-6">
           {/* Header */}
