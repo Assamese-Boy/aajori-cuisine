@@ -16,8 +16,9 @@ const DEFAULT_SETTINGS = {
   topBannerTag: '⚡ 25 Mins Express',
   topAnnouncement: '⚡ Fresh Artisan Kitchens & Express Delivery Worldwide',
   promoCodeAnnouncement: 'Use code AAJORI50 for ₹50 off',
-  supportPhone: '+91 98640 00001',
-  supportEmail: 'support@aajori.in',
+  supportPhone: '+91 6002308541',
+  supportEmail: 'info@aajori.in',
+  whatsappOrderingPhone: '916002308541',
   deliveryTimeEstimate: '25-35 mins',
   currencySymbol: '₹',
   heroBanners: [

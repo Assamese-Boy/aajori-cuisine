@@ -89,13 +89,13 @@ export const DeliveryPartnersPage: React.FC = () => {
   const handleOpenEditRider = (rider: any) => {
     setEditingRider(rider);
     setFormData({
-      fullName: rider.user?.fullName || '',
-      phone: rider.user?.phone || '+91',
-      email: rider.user?.email || '',
-      vehicleType: rider.vehicleType,
-      vehicleNumber: rider.vehicleNumber,
-      drivingLicenseNumber: rider.drivingLicenseNumber,
-      shiftStatus: rider.shiftStatus,
+      fullName: rider.fullName || rider.user?.fullName || '',
+      phone: rider.phone || rider.user?.phone || '+91',
+      email: rider.email || rider.user?.email || '',
+      vehicleType: rider.vehicleType || 'Two Wheeler (Motorcycle)',
+      vehicleNumber: rider.vehicleNumber || '',
+      drivingLicenseNumber: rider.drivingLicenseNumber || '',
+      shiftStatus: rider.shiftStatus || 'ONLINE_IDLE',
     });
     setFormError(null);
     setShowRiderModal(true);
@@ -109,6 +109,9 @@ export const DeliveryPartnersPage: React.FC = () => {
     try {
       if (editingRider) {
         const payload = {
+          fullName: formData.fullName,
+          phone: formData.phone,
+          email: formData.email,
           vehicleType: formData.vehicleType,
           vehicleNumber: formData.vehicleNumber,
           drivingLicenseNumber: formData.drivingLicenseNumber,
@@ -137,25 +140,25 @@ export const DeliveryPartnersPage: React.FC = () => {
           toast.error('Update Failed', res.error?.message);
         }
       } else {
+        const payload = {
+          ...formData,
+          user: {
+            fullName: formData.fullName,
+            phone: formData.phone,
+            email: formData.email,
+          },
+        };
         const res = await apiRequest('/admin/delivery-partners', {
           method: 'POST',
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
         if (res.success) {
           const newRider = res.data?.rider || res.data || {
             id: `rider_${Date.now()}`,
-            vehicleType: formData.vehicleType,
-            vehicleNumber: formData.vehicleNumber,
-            drivingLicenseNumber: formData.drivingLicenseNumber,
-            shiftStatus: formData.shiftStatus,
-            user: {
-              fullName: formData.fullName,
-              phone: formData.phone,
-              email: formData.email,
-            },
-            batteryLevel: 100,
+            ...payload,
+            batteryPercentage: 100,
             rating: 5.0,
-            totalDeliveries: 0,
+            totalCompletedOrders: 0,
           };
           recordCreatedRider(newRider);
           setRiders((prev) => mergeRiders([newRider, ...prev]));
@@ -199,12 +202,13 @@ export const DeliveryPartnersPage: React.FC = () => {
 
   const handleToggleShift = async (rider: any) => {
     const nextStatus = rider.shiftStatus === 'OFFLINE' ? 'ONLINE_IDLE' : 'OFFLINE';
+    const riderName = rider.fullName || rider.user?.fullName || 'Rider';
     const res = await apiRequest(`/admin/delivery-partners/${rider.id}`, {
       method: 'PUT',
       body: JSON.stringify({ shiftStatus: nextStatus }),
     });
     if (res.success) {
-      toast.success('Shift Updated', `${rider.user?.fullName} is now ${nextStatus.replace(/_/g, ' ')}`);
+      toast.success('Shift Updated', `${riderName} is now ${nextStatus.replace(/_/g, ' ')}`);
       fetchRiders();
     } else {
       toast.error('Shift Update Failed', res.error?.message);
@@ -259,9 +263,9 @@ export const DeliveryPartnersPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-slate-900 leading-tight">
-                    {rider.user?.fullName}
+                    {rider.fullName || rider.user?.fullName || 'Delivery Partner'}
                   </h3>
-                  <p className="text-xs text-slate-500 font-mono mt-0.5">{rider.user?.phone}</p>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">{rider.phone || rider.user?.phone || 'No phone'}</p>
                 </div>
               </div>
 
@@ -276,18 +280,18 @@ export const DeliveryPartnersPage: React.FC = () => {
                       : 'bg-slate-100 text-slate-600'
                   }`}
                 >
-                  {rider.shiftStatus.replace(/_/g, ' ')}
+                  {(rider.shiftStatus || 'ONLINE_IDLE').replace(/_/g, ' ')}
                 </span>
 
                 <button
                   onClick={() => handleOpenEditRider(rider)}
                   title="Edit Rider"
-                  className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setDeleteRiderTarget({ id: rider.id, name: rider.user?.fullName || 'Rider' })}
+                  onClick={() => setDeleteRiderTarget({ id: rider.id, name: rider.fullName || rider.user?.fullName || 'Rider' })}
                   title="Deactivate Rider"
                   className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                 >
@@ -299,27 +303,27 @@ export const DeliveryPartnersPage: React.FC = () => {
             <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-center text-xs">
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase">Vehicle</span>
-                <span className="font-bold text-slate-800 font-mono">{rider.vehicleNumber}</span>
+                <span className="font-bold text-slate-800 font-mono">{rider.vehicleNumber || 'Standard'}</span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase">Rating</span>
                 <span className="font-bold text-slate-800 flex items-center justify-center gap-1">
                   <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                  {rider.rating}
+                  {rider.rating || 5.0}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase">Battery</span>
                 <span className="font-bold text-slate-800 flex items-center justify-center gap-1 font-mono">
                   <Battery className="w-3.5 h-3.5 text-emerald-600" />
-                  {rider.batteryPercentage}%
+                  {rider.batteryPercentage ?? rider.batteryLevel ?? 100}%
                 </span>
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs text-slate-600 pt-2 border-t border-slate-100">
               <span>
-                Lifetime Orders: <strong className="text-slate-900">{rider.totalCompletedOrders}</strong>
+                Lifetime Orders: <strong className="text-slate-900">{rider.totalCompletedOrders ?? rider.completedOrders ?? 0}</strong>
               </span>
 
               <button

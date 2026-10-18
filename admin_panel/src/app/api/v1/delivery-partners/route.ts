@@ -20,11 +20,19 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    if (!body.fullName || !body.phone) {
+    const fullName = (body.fullName || body.user?.fullName || body.name || '').trim();
+    const phone = (body.phone || body.user?.phone || '').trim();
+
+    if (!fullName || !phone) {
       return apiError('Name and Phone are required', 400);
     }
 
-    const partner = await ServerDb.saveDeliveryPartner(body);
+    const partner = await ServerDb.saveDeliveryPartner({
+      ...body,
+      fullName,
+      phone,
+      email: (body.email || body.user?.email || '').trim(),
+    });
     return apiSuccess(partner, 201);
   } catch (err: any) {
     return apiError(err?.message || 'Failed to save delivery partner', 500);

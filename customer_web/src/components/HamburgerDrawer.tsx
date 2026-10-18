@@ -328,7 +328,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
             </button>
 
             <a
-              href="https://wa.me/919864000000?text=menu"
+              href={`https://wa.me/${(settings.whatsappOrderingPhone || '916002308541').replace(/[^0-9]/g, '')}?text=menu`}
               target="_blank"
               rel="noreferrer"
               className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-stone-100 transition-colors btn-press text-slate-800 font-bold"
@@ -339,7 +339,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
                 </div>
                 <div>
                   <span className="block text-sm">WhatsApp Ordering</span>
-                  <p className="text-xs text-stone-400 font-normal">Direct Meta bot</p>
+                  <p className="text-xs text-stone-400 font-normal">+91 60023 08541</p>
                 </div>
               </div>
               <ExternalLink className="w-4 h-4 text-stone-400" />
@@ -376,7 +376,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
             </div>
 
             <a
-              href={`tel:${settings.supportPhone || '+919864000001'}`}
+              href={`tel:${settings.supportPhone || '+916002308541'}`}
               className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-stone-100 transition-colors text-slate-800 font-bold"
             >
               <div className="flex items-center gap-3.5">
@@ -385,7 +385,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
                 </div>
                 <div>
                   <span className="block text-sm">24x7 Delivery Support</span>
-                  <p className="text-xs text-stone-400 font-normal">{settings.supportPhone || '+91 98640 00001'}</p>
+                  <p className="text-xs text-stone-400 font-normal">{settings.supportPhone || '+91 60023 08541'}</p>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-stone-400" />

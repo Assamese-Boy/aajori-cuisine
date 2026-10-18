@@ -30,6 +30,7 @@ export interface AppSettings {
   promoCodeAnnouncement: string;
   supportPhone: string;
   supportEmail: string;
+  whatsappOrderingPhone: string;
   deliveryTimeEstimate: string;
   currencySymbol: string;
   heroBanners: HeroBanner[];
@@ -43,8 +44,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   topBannerTag: '⚡ 25 Mins Express',
   topAnnouncement: '⚡ Fresh Artisan Kitchens & Express Delivery Worldwide',
   promoCodeAnnouncement: 'Use code AAJORI50 for ₹50 off',
-  supportPhone: '+91 98640 00001',
-  supportEmail: 'support@aajori.in',
+  supportPhone: '+91 6002308541',
+  supportEmail: 'info@aajori.in',
+  whatsappOrderingPhone: '916002308541',
   deliveryTimeEstimate: '25-35 mins',
   currencySymbol: '₹',
   heroBanners: [
@@ -111,7 +113,7 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType>({
   settings: DEFAULT_SETTINGS,
   isLoading: false,
-  refreshSettings: async () => {},
+  refreshSettings: async () => { },
 });
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

@@ -18,6 +18,7 @@ import {
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { SkeletonTable, EmptyState } from '../components/SkeletonLoaders';
+import { mergeRiders } from '../services/local-persistence';
 
 interface OrdersPageProps {
   orders?: any[];
@@ -56,13 +57,28 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [isUpdating, setIsUpdating] = useState(false);
   const [fleetRiders, setFleetRiders] = useState<any[]>([]);
+  const [selectedRiderId, setSelectedRiderId] = useState<string>('');
+
+  const fetchFleetRiders = async () => {
+    try {
+      const res = await apiRequest('/admin/delivery-partners');
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setFleetRiders(mergeRiders(res.data));
+      } else {
+        const mapRes = await apiRequest('/admin/live-map');
+        if (mapRes.success && mapRes.data?.riders) {
+          setFleetRiders(mergeRiders(mapRes.data.riders));
+        } else {
+          setFleetRiders(mergeRiders([]));
+        }
+      }
+    } catch {
+      setFleetRiders(mergeRiders([]));
+    }
+  };
 
   useEffect(() => {
-    apiRequest('/admin/delivery-partners').then((res) => {
-      if (res.success && Array.isArray(res.data)) {
-        setFleetRiders(res.data);
-      }
-    });
+    fetchFleetRiders();
   }, []);
 
   const filteredOrders = orders.filter((o) => {
@@ -433,41 +449,51 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
 
               {/* Delivery Dispatch & Rider Assignment */}
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                    <Bike className="w-4 h-4 text-brand-600" />
-                    Delivery Fleet Dispatch
-                  </h4>
-                  {selectedOrder.assignedRiderId ? (
-                    <span className="px-2 py-0.5 bg-cyan-100 text-cyan-800 rounded font-semibold text-[10px]">
-                      Rider Assigned: {selectedOrder.assignedRiderId.slice(0, 8)}
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-semibold text-[10px]">
-                      Unassigned Delivery
-                    </span>
-                  )}
-                </div>
+                {(() => {
+                  const assignedId = selectedOrder.deliveryPartnerId || selectedOrder.assignedRiderId;
+                  const assignedPartner = fleetRiders.find((r) => r.id === assignedId);
+                  const assignedName = assignedPartner?.fullName || assignedPartner?.user?.fullName;
+
+                  return (
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                        <Bike className="w-4 h-4 text-brand-600" />
+                        Delivery Fleet Dispatch
+                      </h4>
+                      {assignedId ? (
+                        <span className="px-2.5 py-1 bg-cyan-100 text-cyan-800 rounded-lg font-bold text-[10px] flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-cyan-600" />
+                          Rider Assigned: {assignedName || assignedId.slice(0, 8)}
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-lg font-semibold text-[10px]">
+                          Unassigned Delivery
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="flex flex-col sm:flex-row gap-2">
                   <select
                     id="riderSelect"
-                    defaultValue=""
-                    className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    value={selectedRiderId}
+                    onChange={(e) => setSelectedRiderId(e.target.value)}
+                    className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
                   >
                     <option value="" disabled>Select Delivery Partner to Assign...</option>
                     {fleetRiders.map((rider) => (
                       <option key={rider.id} value={rider.id}>
-                        {rider.fullName || rider.user?.fullName} ({rider.vehicleType || 'Bike'} - {rider.vehicleNumber || 'Standard'}) - {rider.status || (rider.isOnline ? 'Online' : 'Offline')}
+                        {rider.fullName || rider.user?.fullName || 'Delivery Partner'} ({rider.vehicleType || 'Bike'} - {rider.vehicleNumber || 'Standard'}) - {(rider.shiftStatus || (rider.isOnline ? 'ONLINE' : 'OFFLINE')).replace(/_/g, ' ')}
                       </option>
                     ))}
                   </select>
                   <button
                     onClick={async () => {
                       const selectEl = document.getElementById('riderSelect') as HTMLSelectElement;
-                      const riderId = selectEl?.value;
+                      const riderId = selectedRiderId || selectEl?.value;
                       if (!riderId) {
-                        toast.warning('Select Rider', 'Please select an online delivery partner from the fleet list');
+                        toast.warning('Select Rider', 'Please select a delivery partner from the fleet dropdown');
                         return;
                       }
                       setIsUpdating(true);
@@ -481,6 +507,9 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
                         });
                         if (res.success) {
                           toast.success('Rider Dispatched', 'Delivery partner allocated to order successfully');
+                          selectedOrder.deliveryPartnerId = riderId;
+                          (selectedOrder as any).assignedRiderId = riderId;
+                          selectedOrder.status = 'RIDER_ASSIGNED';
                           onRefresh();
                         } else {
                           toast.error('Dispatch Failed', res.error?.message || 'Could not assign rider');
@@ -492,9 +521,9 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
                       }
                     }}
                     disabled={isUpdating}
-                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg text-xs transition-colors shrink-0 shadow-xs"
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg text-xs transition-colors shrink-0 shadow-xs cursor-pointer disabled:opacity-50"
                   >
-                    Dispatch Partner
+                    {isUpdating ? 'Dispatching...' : 'Dispatch Partner'}
                   </button>
                 </div>
               </div>

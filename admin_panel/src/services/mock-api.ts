@@ -525,8 +525,9 @@ export const SEED_APP_SETTINGS = {
   topBannerTag: '⚡ 25 Mins Express',
   topAnnouncement: '⚡ Fresh Artisan Kitchens & Express Delivery Worldwide',
   promoCodeAnnouncement: 'Use code AAJORI50 for ₹50 off',
-  supportPhone: '+91 98640 00001',
-  supportEmail: 'support@aajori.in',
+  supportPhone: '+91 6002308541',
+  supportEmail: 'info@aajori.in',
+  whatsappOrderingPhone: '916002308541',
   deliveryTimeEstimate: '25-35 mins',
   currencySymbol: '₹',
   heroBanners: [
@@ -711,6 +712,34 @@ export function handleMockAdminApi(
       success: false,
       error: { message: `Order ${orderId} not found` },
       statusCode: 404,
+    };
+  }
+
+  // 4b. Assign Rider: /admin/orders/:id/assign-rider
+  const assignRiderMatch = cleanEndpoint.match(/^\/(?:admin\/)?orders\/([^/]+)\/assign-rider$/);
+  if (assignRiderMatch && (method === 'POST' || method === 'PATCH')) {
+    const orderId = assignRiderMatch[1];
+    const riderId = body?.riderId || body?.deliveryPartnerId;
+    const orders = getStorage<any[]>(STORAGE_KEYS.ORDERS, SEED_ORDERS);
+    const index = orders.findIndex((o) => o.id === orderId || o.orderNumber === orderId);
+
+    if (index !== -1) {
+      orders[index].deliveryPartnerId = riderId;
+      orders[index].assignedRiderId = riderId;
+      orders[index].status = 'RIDER_ASSIGNED';
+      orders[index].updatedAt = new Date().toISOString();
+      setStorage(STORAGE_KEYS.ORDERS, orders);
+      return {
+        success: true,
+        data: orders[index],
+        statusCode: 200,
+      };
+    }
+
+    return {
+      success: true,
+      data: { id: orderId, deliveryPartnerId: riderId, assignedRiderId: riderId, status: 'RIDER_ASSIGNED' },
+      statusCode: 200,
     };
   }
 

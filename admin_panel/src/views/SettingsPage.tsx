@@ -51,6 +51,7 @@ interface AppSettings {
   promoCodeAnnouncement: string;
   supportPhone: string;
   supportEmail: string;
+  whatsappOrderingPhone?: string;
   deliveryTimeEstimate: string;
   currencySymbol: string;
   heroBanners: HeroBanner[];
@@ -70,8 +71,9 @@ export const SettingsPage: React.FC = () => {
     topBannerTag: '⚡ 25 Mins Express',
     topAnnouncement: '⚡ Fresh Artisan Kitchens & Express Delivery Worldwide',
     promoCodeAnnouncement: 'Use code AAJORI50 for ₹50 off',
-    supportPhone: '+91 98640 00001',
+    supportPhone: '+91 6002308541',
     supportEmail: 'support@aajori.in',
+    whatsappOrderingPhone: '916002308541',
     deliveryTimeEstimate: '25-35 mins',
     currencySymbol: '₹',
     heroBanners: [],
@@ -380,14 +382,26 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700">Official Support Phone / WhatsApp</label>
+                <label className="text-xs font-bold text-slate-700">Official Support Phone</label>
                 <input
                   type="text"
                   value={settings.supportPhone}
                   onChange={(e) => setSettings({ ...settings, supportPhone: e.target.value })}
+                  placeholder="+91 60023 08541"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">WhatsApp Ordering Number</label>
+                <input
+                  type="text"
+                  value={settings.whatsappOrderingPhone || ''}
+                  onChange={(e) => setSettings({ ...settings, whatsappOrderingPhone: e.target.value })}
+                  placeholder="916002308541"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500 font-mono"
                 />
               </div>
 
@@ -397,6 +411,7 @@ export const SettingsPage: React.FC = () => {
                   type="email"
                   value={settings.supportEmail}
                   onChange={(e) => setSettings({ ...settings, supportEmail: e.target.value })}
+                  placeholder="support@aajori.in"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
                 />
               </div>

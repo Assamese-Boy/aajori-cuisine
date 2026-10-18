@@ -30,7 +30,8 @@ export async function PATCH(
 ) {
   try {
     const body = await req.json();
-    const updated = await ServerDb.saveDeliveryPartner({ ...body, id: params.id });
+    const cleanId = (params.id || '').trim().replace(/\/+$/, '');
+    const updated = await ServerDb.saveDeliveryPartner({ ...body, id: cleanId });
     return apiSuccess(updated);
   } catch (err: any) {
     return apiError(err?.message || 'Failed to update delivery partner', 500);

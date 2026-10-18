@@ -22,6 +22,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useLocationContext } from '../context/LocationContext';
+import { useSettings } from '../context/SettingsContext';
 import { apiRequest } from '../services/api';
 import { PaymentMethod } from '../types';
 
@@ -37,6 +38,7 @@ export const CheckoutPage: React.FC = () => {
     openAuthModal,
   } = useAuth();
   const { currentLocation } = useLocationContext();
+  const { settings } = useSettings();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -357,8 +359,9 @@ export const CheckoutPage: React.FC = () => {
                 res.data.trackingToken ? `?token=${res.data.trackingToken}` : ''
               }`
           );
+          const waPhone = (settings.whatsappOrderingPhone || '916002308541').replace(/[^0-9]/g, '');
           window.open(
-            `https://api.whatsapp.com/send?phone=919864000000&text=${waText}`,
+            `https://api.whatsapp.com/send?phone=${waPhone}&text=${waText}`,
             '_blank'
           );
         }
