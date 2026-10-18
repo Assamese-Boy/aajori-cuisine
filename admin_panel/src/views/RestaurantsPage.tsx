@@ -79,15 +79,16 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     postalCode: '',
     latitude: 0,
     longitude: 0,
-    cuisineTypes: 'Traditional, Gourmet, Multi-Cuisine',
+    cuisineTypes: '',
     commissionRate: 15,
-    avgPrepTimeMinutes: 25,
-    minOrderAmount: 150,
+    avgPrepTimeMinutes: 20,
+    minOrderAmount: 0,
+    packagingFee: 0,
     coverUrl: '',
     ownerName: '',
-    ownerPhone: '+91',
+    ownerPhone: '',
     ownerEmail: '',
-    initialPassword: 'Aajori@Merchant2026',
+    initialPassword: '',
     isActive: true,
   });
 
@@ -169,15 +170,16 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       postalCode: '',
       latitude: 0,
       longitude: 0,
-      cuisineTypes: 'Traditional, Gourmet, Multi-Cuisine',
+      cuisineTypes: '',
       commissionRate: 15,
-      avgPrepTimeMinutes: 25,
-      minOrderAmount: 150,
+      avgPrepTimeMinutes: 20,
+      minOrderAmount: 0,
+      packagingFee: 0,
       coverUrl: '',
       ownerName: '',
-      ownerPhone: '+91',
+      ownerPhone: '',
       ownerEmail: '',
-      initialPassword: 'Aajori@Merchant2026',
+      initialPassword: '',
       isActive: true,
     });
     setFormError(null);
@@ -194,23 +196,25 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     const resolvedOwner =
       r.ownerName ||
       r.merchantName ||
-      (r.name ? `${r.name} Manager` : 'Restaurant Manager');
+      r.name ||
+      '';
 
     setRestFormData({
       name: r.name || '',
       addressLine: resolvedAddress,
-      city: r.city || r.address?.city || 'Guwahati',
-      district: r.district || r.address?.district || 'Kamrup Metropolitan',
-      postalCode: r.postalCode || r.address?.postalCode || '781001',
-      latitude: r.location?.latitude ?? r.latitude ?? r.address?.location?.latitude ?? 26.1738,
-      longitude: r.location?.longitude ?? r.longitude ?? r.address?.location?.longitude ?? 91.7825,
-      cuisineTypes: Array.isArray(r.cuisineTypes) ? r.cuisineTypes.join(', ') : (r.cuisineTypes || 'Traditional'),
-      commissionRate: r.commissionRate ?? 15,
-      avgPrepTimeMinutes: r.avgPrepTimeMinutes ?? r.avgPreparationTimeMinutes ?? 25,
-      minOrderAmount: r.minOrderAmount ?? r.minimumOrderValue ?? 150,
+      city: r.city || r.address?.city || '',
+      district: r.district || r.address?.district || '',
+      postalCode: r.postalCode || r.address?.postalCode || '',
+      latitude: r.location?.latitude ?? r.latitude ?? r.address?.location?.latitude ?? 0,
+      longitude: r.location?.longitude ?? r.longitude ?? r.address?.location?.longitude ?? 0,
+      cuisineTypes: Array.isArray(r.cuisineTypes) ? r.cuisineTypes.join(', ') : (r.cuisineTypes || ''),
+      commissionRate: r.commissionRate ?? 0,
+      avgPrepTimeMinutes: r.avgPrepTimeMinutes ?? r.avgPreparationTimeMinutes ?? 0,
+      minOrderAmount: r.minOrderAmount ?? r.minimumOrderValue ?? 0,
+      packagingFee: r.packagingFee ?? 0,
       coverUrl: r.coverUrl || r.bannerUrl || r.cover_url || '',
       ownerName: resolvedOwner,
-      ownerPhone: r.ownerPhone || r.phone || '+91',
+      ownerPhone: r.ownerPhone || r.phone || '',
       ownerEmail: r.ownerEmail || r.email || '',
       initialPassword: '',
       isActive: r.isActive ?? true,
@@ -231,24 +235,24 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       cover_url: restFormData.coverUrl,
       slug: restFormData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       cuisineTypes: restFormData.cuisineTypes.split(',').map((c) => c.trim()).filter(Boolean),
-      commissionRate: Number(restFormData.commissionRate),
-      avgPrepTimeMinutes: Number(restFormData.avgPrepTimeMinutes),
-      minOrderAmount: Number(restFormData.minOrderAmount),
-      packagingFee: 20,
+      commissionRate: Number(restFormData.commissionRate) || 0,
+      avgPrepTimeMinutes: Number(restFormData.avgPrepTimeMinutes) || 0,
+      minOrderAmount: Number(restFormData.minOrderAmount) || 0,
+      packagingFee: Number(restFormData.packagingFee) || 0,
       address: restFormData.addressLine,
       addressLine: restFormData.addressLine,
-      city: restFormData.city || 'Central City',
-      district: restFormData.district || 'Operating Zone',
-      postalCode: restFormData.postalCode || '',
+      city: restFormData.city.trim(),
+      district: restFormData.district.trim(),
+      postalCode: restFormData.postalCode.trim(),
       location: {
         latitude: Number(restFormData.latitude) || 0,
         longitude: Number(restFormData.longitude) || 0,
       },
       isAcceptingOrders: editingRest ? (editingRest.isAcceptingOrders ?? editingRest.isOpen ?? true) : true,
       isOpen: editingRest ? (editingRest.isOpen ?? editingRest.isAcceptingOrders ?? true) : true,
-      phone: restFormData.ownerPhone || editingRest?.phone || '+919864000000',
-      email: restFormData.ownerEmail || editingRest?.email || '',
-      ownerName: restFormData.ownerName || editingRest?.ownerName || `${restFormData.name} Manager`,
+      phone: restFormData.ownerPhone.trim() || editingRest?.phone || '',
+      email: restFormData.ownerEmail.trim() || editingRest?.email || '',
+      ownerName: restFormData.ownerName.trim() || editingRest?.ownerName || restFormData.name,
     };
 
     try {
@@ -378,7 +382,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       description: item.description || '',
       price: item.price,
       isVeg: item.isVeg,
-      categoryName: 'Signature Dishes',
+      categoryName: item.category || item.categoryName || 'Signature Dishes',
       imageUrl: item.imageUrl || '',
       prepTimeMinutes: item.prepTimeMinutes || 20,
       isAvailable: item.isAvailable,
@@ -732,7 +736,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-700">Commission %</label>
                     <input
@@ -749,7 +753,7 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                     <label className="text-xs font-semibold text-slate-700">Avg Prep (min)</label>
                     <input
                       type="number"
-                      min="5"
+                      min="0"
                       max="120"
                       value={restFormData.avgPrepTimeMinutes}
                       onChange={(e) => setRestFormData({ ...restFormData, avgPrepTimeMinutes: Number(e.target.value) })}
@@ -764,6 +768,18 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                       min="0"
                       value={restFormData.minOrderAmount}
                       onChange={(e) => setRestFormData({ ...restFormData, minOrderAmount: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Packaging Fee (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={restFormData.packagingFee}
+                      onChange={(e) => setRestFormData({ ...restFormData, packagingFee: Number(e.target.value) })}
+                      placeholder="0"
                       className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500"
                     />
                   </div>
@@ -944,7 +960,10 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
               <div>
                 <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                   <Utensils className="w-5 h-5 text-brand-600" />
-                  {selectedRestaurantMenu.restaurant.name} Menu Catalog
+                  {selectedRestaurantMenu.restaurant?.name ||
+                    restaurantsList.find((r) => r.id === activeRestaurantId)?.name ||
+                    'Restaurant'}{' '}
+                  Menu Catalog
                 </h3>
                 <p className="text-xs text-slate-500">
                   Manage dishes, pricing, dietary indicators, and live kitchen availability
@@ -969,99 +988,137 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {selectedRestaurantMenu.categories.map((cat: any) => (
-                <div key={cat.id} className="space-y-3">
-                  <h4 className="text-sm font-bold text-slate-800 border-b pb-1.5 flex items-center justify-between">
-                    <span>{cat.name}</span>
-                    <span className="text-xs font-normal text-slate-400">
-                      {cat.items.length} items
-                    </span>
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {cat.items.map((item: any) => (
-                      <div
-                        key={item.id}
-                        className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between gap-3 text-xs hover:border-slate-300 transition-colors"
-                      >
-                        <div className="flex gap-3">
-                          {item.imageUrl && (
-                            <div className="w-14 h-14 rounded-xl bg-stone-100 overflow-hidden shrink-0 border border-slate-200">
-                              <img
-                                src={item.imageUrl}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src =
-                                    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200';
-                                }}
-                              />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className={`w-2 h-2 rounded-full shrink-0 ${
-                                    item.isVeg ? 'bg-emerald-500' : 'bg-rose-500'
-                                  }`}
-                                ></span>
-                                <span className="font-semibold text-slate-900 text-sm truncate">
-                                  {item.name}
-                                </span>
-                              </div>
-                              <span className="font-mono font-bold text-slate-900 text-sm shrink-0">
-                                ₹{item.price}
-                              </span>
-                            </div>
-                            {item.description && (
-                              <p className="text-slate-500 text-[11px] line-clamp-2">
-                                {item.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+              {(() => {
+                const categories = selectedRestaurantMenu.categories || [];
+                const totalItems =
+                  categories.reduce((acc: number, c: any) => acc + (c.items?.length || 0), 0) +
+                  (selectedRestaurantMenu.items?.length || 0);
 
-                        <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              item.isAvailable
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {item.isAvailable ? 'In Stock' : 'Out of Stock'}
-                          </span>
-
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => setReviewingItem(item)}
-                              title="Review Customer Mobile View"
-                              className="px-2 py-1 text-[11px] font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg flex items-center gap-1 border border-brand-200 transition-colors"
-                            >
-                              <Smartphone className="w-3 h-3 text-brand-600" />
-                              <span>Mobile View</span>
-                            </button>
-                            <button
-                              onClick={() => handleOpenEditItem(item)}
-                              title="Edit Dish"
-                              className="p-1 text-slate-500 hover:text-brand-600 hover:bg-slate-200 rounded"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteItemTarget({ id: item.id, name: item.name })}
-                              title="Delete Dish"
-                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
+                if (totalItems === 0) {
+                  return (
+                    <div className="py-12 px-4 text-center space-y-4">
+                      <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-3xl flex items-center justify-center mx-auto shadow-inner border border-brand-100">
+                        <Utensils className="w-8 h-8" />
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                      <div className="space-y-1">
+                        <h4 className="text-base font-bold text-slate-900">
+                          No dishes in catalog yet
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                          This restaurant currently has no menu items. Add your first dish with
+                          pricing, descriptions, and media to build its live storefront menu.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleOpenAddItem}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-600/20 transition-all cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add First Dish</span>
+                      </button>
+                    </div>
+                  );
+                }
+
+                return categories.map((cat: any) => {
+                  const catItems = cat.items || [];
+                  if (catItems.length === 0) return null;
+                  return (
+                    <div key={cat.id} className="space-y-3">
+                      <h4 className="text-sm font-bold text-slate-800 border-b pb-1.5 flex items-center justify-between">
+                        <span>{cat.name}</span>
+                        <span className="text-xs font-normal text-slate-400">
+                          {catItems.length} items
+                        </span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {catItems.map((item: any) => (
+                          <div
+                            key={item.id}
+                            className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between gap-3 text-xs hover:border-slate-300 transition-colors"
+                          >
+                            <div className="flex gap-3">
+                              {item.imageUrl && (
+                                <div className="w-14 h-14 rounded-xl bg-stone-100 overflow-hidden shrink-0 border border-slate-200">
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src =
+                                        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200';
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className={`w-2 h-2 rounded-full shrink-0 ${
+                                        item.isVeg ? 'bg-emerald-500' : 'bg-rose-500'
+                                      }`}
+                                    ></span>
+                                    <span className="font-semibold text-slate-900 text-sm truncate">
+                                      {item.name}
+                                    </span>
+                                  </div>
+                                  <span className="font-mono font-bold text-slate-900 text-sm shrink-0">
+                                    ₹{item.price}
+                                  </span>
+                                </div>
+                                {item.description && (
+                                  <p className="text-slate-500 text-[11px] line-clamp-2">
+                                    {item.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  item.isAvailable
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}
+                              >
+                                {item.isAvailable ? 'In Stock' : 'Out of Stock'}
+                              </span>
+
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => setReviewingItem(item)}
+                                  title="Review Customer Mobile View"
+                                  className="px-2 py-1 text-[11px] font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg flex items-center gap-1 border border-brand-200 transition-colors"
+                                >
+                                  <Smartphone className="w-3 h-3 text-brand-600" />
+                                  <span>Mobile View</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenEditItem(item)}
+                                  title="Edit Dish"
+                                  className="p-1 text-slate-500 hover:text-brand-600 hover:bg-slate-200 rounded"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteItemTarget({ id: item.id, name: item.name })}
+                                  title="Delete Dish"
+                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>

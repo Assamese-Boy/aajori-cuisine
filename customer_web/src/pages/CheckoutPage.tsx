@@ -49,13 +49,13 @@ export const CheckoutPage: React.FC = () => {
   const [isAddressSheetOpen, setIsAddressSheetOpen] = useState(false);
   const [showNewAddrInput, setShowNewAddrInput] = useState(false);
   const [newAddr, setNewAddr] = useState({
-    label: 'Home',
+    label: '',
     addressLine1: '',
     landmark: '',
-    city: currentLocation?.city || 'Guwahati',
-    postalCode: currentLocation?.postalCode || '781001',
-    latitude: currentLocation?.latitude || 26.18,
-    longitude: currentLocation?.longitude || 91.75,
+    city: currentLocation?.city || '',
+    postalCode: currentLocation?.postalCode || '',
+    latitude: currentLocation?.latitude || 0,
+    longitude: currentLocation?.longitude || 0,
   });
 
   // Filter valid cart items
@@ -79,12 +79,12 @@ export const CheckoutPage: React.FC = () => {
         addressLine1: currentLocation.name || 'Current Location',
         addressLine2: currentLocation.addressLine || '',
         landmark: currentLocation.isGps ? 'GPS Detected' : '',
-        city: currentLocation.city || 'Guwahati',
+        city: currentLocation.city || '',
         district: currentLocation.locality || '',
-        postalCode: currentLocation.postalCode || '781001',
+        postalCode: currentLocation.postalCode || '',
         location: {
-          latitude: currentLocation.latitude || 26.18,
-          longitude: currentLocation.longitude || 91.75,
+          latitude: currentLocation.latitude || 0,
+          longitude: currentLocation.longitude || 0,
         },
         deliveryInstructions: '',
         isDefault: true,
@@ -284,8 +284,7 @@ export const CheckoutPage: React.FC = () => {
               `*Order:* #${confirmedOrderNumber}\n` +
               `*Kitchen:* ${restaurantName || 'Aajori Cuisine'}\n\n` +
               `*Items:*\n${itemsText}\n\n` +
-              `*Total Payable:* ₹${res.data.pricing?.total || pricingDetails.total}\n` +
-              `*Delivery Address:* ${selectedAddress.addressLine1}, ${selectedAddress.city || 'Guwahati'}\n` +
+              `*Delivery Address:* ${selectedAddress.addressLine1}${selectedAddress.city ? `, ${selectedAddress.city}` : ''}\n` +
               `*Payment:* ${isWhatsApp ? 'Cash on Delivery (COD)' : paymentMethod}\n\n` +
               `*Live Track Link:* ${window.location.origin}/orders/${res.data.id}${
                 res.data.trackingToken ? `?token=${res.data.trackingToken}` : ''

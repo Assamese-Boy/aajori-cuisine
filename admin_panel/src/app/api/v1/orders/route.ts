@@ -26,11 +26,11 @@ export async function POST(req: NextRequest) {
     }
 
     const order = await ServerDb.createOrder({
-      customerId: body.customerId || 'usr_guest',
+      customerId: body.customerId || 'guest',
       customerName: body.customerName || 'Customer',
-      customerPhone: body.customerPhone || '+919864000000',
-      restaurantId: body.restaurantId || 'd0000000-0000-0000-0000-000000000001',
-      restaurantName: body.restaurantName || 'Aajori Kitchen',
+      customerPhone: body.customerPhone || '',
+      restaurantId: body.restaurantId || '',
+      restaurantName: body.restaurantName || 'Kitchen Partner',
       items: body.items,
       subtotal: body.subtotal || 0,
       tax: body.tax || 0,

@@ -178,7 +178,14 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
             {restaurant.name}
           </h2>
           <p className="text-xs text-slate-500 truncate leading-tight font-medium mt-0.5">
-            {restaurant.avgPrepTimeMinutes} mins prep • {restaurant.city}
+            {(() => {
+              const prep = Number(
+                restaurant.avgPrepTimeMinutes ||
+                  (restaurant as any).avgPreparationTimeMinutes
+              ) || 0;
+              const prepStr = prep > 0 ? `${prep} mins prep` : 'Express Kitchen';
+              return restaurant.city ? `${prepStr} • ${restaurant.city}` : prepStr;
+            })()}
           </p>
         </div>
 
@@ -246,19 +253,47 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
         <div className="p-3 bg-white rounded-2xl border border-stone-200/90 flex items-center justify-between text-xs text-slate-700 shadow-2xs font-bold">
           <div className="flex items-center gap-1.5 font-black text-slate-900">
             <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-            <span>{restaurant.rating || '4.8'}</span>
-            <span className="text-[10px] text-slate-400 font-medium">(180+ reviews)</span>
+            <span>{Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : 'New'}</span>
+            {Number(restaurant.ratingCount) > 0 && (
+              <span className="text-[10px] text-slate-400 font-medium">({restaurant.ratingCount} reviews)</span>
+            )}
           </div>
           <div className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>{restaurant.avgPrepTimeMinutes} mins</span>
+            <span>
+              {(() => {
+                const prep = Number(
+                  restaurant.avgPrepTimeMinutes ||
+                    (restaurant as any).avgPreparationTimeMinutes
+                ) || 0;
+                return prep > 0 ? `${prep} mins` : 'Express';
+              })()}
+            </span>
           </div>
-          <div>
-            <span>Min ₹{restaurant.minOrderAmount}</span>
-          </div>
-          <div className="text-emerald-700 font-extrabold">
-            <span>₹{restaurant.packagingFee} Pack</span>
-          </div>
+          {(() => {
+            const minOrder = Number(
+              restaurant.minOrderAmount ||
+                (restaurant as any).minimumOrderValue
+            ) || 0;
+            const packFee = Number(
+              restaurant.packagingFee !== undefined
+                ? restaurant.packagingFee
+                : (restaurant as any).packaging_fee
+            ) || 0;
+
+            return (
+              <>
+                <div>
+                  <span>{minOrder > 0 ? `Min ₹${minOrder}` : 'No Min Order'}</span>
+                </div>
+                {packFee > 0 && (
+                  <div className="text-emerald-700 font-extrabold">
+                    <span>₹{packFee} Pack</span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* In-restaurant menu search */}

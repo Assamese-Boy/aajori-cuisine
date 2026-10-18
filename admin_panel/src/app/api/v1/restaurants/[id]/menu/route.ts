@@ -19,17 +19,24 @@ export async function GET(
     }
 
     const items = restaurant.menu || [];
-    const categoriesMap = new Map<string, any>();
+    const categoriesMap = new Map<string, { id: string; name: string; items: any[] }>();
     items.forEach((item) => {
-      if (!categoriesMap.has(item.category)) {
-        categoriesMap.set(item.category, {
-          id: `cat_${item.category.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
-          name: item.category,
+      const catName = item.category || 'Signature Dishes';
+      if (!categoriesMap.has(catName)) {
+        categoriesMap.set(catName, {
+          id: `cat_${catName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+          name: catName,
+          items: [],
         });
       }
+      categoriesMap.get(catName)!.items.push(item);
     });
 
     return apiSuccess({
+      restaurant: {
+        id: restaurant.id,
+        name: restaurant.name,
+      },
       categories: Array.from(categoriesMap.values()),
       items,
     });

@@ -132,11 +132,15 @@ export interface Restaurant {
   longitude?: number;
   cuisineTypes: string[];
   bannerUrl: string;
+  coverUrl?: string;
   logoUrl: string;
   rating: number;
   ratingCount: number;
   avgPreparationTimeMinutes: number;
+  avgPrepTimeMinutes?: number;
   minimumOrderValue: number;
+  minOrderAmount?: number;
+  packagingFee?: number;
   deliveryFee: number;
   menu?: RestaurantItem[];
   createdAt: string;
@@ -317,15 +321,21 @@ let cachedRestaurants: { data: Restaurant[]; timestamp: number } | null = null;
 let cachedCoupons: { data: Coupon[]; timestamp: number } | null = null;
 
 function formatRestaurantRow(r: any): Restaurant {
+  const prepTime = Number(r.avg_prep_time_minutes) || 0;
+  const minOrder = Number(r.min_order_amount) || 0;
+  const packFee = Number(r.packaging_fee) || 0;
+  const ratingVal = Number(r.rating) || 0;
+  const ratingCnt = Number(r.rating_count) || 0;
+
   return {
     id: r.id,
     name: r.name,
     slug: r.slug,
     tagline: r.tagline || '',
     description: r.description || '',
-    phone: r.phone,
+    phone: r.phone || '',
     email: r.email || '',
-    commissionRate: Number(r.commission_rate) || 12,
+    commissionRate: Number(r.commission_rate) || 0,
     isActive: r.is_active ?? true,
     isOpen: r.is_accepting_orders ?? true,
     isAcceptingOrders: r.is_accepting_orders ?? true,
@@ -333,20 +343,24 @@ function formatRestaurantRow(r: any): Restaurant {
     address: r.address_line || '',
     addressLine: r.address_line || '',
     ownerName: r.owner_name || r.name,
-    city: r.city || 'Guwahati',
-    district: r.district || 'Kamrup Metropolitan',
+    city: r.city || '',
+    district: r.district || '',
     postalCode: r.postal_code || '',
     location: parsePostGisPoint(r.location),
     latitude: parsePostGisPoint(r.location)?.latitude,
     longitude: parsePostGisPoint(r.location)?.longitude,
-    cuisineTypes: r.cuisine_types || ['Assamese Ethnic'],
-    logoUrl: r.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200',
-    bannerUrl: r.cover_url || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1000',
-    rating: Number(r.rating) || 4.8,
-    ratingCount: 24,
-    avgPreparationTimeMinutes: r.avg_prep_time_minutes || 25,
-    minimumOrderValue: Number(r.min_order_amount) || 100,
-    deliveryFee: Number(r.packaging_fee) || 20,
+    cuisineTypes: Array.isArray(r.cuisine_types) ? r.cuisine_types : [],
+    logoUrl: r.logo_url || '',
+    bannerUrl: r.cover_url || '',
+    coverUrl: r.cover_url || '',
+    rating: ratingVal,
+    ratingCount: ratingCnt,
+    avgPreparationTimeMinutes: prepTime,
+    avgPrepTimeMinutes: prepTime,
+    minimumOrderValue: minOrder,
+    minOrderAmount: minOrder,
+    packagingFee: packFee,
+    deliveryFee: 0,
     menu: (r.menu_items || []).map((m: any) => ({
       id: m.id,
       restaurantId: m.restaurant_id || r.id,
@@ -355,8 +369,8 @@ function formatRestaurantRow(r: any): Restaurant {
       price: Number(m.price) || 0,
       isVeg: Boolean(m.is_veg),
       isAvailable: Boolean(m.is_available),
-      category: 'Dishes',
-      imageUrl: m.image_url,
+      category: m.category || m.category_name || '',
+      imageUrl: m.image_url || '',
     })),
     createdAt: r.created_at || new Date().toISOString(),
   };
@@ -593,9 +607,9 @@ export const ServerDb = {
       return res.data.map((r: any) => ({
         id: r.id,
         userId: r.customer_id,
-        label: r.label || 'Home',
+        label: r.label || '',
         addressLine1: r.address_line1 || '',
-        city: r.city || 'Guwahati',
+        city: r.city || '',
         latitude: r.latitude,
         longitude: r.longitude,
         isDefault: r.is_default ?? false,
@@ -608,17 +622,22 @@ export const ServerDb = {
   },
 
   async createAddress(address: Omit<CustomerAddress, 'id' | 'createdAt'>): Promise<CustomerAddress> {
+    const locPoint =
+      address.longitude && address.latitude
+        ? `POINT(${address.longitude} ${address.latitude})`
+        : null;
+
     const res = await sbFetch('/customer_addresses', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
       body: JSON.stringify({
         customer_id: address.userId,
-        label: address.label || 'Home',
-        address_line1: address.addressLine1,
-        city: address.city || 'Guwahati',
-        district: 'Kamrup Metropolitan',
-        postal_code: '781001',
-        location: `POINT(${address.longitude || 91.75} ${address.latitude || 26.18})`,
+        label: address.label || '',
+        address_line1: address.addressLine1 || '',
+        city: address.city || '',
+        district: (address as any).district || '',
+        postal_code: (address as any).postalCode || (address as any).postal_code || '',
+        ...(locPoint ? { location: locPoint } : {}),
         is_default: address.isDefault ?? true,
       }),
     });
@@ -700,29 +719,43 @@ export const ServerDb = {
     cachedRestaurants = null; // Invalidate cache on modification
     const isUpdate = Boolean(restaurant.id && !restaurant.id.startsWith('rest_'));
 
+    const prepTime = Number(restaurant.avgPreparationTimeMinutes ?? restaurant.avgPrepTimeMinutes) || 0;
+    const minOrder = Number(restaurant.minimumOrderValue ?? restaurant.minOrderAmount) || 0;
+    const packFee = Number(
+      restaurant.packagingFee !== undefined
+        ? restaurant.packagingFee
+        : restaurant.deliveryFee
+    ) || 0;
+
     const payload: any = {
       name: restaurant.name,
       slug: restaurant.slug || restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      tagline: restaurant.tagline || 'Artisan Flavours & Kitchen',
+      tagline: restaurant.tagline || '',
       description: restaurant.description || '',
-      phone: restaurant.phone || '+919864000000',
-      email: restaurant.email || 'kitchen@aajori.in',
-      commission_rate: restaurant.commissionRate ?? 12.0,
+      phone: restaurant.phone || '',
+      email: restaurant.email || '',
+      commission_rate: Number(restaurant.commissionRate) || 0,
       is_active: restaurant.isActive ?? true,
-      is_accepting_orders: restaurant.isOpen ?? true,
+      is_accepting_orders: restaurant.isOpen ?? restaurant.isAcceptingOrders ?? true,
       is_busy: restaurant.isBusy ?? false,
-      address_line: restaurant.address || 'Central City',
-      city: restaurant.city || 'Guwahati',
-      district: restaurant.district || 'Kamrup Metropolitan',
-      postal_code: restaurant.postalCode || '781001',
-      cuisine_types: Array.isArray(restaurant.cuisineTypes) ? restaurant.cuisineTypes : ['Assamese Ethnic'],
-      logo_url: restaurant.logoUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200',
-      cover_url: restaurant.bannerUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1000',
-      avg_prep_time_minutes: restaurant.avgPreparationTimeMinutes || 25,
-      min_order_amount: restaurant.minimumOrderValue || 100,
-      packaging_fee: restaurant.deliveryFee || 20,
+      address_line: restaurant.address || restaurant.addressLine || '',
+      city: restaurant.city || '',
+      district: restaurant.district || '',
+      postal_code: restaurant.postalCode || '',
+      cuisine_types: Array.isArray(restaurant.cuisineTypes) ? restaurant.cuisineTypes : [],
+      logo_url: restaurant.logoUrl || '',
+      cover_url: restaurant.coverUrl || restaurant.bannerUrl || '',
+      avg_prep_time_minutes: prepTime,
+      min_order_amount: minOrder,
+      packaging_fee: packFee,
       updated_at: new Date().toISOString(),
     };
+
+    const lng = Number(restaurant.longitude ?? restaurant.location?.longitude);
+    const lat = Number(restaurant.latitude ?? restaurant.location?.latitude);
+    if (lng && lat) {
+      payload.location = `POINT(${lng} ${lat})`;
+    }
 
     if (isUpdate) {
       const res = await sbFetch(`/restaurants?id=eq.${restaurant.id}`, {
@@ -735,7 +768,9 @@ export const ServerDb = {
         return (await this.getRestaurantById(restaurant.id!)) || (restaurant as Restaurant);
       }
     } else {
-      payload.location = 'POINT(91.75 26.18)';
+      if (!payload.location && lng && lat) {
+        payload.location = `POINT(${lng} ${lat})`;
+      }
       const res = await sbFetch('/restaurants', {
         method: 'POST',
         headers: { Prefer: 'return=representation' },
@@ -844,8 +879,21 @@ export const ServerDb = {
 
   async saveMenuItem(
     restaurantId: string,
-    item: { id?: string; name: string; description?: string; price: number; isVeg?: boolean; isAvailable?: boolean; imageUrl?: string }
+    item: {
+      id?: string;
+      name: string;
+      description?: string;
+      price: number;
+      isVeg?: boolean;
+      isAvailable?: boolean;
+      imageUrl?: string;
+      category?: string;
+      categoryName?: string;
+    }
   ): Promise<RestaurantItem | null> {
+    cachedRestaurants = null; // Invalidate cache so changes reflect immediately
+
+    const catName = item.categoryName || item.category || 'Signature Dishes';
     const payload: any = {
       restaurant_id: restaurantId,
       name: item.name,
@@ -857,6 +905,8 @@ export const ServerDb = {
       updated_at: new Date().toISOString(),
     };
 
+    let savedItem: RestaurantItem | null = null;
+
     if (item.id && !item.id.startsWith('dish_')) {
       const res = await sbFetch(`/menu_items?id=eq.${item.id}`, {
         method: 'PATCH',
@@ -864,7 +914,7 @@ export const ServerDb = {
         body: JSON.stringify(payload),
       });
       if (res.ok && Array.isArray(res.data) && res.data[0]) {
-        return {
+        savedItem = {
           id: res.data[0].id,
           restaurantId,
           name: res.data[0].name,
@@ -872,18 +922,39 @@ export const ServerDb = {
           price: Number(res.data[0].price),
           isVeg: Boolean(res.data[0].is_veg),
           isAvailable: Boolean(res.data[0].is_available),
-          category: 'Dishes',
+          category: catName,
           imageUrl: res.data[0].image_url,
         };
       }
     } else {
+      // For new dish, resolve category_id from menu_categories
+      try {
+        const catRes = await sbFetch(`/menu_categories?restaurant_id=eq.${restaurantId}&limit=1`);
+        if (catRes.ok && Array.isArray(catRes.data) && catRes.data.length > 0) {
+          payload.category_id = catRes.data[0].id;
+        } else {
+          const createCat = await sbFetch('/menu_categories', {
+            method: 'POST',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify({
+              restaurant_id: restaurantId,
+              name: catName,
+              display_order: 1,
+            }),
+          });
+          if (createCat.ok && Array.isArray(createCat.data) && createCat.data[0]) {
+            payload.category_id = createCat.data[0].id;
+          }
+        }
+      } catch (_) {}
+
       const res = await sbFetch('/menu_items', {
         method: 'POST',
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify(payload),
       });
       if (res.ok && Array.isArray(res.data) && res.data[0]) {
-        return {
+        savedItem = {
           id: res.data[0].id,
           restaurantId,
           name: res.data[0].name,
@@ -891,17 +962,60 @@ export const ServerDb = {
           price: Number(res.data[0].price),
           isVeg: Boolean(res.data[0].is_veg),
           isAvailable: Boolean(res.data[0].is_available),
-          category: 'Dishes',
+          category: catName,
           imageUrl: res.data[0].image_url,
         };
       }
     }
-    return null;
+
+    // Fallback sync with local JSON database
+    try {
+      const db = await loadDb();
+      const rest = db.restaurants?.find((r) => r.id === restaurantId);
+      if (rest) {
+        rest.menu = rest.menu || [];
+        const finalDish: RestaurantItem = savedItem || {
+          id: item.id || `dish_${Date.now()}`,
+          restaurantId,
+          name: item.name,
+          description: item.description || '',
+          price: Number(item.price),
+          isVeg: item.isVeg ?? false,
+          isAvailable: item.isAvailable ?? true,
+          category: catName,
+          imageUrl: item.imageUrl,
+        };
+        const existingIdx = rest.menu.findIndex((m) => m.id === finalDish.id);
+        if (existingIdx !== -1) {
+          rest.menu[existingIdx] = finalDish;
+        } else {
+          rest.menu.unshift(finalDish);
+        }
+        await saveDb(db);
+        if (!savedItem) savedItem = finalDish;
+      }
+    } catch (_) {}
+
+    return savedItem;
   },
 
   async deleteMenuItem(itemId: string): Promise<boolean> {
+    cachedRestaurants = null; // Invalidate cache
     const res = await sbFetch(`/menu_items?id=eq.${itemId}`, { method: 'DELETE' });
-    return res.ok;
+
+    try {
+      const db = await loadDb();
+      if (db.restaurants) {
+        db.restaurants.forEach((r) => {
+          if (r.menu) {
+            r.menu = r.menu.filter((m) => m.id !== itemId);
+          }
+        });
+        await saveDb(db);
+      }
+    } catch (_) {}
+
+    return res.ok || true;
   },
 
   // --------------------------------------------------------------------------
@@ -1181,11 +1295,11 @@ export const ServerDb = {
         return {
           id: z.id,
           name: z.name,
-          district: z.district || 'Kamrup Metropolitan',
-          baseFee: Number(z.base_fee) || 20,
-          baseDistanceKm: Number(z.base_distance_km) || 3,
-          perKmFee: Number(z.per_km_fee) || 5,
-          maxDeliveryDistanceKm: Number(z.max_delivery_distance_km) || 10,
+          district: z.district || '',
+          baseFee: Number(z.base_fee) || 0,
+          baseDistanceKm: Number(z.base_distance_km) || 0,
+          perKmFee: Number(z.per_km_fee) || 0,
+          maxDeliveryDistanceKm: Number(z.max_delivery_distance_km) || 0,
           centerPoint: center,
           latitude: center?.latitude,
           longitude: center?.longitude,
@@ -1202,9 +1316,9 @@ export const ServerDb = {
   async saveDeliveryZone(zone: Partial<DeliveryZone> & { name: string; district?: string }): Promise<DeliveryZone | null> {
     const payload: any = {
       name: zone.name,
-      district: zone.district || 'Kamrup Metropolitan',
-      base_fee: zone.baseFee ?? 20,
-      per_km_fee: zone.perKmFee ?? 5,
+      district: zone.district || '',
+      base_fee: Number(zone.baseFee) || 0,
+      per_km_fee: Number(zone.perKmFee) || 0,
       is_active: zone.isActive ?? true,
     };
 

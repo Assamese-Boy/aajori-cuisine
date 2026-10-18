@@ -51,9 +51,9 @@ export async function POST(req: NextRequest) {
 
     const address = await ServerDb.createAddress({
       userId,
-      label: body.label || 'Home',
-      addressLine1: body.addressLine1 || body.address || 'Delivery Address',
-      city: body.city || 'Guwahati',
+      label: body.label || '',
+      addressLine1: body.addressLine1 || body.address || '',
+      city: body.city || '',
       latitude: body.latitude,
       longitude: body.longitude,
       isDefault: body.isDefault ?? true,

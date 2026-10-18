@@ -58,6 +58,7 @@ export interface Restaurant {
   logoUrl?: string;
   coverUrl?: string;
   rating?: number;
+  ratingCount?: number;
   isBusy?: boolean;
   distanceKm?: number;
   bannerUrl?: string;

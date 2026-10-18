@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
       const addressText = typeof body.address === 'string' ? body.address : body.address.addressLine1;
       savedAddress = await ServerDb.createAddress({
         userId: user.id,
-        label: body.address.label || 'Home',
+        label: body.address.label || '',
         addressLine1: addressText,
-        city: body.address.city || 'Guwahati',
+        city: body.address.city || '',
         latitude: body.address.latitude,
         longitude: body.address.longitude,
         isDefault: true,

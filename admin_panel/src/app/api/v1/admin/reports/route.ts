@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     const locMap = new Map<string, { orders: number; totalDist: number }>();
     orders.forEach((o) => {
       const addr = o.deliveryAddress || {};
-      const loc = addr.locality || addr.city || (addr.addressLine1 ? addr.addressLine1.split(',')[0] : 'Guwahati Urban');
+      const loc = addr.locality || addr.city || (addr.addressLine1 ? addr.addressLine1.split(',')[0].trim() : 'Local Zone');
       const cur = locMap.get(loc) || { orders: 0, totalDist: 0 };
       cur.orders += 1;
       cur.totalDist += 3.5; // average delivery distance estimate in km

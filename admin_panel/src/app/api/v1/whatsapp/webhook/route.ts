@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     let stage = 'ACTIVE';
 
     if (location) {
-      reply = `📍 *Location Received!* We have pinned your delivery address at: ${location.address || 'Guwahati Urban'}.\nStandard delivery fee is ₹20. What would you like to order today?`;
+      reply = `📍 *Location Received!* We have pinned your delivery address at: ${location.address || 'your delivery location'}.\nWhat would you like to order today?`;
       buttons = [
         { id: 'btn_menu', title: 'Browse Menu' },
         { id: 'btn_track', title: 'Track Order' },
@@ -37,9 +37,10 @@ export async function POST(req: NextRequest) {
       reply = `🍽️ *Aajori Partner Kitchens & Signature Dishes:*\n\n` +
         topKitchens.map((r, i) => {
           const sampleDishes = (r.menu || []).slice(0, 2).map((m) => `${m.name} (₹${m.price})`).join(', ');
-          return `*${i + 1}. ${r.name}*\n📍 ${r.address || 'Guwahati'}\n🍲 Specialties: ${sampleDishes || 'Authentic Thalis'}\n`;
+          const addrLine = [r.address, r.city].filter(Boolean).join(', ');
+          return `*${i + 1}. ${r.name}*${addrLine ? `\n📍 ${addrLine}` : ''}\n🍲 Specialties: ${sampleDishes || 'Signature Menu'}\n`;
         }).join('\n') +
-        `\nReply with a dish name or budget (e.g. "Spicy duck curry under ₹400")!`;
+        `\nReply with a dish name or budget!`;
       buttons = [
         { id: 'btn_track', title: 'Track My Order' },
         { id: 'btn_help', title: 'Customer Support' },
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
           { id: 'btn_track', title: 'Track Order' },
         ];
       } else {
-        reply = `👋 *Welcome to Aajori Cuisine!*\nFresh artisan kitchen meals delivered across Guwahati.\n\nType *Menu* to see available kitchens, or *Track* to see your active order status.`;
+        reply = `👋 *Welcome to Aajori Cuisine!*\nFresh artisan kitchen meals delivered directly to your doorstep.\n\nType *Menu* to see available kitchens, or *Track* to see your active order status.`;
         buttons = [
           { id: 'btn_menu', title: 'Browse Restaurants' },
           { id: 'btn_track', title: 'Track Order' },

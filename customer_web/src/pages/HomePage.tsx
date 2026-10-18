@@ -474,13 +474,17 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-xl bg-slate-950/90 text-white text-[11px] font-black flex items-center gap-1.5 backdrop-blur-md shadow-md border border-white/10">
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
                     {(() => {
+                      const basePrep =
+                        Number(
+                          restaurant.avgPrepTimeMinutes ||
+                            (restaurant as any).avgPreparationTimeMinutes
+                        ) || 0;
                       const dist = getRestaurantDistance(restaurant);
+                      const totalMins = basePrep + (dist ? Math.round(dist * 3) : 0);
                       return (
                         <>
-                          <span>
-                            {restaurant.avgPrepTimeMinutes + (dist ? Math.round(dist * 3) : 0)} MINS
-                          </span>
-                          {dist && (
+                          <span>{totalMins > 0 ? `${totalMins} MINS` : 'Standard Delivery'}</span>
+                          {dist !== null && dist !== undefined && (
                             <>
                               <span className="text-stone-500">•</span>
                               <span>{dist} KM</span>
@@ -493,7 +497,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                   {/* Rating badge */}
                   <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-xl bg-emerald-600 text-white text-xs font-black flex items-center gap-1 shadow-md">
-                    <span>{restaurant.rating || '4.8'}</span>
+                    <span>{Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : 'New'}</span>
                     <Star className="w-3.5 h-3.5 fill-white" />
                   </div>
 
@@ -523,17 +527,43 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </h3>
                   </div>
 
-                  <p className="text-xs text-slate-500 truncate leading-tight font-medium">
-                    {restaurant.cuisineTypes.join(' • ')}
-                  </p>
+                  {restaurant.cuisineTypes && restaurant.cuisineTypes.length > 0 && (
+                    <p className="text-xs text-slate-500 truncate leading-tight font-medium">
+                      {restaurant.cuisineTypes.join(' • ')}
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-stone-100 font-medium">
                     <span className="truncate max-w-[200px]">
-                      📍 {restaurant.addressLine}
+                      {restaurant.addressLine ? `📍 ${restaurant.addressLine}` : ''}
                     </span>
-                    <span className="font-extrabold text-slate-800 shrink-0">
-                      Min ₹{restaurant.minOrderAmount} • ₹{restaurant.packagingFee || 15} Pack
-                    </span>
+                    {(() => {
+                      const minOrder =
+                        Number(
+                          restaurant.minOrderAmount ||
+                            (restaurant as any).minimumOrderValue
+                        ) || 0;
+                      const packFee = Number(
+                        restaurant.packagingFee !== undefined
+                          ? restaurant.packagingFee
+                          : (restaurant as any).packaging_fee
+                      ) || 0;
+
+                      if (minOrder === 0 && packFee === 0) {
+                        return (
+                          <span className="font-extrabold text-emerald-700 shrink-0">
+                            No Min Order
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <span className="font-extrabold text-slate-800 shrink-0">
+                          {minOrder > 0 && <span>Min ₹{minOrder}</span>}
+                          {packFee > 0 && <span>{minOrder > 0 ? ' • ' : ''}₹{packFee} Pack</span>}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </Link>
