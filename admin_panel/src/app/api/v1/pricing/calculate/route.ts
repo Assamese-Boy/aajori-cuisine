@@ -123,13 +123,6 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (_) {}
-
-      // Fallback standard promotions if not in DB
-      if (discount === 0) {
-        if (code === 'AAJORI50' && subtotal >= 200) discount = 50;
-        else if (code === 'BIHU20' && subtotal >= 250) discount = Math.min(100, Math.round(subtotal * 0.2));
-        else if (code === 'FIRSTMEAL' && subtotal >= 150) discount = 75;
-      }
     }
 
     const total = Math.max(0, subtotal + deliveryFee + packagingFee + tax - discount);

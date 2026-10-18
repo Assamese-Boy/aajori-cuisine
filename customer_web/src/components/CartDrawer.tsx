@@ -205,7 +205,7 @@ export const CartDrawer: React.FC = () => {
                     type="text"
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                    placeholder="Enter coupon (AAJORI50)"
+                    placeholder="Enter voucher code"
                     className="w-full pl-9 pr-3 py-2.5 bg-white border border-stone-200 rounded-2xl text-xs uppercase font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </div>

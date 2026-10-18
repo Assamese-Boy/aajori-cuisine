@@ -88,9 +88,9 @@ export const HeroBannersManager: React.FC = () => {
       title: 'New Artisan Special',
       subtitle: 'Freshly prepared heritage cuisine delivered hot to your doorstep',
       tag: '⚡ 25 Mins Express',
-      code: 'AAJORI50',
-      discount: '₹50 OFF',
-      condition: 'On orders above ₹200',
+      code: '',
+      discount: 'Special Deal',
+      condition: 'Freshly prepared',
       bg: 'from-brand-900 via-stone-900 to-amber-950',
       accent: 'text-amber-400',
       image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600',
@@ -377,7 +377,7 @@ export const HeroBannersManager: React.FC = () => {
                   type="text"
                   value={banner.code}
                   onChange={(e) => handleUpdate(index, { code: e.target.value.toUpperCase() })}
-                  placeholder="AAJORI50"
+                  placeholder="e.g. FESTIVE10"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-black text-slate-900 focus:outline-none focus:border-brand-500"
                 />
               </div>

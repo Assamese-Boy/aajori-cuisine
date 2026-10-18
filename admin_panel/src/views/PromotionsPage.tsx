@@ -143,19 +143,39 @@ export const PromotionsPage: React.FC<PromotionsPageProps> = ({ defaultTab }) =>
     }
   };
 
-  const handleDeactivate = async (code: string) => {
+  const handleToggleActive = async (c: Coupon) => {
+    try {
+      const res = await apiRequest(`/admin/coupons/${c.code}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isActive: !c.isActive }),
+      });
+      if (res.success) {
+        toast.success(c.isActive ? 'Coupon Paused' : 'Coupon Activated', `Code ${c.code} is now ${c.isActive ? 'inactive' : 'active'}`);
+        fetchCoupons();
+      } else {
+        toast.error('Failed', res.error?.message || 'Could not update status');
+      }
+    } catch {
+      toast.error('Error', 'Operation failed');
+    }
+  };
+
+  const handleDeleteCoupon = async (code: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete coupon ${code}?`)) {
+      return;
+    }
     try {
       const res = await apiRequest(`/admin/coupons/${code}`, {
         method: 'DELETE',
       });
       if (res.success) {
-        toast.success('Coupon Deactivated', `Code ${code} is now inactive`);
+        toast.success('Coupon Deleted', `Code ${code} has been permanently deleted`);
         fetchCoupons();
       } else {
-        toast.error('Failed', res.error?.message || 'Could not deactivate coupon');
+        toast.error('Failed', res.error?.message || 'Could not delete coupon');
       }
     } catch {
-      toast.error('Error', 'Operation failed');
+      toast.error('Error', 'Delete operation failed');
     }
   };
 
@@ -339,14 +359,27 @@ export const PromotionsPage: React.FC<PromotionsPageProps> = ({ defaultTab }) =>
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      {c.isActive && (
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => handleDeactivate(c.code)}
-                          className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-xs font-semibold transition-colors"
+                          type="button"
+                          onClick={() => handleToggleActive(c)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                            c.isActive
+                              ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200'
+                              : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
+                          }`}
                         >
-                          Deactivate
+                          {c.isActive ? 'Pause' : 'Activate'}
                         </button>
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCoupon(c.code)}
+                          title="Delete coupon permanently"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

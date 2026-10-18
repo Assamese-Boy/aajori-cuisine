@@ -69,14 +69,25 @@ export const CartPage: React.FC = () => {
   const platformFee = 5;
   const gst = Math.round(subtotal * 0.05);
 
-  // Discount calculation
+  // Dynamic Discount calculation from real database coupons
+  const matchedCoupon = availableCoupons.find(
+    (c) => c.code?.toUpperCase() === (appliedCoupon || '').toUpperCase() && c.isActive
+  );
+
   let discountAmount = 0;
-  if (appliedCoupon === 'AAJORI50' && subtotal >= 250) {
-    discountAmount = 50;
-  } else if (appliedCoupon === 'BIHU20' && subtotal >= 300) {
-    discountAmount = Math.min(100, Math.round(subtotal * 0.2));
-  } else if (appliedCoupon === 'FIRSTMEAL' && subtotal >= 200) {
-    discountAmount = 75;
+  if (matchedCoupon) {
+    const minRequired = Number(matchedCoupon.minOrderAmount || matchedCoupon.min_order_amount) || 0;
+    if (subtotal >= minRequired) {
+      const dType = (matchedCoupon.discountType || matchedCoupon.discount_type || 'PERCENTAGE').toUpperCase();
+      const dVal = Number(matchedCoupon.discountValue ?? matchedCoupon.discount_value) || 0;
+      if (dType === 'PERCENTAGE') {
+        const rawDiscount = Math.round(subtotal * (dVal / 100));
+        const maxCap = Number(matchedCoupon.maxDiscountAmount || matchedCoupon.max_discount_amount);
+        discountAmount = maxCap ? Math.min(maxCap, rawDiscount) : rawDiscount;
+      } else {
+        discountAmount = dVal;
+      }
+    }
   }
 
   const finalPayable = Math.max(0, subtotal + packagingFee + deliveryFee + platformFee + gst - discountAmount);
@@ -263,7 +274,7 @@ export const CartPage: React.FC = () => {
               type="text"
               value={couponInput}
               onChange={(e) => setCouponInput(e.target.value)}
-              placeholder="Enter coupon code (e.g. AAJORI50)"
+              placeholder="Enter voucher code"
               className="flex-1 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-bold uppercase focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
             <button
@@ -288,20 +299,22 @@ export const CartPage: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2 pt-1">
-              {['AAJORI50', 'BIHU20', 'FIRSTMEAL'].map((code) => (
-                <button
-                  key={code}
-                  onClick={() => {
-                    applyCoupon(code);
-                    toast.success('Coupon Applied', `Code ${code} activated!`);
-                  }}
-                  className="px-2.5 py-1 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-[11px] font-black btn-press"
-                >
-                  Use {code}
-                </button>
-              ))}
-            </div>
+            availableCoupons.filter((c) => c.isActive).length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {availableCoupons.filter((c) => c.isActive).map((c) => (
+                  <button
+                    key={c.id || c.code}
+                    onClick={() => {
+                      applyCoupon(c.code);
+                      toast.success('Coupon Applied', `Code ${c.code} activated!`);
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-[11px] font-black btn-press"
+                  >
+                    Use {c.code} ({c.discountType === 'FLAT' ? `₹${c.discountValue} OFF` : `${c.discountValue}% OFF`})
+                  </button>
+                ))}
+              </div>
+            )
           )}
         </div>
 

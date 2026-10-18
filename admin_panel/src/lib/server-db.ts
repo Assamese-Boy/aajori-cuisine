@@ -1850,15 +1850,10 @@ export const ServerDb = {
   // COUPONS / PROMOTIONS
   // --------------------------------------------------------------------------
   async getAllCoupons(): Promise<Coupon[]> {
-    const now = Date.now();
-    if (cachedCoupons && now - cachedCoupons.timestamp < 30000) {
-      return cachedCoupons.data;
-    }
-
     try {
       const res = await sbFetch('/coupons?select=*&order=created_at.desc');
-      if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
-        const mapped: Coupon[] = res.data.map((c: any) => ({
+      if (res.ok && Array.isArray(res.data)) {
+        return res.data.map((c: any) => ({
           id: c.id,
           code: c.code,
           title: `${c.code} Discount`,
@@ -1877,30 +1872,42 @@ export const ServerDb = {
           isActive: Boolean(c.is_active),
           createdAt: c.created_at,
         }));
-        cachedCoupons = { data: mapped, timestamp: now };
-        return mapped;
       }
     } catch (_) {}
 
     const db = await loadDb();
-    cachedCoupons = { data: db.coupons, timestamp: now };
-    return db.coupons;
+    return db.coupons || [];
   },
 
   async saveCoupon(coupon: any): Promise<Coupon | null> {
-    cachedCoupons = null;
-    const isPercentage = Boolean(coupon.discountPercentage && coupon.discountPercentage > 0);
+    const cleanCode = String(coupon.code || '').toUpperCase().trim();
+    if (!cleanCode) return null;
+
+    const discountType = (coupon.discountType || coupon.discount_type || (coupon.discountPercentage ? 'PERCENTAGE' : 'FLAT')).toUpperCase();
+    const discountVal = Number(coupon.discountValue ?? coupon.discount_value ?? coupon.discountPercentage ?? coupon.discountAmount) || 0;
+    const minOrder = Number(coupon.minOrderAmount ?? coupon.min_order_amount ?? coupon.minOrderValue) || 0;
+    const maxDiscount = coupon.maxDiscountAmount ? Number(coupon.maxDiscountAmount) : (coupon.max_discount_amount ? Number(coupon.max_discount_amount) : null);
+    const validFrom = coupon.validFrom || coupon.valid_from || new Date().toISOString();
+    const validUntil = coupon.validUntil || coupon.valid_until || new Date(Date.now() + 30 * 86400000).toISOString();
+    const maxUses = Number(coupon.maxUses || coupon.max_uses) || 1000;
+    const isActive = coupon.isActive ?? coupon.is_active ?? true;
+
     const payload: any = {
-      code: coupon.code.toUpperCase().trim(),
+      code: cleanCode,
       description: coupon.description || '',
-      discount_type: isPercentage ? 'PERCENTAGE' : 'FLAT',
-      discount_value: isPercentage ? coupon.discountPercentage : coupon.discountAmount || 0,
-      min_order_amount: coupon.minOrderValue || 0,
-      max_discount_amount: coupon.maxDiscountAmount || 0,
-      is_active: coupon.isActive ?? true,
+      discount_type: discountType === 'PERCENTAGE' ? 'PERCENTAGE' : 'FLAT',
+      discount_value: discountVal,
+      min_order_amount: minOrder,
+      max_discount_amount: maxDiscount,
+      valid_from: validFrom,
+      valid_until: validUntil,
+      max_uses: maxUses,
+      is_active: isActive,
     };
 
-    if (coupon.id && !coupon.id.startsWith('cpn_')) {
+    const isUuid = coupon.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(coupon.id);
+
+    if (isUuid) {
       const res = await sbFetch(`/coupons?id=eq.${coupon.id}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=representation' },
@@ -1910,24 +1917,91 @@ export const ServerDb = {
         return (await this.getAllCoupons()).find((c) => c.id === coupon.id) || null;
       }
     } else {
-      const res = await sbFetch('/coupons', {
-        method: 'POST',
-        headers: { Prefer: 'return=representation' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok && Array.isArray(res.data) && res.data[0]) {
-        return (await this.getAllCoupons()).find((c) => c.code === payload.code) || null;
+      // Check if coupon with this code already exists in Supabase
+      const checkRes = await sbFetch(`/coupons?code=eq.${encodeURIComponent(cleanCode)}&limit=1`);
+      if (checkRes.ok && Array.isArray(checkRes.data) && checkRes.data.length > 0) {
+        const existingId = checkRes.data[0].id;
+        const res = await sbFetch(`/coupons?id=eq.${existingId}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok && Array.isArray(res.data) && res.data[0]) {
+          return (await this.getAllCoupons()).find((c) => c.code === cleanCode) || null;
+        }
+      } else {
+        const res = await sbFetch('/coupons', {
+          method: 'POST',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok && Array.isArray(res.data) && res.data[0]) {
+          return (await this.getAllCoupons()).find((c) => c.code === cleanCode) || null;
+        }
       }
     }
-    return null;
+
+    // Fallback to local DB if Supabase not reachable
+    const db = await loadDb();
+    if (!Array.isArray(db.coupons)) db.coupons = [];
+    const existingIdx = db.coupons.findIndex((c) => c.code === cleanCode || (coupon.id && c.id === coupon.id));
+    const newCoupon: Coupon = {
+      id: coupon.id || `cpn_${Date.now()}`,
+      code: cleanCode,
+      title: `${cleanCode} Voucher`,
+      description: coupon.description || '',
+      discountType: discountType === 'PERCENTAGE' ? 'PERCENTAGE' : 'FLAT',
+      discountValue: discountVal,
+      discountPercentage: discountType === 'PERCENTAGE' ? discountVal : 0,
+      discountAmount: discountType === 'FLAT' ? discountVal : 0,
+      minOrderAmount: minOrder,
+      minOrderValue: minOrder,
+      maxDiscountAmount: maxDiscount || 0,
+      validFrom,
+      validUntil,
+      maxUses,
+      currentUses: 0,
+      isActive,
+      createdAt: new Date().toISOString(),
+    };
+    if (existingIdx >= 0) {
+      db.coupons[existingIdx] = { ...db.coupons[existingIdx], ...newCoupon };
+    } else {
+      db.coupons.push(newCoupon);
+    }
+    await saveDb(db);
+    return newCoupon;
   },
 
   async deleteCoupon(codeOrId: string): Promise<boolean> {
-    cachedCoupons = null;
-    const res = await sbFetch(`/coupons?or=(id.eq.${codeOrId},code.eq.${codeOrId})`, {
-      method: 'DELETE',
-    });
-    return res.ok;
+    const clean = (codeOrId || '').trim();
+    if (!clean) return false;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
+    const filter = isUuid ? `id=eq.${clean}` : `code=eq.${encodeURIComponent(clean.toUpperCase())}`;
+
+    let sbSuccess = false;
+    try {
+      const res = await sbFetch(`/coupons?${filter}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) sbSuccess = true;
+    } catch (_) {}
+
+    // Also remove from local DB
+    const db = await loadDb();
+    if (Array.isArray(db.coupons)) {
+      const beforeLen = db.coupons.length;
+      db.coupons = db.coupons.filter(
+        (c) => c.id !== clean && c.code.toUpperCase() !== clean.toUpperCase()
+      );
+      if (db.coupons.length !== beforeLen) {
+        await saveDb(db);
+        return true;
+      }
+    }
+
+    return sbSuccess;
   },
 
   // --------------------------------------------------------------------------

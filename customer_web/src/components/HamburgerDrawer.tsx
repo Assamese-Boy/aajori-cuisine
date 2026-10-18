@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useSettings } from '../context/SettingsContext';
+import { apiRequest } from '../services/api';
 
 interface HamburgerDrawerProps {
   isOpen: boolean;
@@ -46,6 +47,18 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
 
   const [activeLanguage, setActiveLanguage] = useState<'EN' | 'AS' | 'HI'>('EN');
   const [showCoupons, setShowCoupons] = useState(false);
+  const [activeCoupons, setActiveCoupons] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    apiRequest<any[]>('/coupons')
+      .then((res) => {
+        if (res.success && res.data) {
+          setActiveCoupons(res.data.filter((c: any) => c.isActive !== false));
+        }
+      })
+      .catch((err) => console.error('Failed to load coupons in drawer', err));
+  }, [isOpen]);
 
   const handleNav = (path: string) => {
     navigate(path);
@@ -227,37 +240,48 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
                 <span>District Offers & Coupons</span>
               </div>
               <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-black">
-                2 Active
+                {activeCoupons.length} Active
               </span>
             </button>
 
             {/* Coupons Accordion */}
             {showCoupons && (
               <div className="pl-11 pr-2 py-1 space-y-2 animate-fade-in">
-                <div
-                  onClick={() => handleCopyCoupon('AAJORI50')}
-                  className="p-2.5 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-between cursor-pointer hover:bg-brand-100 transition-colors"
-                >
-                  <div>
-                    <span className="text-xs font-black text-brand-700 tracking-wider">
-                      AAJORI50
-                    </span>
-                    <p className="text-xs text-stone-600">Flat ₹50 OFF above ₹200</p>
-                  </div>
-                  <span className="text-xs font-black text-brand-600">COPY</span>
-                </div>
-                <div
-                  onClick={() => handleCopyCoupon('FIRSTMEAL')}
-                  className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-colors"
-                >
-                  <div>
-                    <span className="text-xs font-black text-amber-800 tracking-wider">
-                      FIRSTMEAL
-                    </span>
-                    <p className="text-xs text-stone-600">20% OFF on your first order</p>
-                  </div>
-                  <span className="text-xs font-black text-amber-700">COPY</span>
-                </div>
+                {activeCoupons.length === 0 ? (
+                  <p className="text-xs text-stone-500 py-1 italic">
+                    No active discount vouchers right now. Check back soon!
+                  </p>
+                ) : (
+                  activeCoupons.map((coupon) => {
+                    const isPercent =
+                      coupon.discountType === 'PERCENTAGE' || coupon.discountType === 'percent';
+                    const discountText = isPercent
+                      ? `${coupon.discountValue}% OFF`
+                      : `Flat ₹${coupon.discountValue} OFF`;
+                    const conditionText =
+                      coupon.minOrderAmount > 0
+                        ? `Above ₹${coupon.minOrderAmount}`
+                        : 'No min order';
+
+                    return (
+                      <div
+                        key={coupon.id || coupon.code}
+                        onClick={() => handleCopyCoupon(coupon.code)}
+                        className="p-2.5 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-between cursor-pointer hover:bg-brand-100 transition-colors"
+                      >
+                        <div>
+                          <span className="text-xs font-black text-brand-700 tracking-wider">
+                            {coupon.code}
+                          </span>
+                          <p className="text-xs text-stone-600">
+                            {discountText} • {conditionText}
+                          </p>
+                        </div>
+                        <span className="text-xs font-black text-brand-600">COPY</span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             )}
           </div>

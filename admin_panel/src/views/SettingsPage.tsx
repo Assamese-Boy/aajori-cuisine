@@ -83,7 +83,7 @@ export const SettingsPage: React.FC = () => {
     topBannerDistrict: 'Worldwide Kitchens',
     topBannerTag: '⚡ 25 Mins Express',
     topAnnouncement: '⚡ Fresh Artisan Kitchens & Express Delivery Worldwide',
-    promoCodeAnnouncement: 'Use code AAJORI50 for ₹50 off',
+    promoCodeAnnouncement: 'Special discounts & express delivery on artisan food',
     supportPhone: '+91 6002308541',
     supportEmail: 'support@aajori.in',
     whatsappOrderingPhone: '916002308541',
@@ -365,7 +365,7 @@ export const SettingsPage: React.FC = () => {
                   value={settings.promoCodeAnnouncement}
                   onChange={(e) => setSettings({ ...settings, promoCodeAnnouncement: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
-                  placeholder="Use code AAJORI50 for ₹50 off"
+                  placeholder="e.g. Special discounts & express delivery on artisan food"
                 />
               </div>
             </div>

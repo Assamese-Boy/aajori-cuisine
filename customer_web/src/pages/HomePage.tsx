@@ -58,37 +58,37 @@ const MOBILE_PROMO_SLIDES = [
     title: 'Authentic Assam Khorikaa',
     subtitle: 'Smoked pork with bamboo shoot & Joha rice',
     tag: '⚡ 25 Mins Express',
-    code: 'AAJORI50',
-    discount: '₹50 OFF',
-    condition: 'On orders above ₹250',
+    code: '',
+    discount: 'Fresh Kitchens',
+    condition: 'Authentic Assamese flavors',
     bg: 'from-brand-900 via-stone-900 to-amber-950',
     accent: 'text-amber-400',
     image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600',
-    restaurantId: 'd0000000-0000-0000-0000-000000000001',
+    restaurantId: '',
   },
   {
     title: 'Paradise Heritage Thalis',
     subtitle: 'Parampara non-veg thali with Kaji Nemu',
     tag: '👑 Pioneer Since 1984',
-    code: 'BIHU20',
-    discount: '20% OFF',
-    condition: 'Up to ₹100 on thalis',
+    code: '',
+    discount: 'Artisan Platters',
+    condition: 'Heritage recipes',
     bg: 'from-stone-950 via-amber-950 to-stone-900',
     accent: 'text-amber-300',
     image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600',
-    restaurantId: 'd0000000-0000-0000-0000-000000000002',
+    restaurantId: '',
   },
   {
     title: 'Riverfront Duck & Fish',
     subtitle: 'Duck curry with roasted black sesame',
     tag: '🔥 Charcoal Roasted',
-    code: 'FIRSTMEAL',
-    discount: '₹75 OFF',
-    condition: 'On first district order',
+    code: '',
+    discount: 'Traditional Taste',
+    condition: 'Locally sourced dishes',
     bg: 'from-slate-950 via-teal-950 to-stone-900',
     accent: 'text-emerald-400',
     image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600',
-    restaurantId: 'd0000000-0000-0000-0000-000000000003',
+    restaurantId: '',
   },
 ];
 
@@ -689,48 +689,83 @@ export const HomePage: React.FC<HomePageProps> = ({
       )}
 
       {/* 6. DISCOVERY SECTION 3: Offers & Recommended Meals */}
-      <section className="px-4 space-y-3 pt-2">
-        <div className="flex items-center gap-2">
-          <Gift className="w-4.5 h-4.5 text-brand-600" />
-          <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-            Offers & Recommended Meals
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3.5 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl space-y-1.5 shadow-2xs">
-            <span className="text-[10px] font-black text-brand-700 bg-white px-2 py-0.5 rounded-md border border-brand-200 uppercase">
-              Flat ₹50 OFF
-            </span>
-            <h4 className="text-xs font-black text-slate-900">Coupon AAJORI50</h4>
-            <p className="text-[10px] text-slate-500 font-medium leading-tight">
-              Min subtotal ₹250. Valid on traditional Assamese curries & thalis.
-            </p>
-            <button
-              onClick={() => handleApplyPromo('AAJORI50')}
-              className="text-[11px] font-extrabold text-brand-700 underline mt-1 block"
-            >
-              Apply to Cart &rarr;
-            </button>
+      {activeCoupons.filter((c) => c.isActive !== false).length > 0 && (
+        <section className="px-4 space-y-3 pt-2">
+          <div className="flex items-center gap-2">
+            <Gift className="w-4.5 h-4.5 text-brand-600" />
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+              Exclusive Vouchers & Offers
+            </h2>
           </div>
 
-          <div className="p-3.5 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl space-y-1.5 shadow-2xs">
-            <span className="text-[10px] font-black text-emerald-700 bg-white px-2 py-0.5 rounded-md border border-emerald-200 uppercase">
-              20% Discount
-            </span>
-            <h4 className="text-xs font-black text-slate-900">Coupon BIHU20</h4>
-            <p className="text-[10px] text-slate-500 font-medium leading-tight">
-              Up to ₹100 OFF on orders above ₹300 across partner kitchens.
-            </p>
-            <button
-              onClick={() => handleApplyPromo('BIHU20')}
-              className="text-[11px] font-extrabold text-emerald-700 underline mt-1 block"
-            >
-              Apply to Cart &rarr;
-            </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {activeCoupons
+              .filter((c) => c.isActive !== false)
+              .map((coupon, idx) => {
+                const isPercent =
+                  coupon.discountType === 'PERCENTAGE' || coupon.discountType === 'percent';
+                const discountText = isPercent
+                  ? `${coupon.discountValue}% OFF`
+                  : `Flat ₹${coupon.discountValue} OFF`;
+                const conditionText =
+                  coupon.minOrderAmount > 0
+                    ? `Min order ₹${coupon.minOrderAmount}${
+                        coupon.maxDiscountAmount ? ` • Max discount ₹${coupon.maxDiscountAmount}` : ''
+                      }`
+                    : 'No minimum order required';
+
+                const cardThemes = [
+                  {
+                    bg: 'from-amber-50 to-orange-50 border-amber-200',
+                    badge: 'text-brand-700 border-brand-200',
+                    btn: 'text-brand-700',
+                  },
+                  {
+                    bg: 'from-emerald-50 to-teal-50 border-emerald-200',
+                    badge: 'text-emerald-700 border-emerald-200',
+                    btn: 'text-emerald-700',
+                  },
+                  {
+                    bg: 'from-purple-50 to-indigo-50 border-purple-200',
+                    badge: 'text-purple-700 border-purple-200',
+                    btn: 'text-purple-700',
+                  },
+                ];
+                const theme = cardThemes[idx % cardThemes.length];
+
+                return (
+                  <div
+                    key={coupon.id || coupon.code}
+                    className={`p-3.5 bg-gradient-to-br ${theme.bg} border rounded-2xl space-y-1.5 shadow-2xs`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-[10px] font-black ${theme.badge} bg-white px-2 py-0.5 rounded-md border uppercase`}
+                      >
+                        {discountText}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+                        {coupon.code}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-black text-slate-900">
+                      {coupon.description || `Coupon ${coupon.code}`}
+                    </h4>
+                    <p className="text-[10px] text-slate-500 font-medium leading-tight">
+                      {conditionText}
+                    </p>
+                    <button
+                      onClick={() => handleApplyPromo(coupon.code)}
+                      className={`text-[11px] font-extrabold ${theme.btn} underline mt-1 block hover:opacity-80 transition-opacity`}
+                    >
+                      Apply Code &rarr;
+                    </button>
+                  </div>
+                );
+              })}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 7. DISCOVERY SECTION 4: Trending Dishes */}
       {trendingDishes.length > 0 && (
