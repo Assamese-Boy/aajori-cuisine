@@ -104,15 +104,18 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
     if (!selectedOrder) return;
     setIsUpdating(true);
     try {
-      const res = await apiRequest(`/orders/${selectedOrder.id}/status`, {
+      const orderIdOrNumber = selectedOrder.id || selectedOrder.orderNumber;
+      const res = await apiRequest(`/orders/${encodeURIComponent(orderIdOrNumber)}/status`, {
         method: 'PATCH',
         body: JSON.stringify({
           toStatus,
+          status: toStatus,
           reason: reason || `Admin manual transition to ${toStatus}`,
         }),
       });
       if (res.success) {
         toast.success('Order Updated', `Moved to ${toStatus.replace(/_/g, ' ')}`);
+        selectedOrder.status = toStatus;
         onRefresh();
       } else {
         toast.error('Update Failed', res.error?.message || 'Could not transition order');

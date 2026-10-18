@@ -1302,44 +1302,146 @@ export const ServerDb = {
     return createdOrder;
   },
 
-  async updateOrderStatus(id: string, status: string): Promise<Order | null> {
+  async updateOrderStatus(id: string, status: string, reason?: string): Promise<Order | null> {
     const cleanId = (id || '').trim().replace(/\/+$/, '');
     if (!cleanId) return null;
 
+    // Normalize status to valid PostgreSQL order_status enum
+    let normalizedStatus = (status || '').trim().toUpperCase();
+    if (normalizedStatus === 'CONFIRMED') normalizedStatus = 'PAYMENT_CONFIRMED';
+    if (normalizedStatus === 'ACCEPTED') normalizedStatus = 'RESTAURANT_ACCEPTED';
+    if (normalizedStatus === 'READY') normalizedStatus = 'READY_FOR_PICKUP';
+    if (normalizedStatus === 'DISPATCHED' || normalizedStatus === 'IN_TRANSIT') normalizedStatus = 'OUT_FOR_DELIVERY';
+    if (normalizedStatus === 'COMPLETED') normalizedStatus = 'DELIVERED';
+
+    const validStatuses = [
+      'CREATED',
+      'PAYMENT_PENDING',
+      'PAYMENT_CONFIRMED',
+      'PAYMENT_FAILED',
+      'RESTAURANT_ACCEPTED',
+      'REJECTED',
+      'PREPARING',
+      'READY_FOR_PICKUP',
+      'RIDER_ASSIGNED',
+      'PICKED_UP',
+      'OUT_FOR_DELIVERY',
+      'DELIVERED',
+      'DELIVERY_FAILED',
+      'CANCELLED',
+      'REFUND_PENDING',
+      'REFUNDED',
+    ];
+    if (!validStatuses.includes(normalizedStatus)) {
+      normalizedStatus = 'DELIVERED';
+    }
+
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
-    const queryField = isUuid ? 'id' : 'order_number';
     const now = new Date().toISOString();
 
     const patchPayload: Record<string, any> = {
-      status,
+      status: normalizedStatus,
       updated_at: now,
     };
-    if (status === 'DELIVERED') {
-      patchPayload.delivered_at = now;
+    if (normalizedStatus === 'CANCELLED' && reason) {
+      patchPayload.cancellation_reason = reason;
+    }
+    if (normalizedStatus === 'REJECTED' && reason) {
+      patchPayload.rejection_reason = reason;
     }
 
+    // 1. Try updating in Supabase
     try {
-      const res = await sbFetch(`/orders?${queryField}=eq.${cleanId}`, {
+      const primaryQueryField = isUuid ? 'id' : 'order_number';
+      let res = await sbFetch(`/orders?${primaryQueryField}=eq.${cleanId}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify(patchPayload),
       });
 
-      if (res.ok && Array.isArray(res.data) && res.data[0]) {
-        return (await this.getOrderById(cleanId)) || null;
+      // If not updated on primary query field, try alternate field
+      if (!res.ok || !Array.isArray(res.data) || res.data.length === 0) {
+        const altField = isUuid ? 'order_number' : 'id';
+        if (altField === 'order_number' || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId)) {
+          const altRes = await sbFetch(`/orders?${altField}=eq.${cleanId}`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify(patchPayload),
+          });
+          if (altRes.ok && Array.isArray(altRes.data) && altRes.data.length > 0) {
+            res = altRes;
+          }
+        }
+      }
+
+      if (res.ok && Array.isArray(res.data) && res.data.length > 0 && res.data[0]) {
+        const row = res.data[0];
+        const fresh = await this.getOrderById(row.id || cleanId).catch(() => null);
+        if (fresh) {
+          fresh.status = normalizedStatus;
+          fresh.updatedAt = now;
+          const db = await loadDb();
+          db.orders = [fresh, ...(db.orders || []).filter((x) => x.id !== fresh.id && x.orderNumber !== fresh.orderNumber)];
+          await saveDb(db);
+          return fresh;
+        }
+
+        const formattedOrder: Order = {
+          id: row.id,
+          orderNumber: row.order_number,
+          customerId: row.customer_id,
+          customerName: row.customer_name || 'Customer',
+          customerPhone: row.customer_phone || '',
+          restaurantId: row.restaurant_id,
+          restaurantName: row.restaurant_name || 'Kitchen Partner',
+          deliveryPartnerId: row.delivery_partner_id,
+          items: row.order_items || [],
+          subtotal: Number(row.subtotal) || 0,
+          tax: Number(row.tax_amount) || 0,
+          deliveryFee: Number(row.delivery_fee) || 0,
+          discount: Number(row.discount_amount) || 0,
+          total: Number(row.total_price || row.total_amount) || 0,
+          paymentMethod: row.payment_method || 'CASH_ON_DELIVERY',
+          paymentStatus: row.payment_status || 'PENDING',
+          status: row.status || normalizedStatus,
+          deliveryAddress: row.delivery_address || {},
+          customerInstructions: row.customer_instructions || '',
+          createdAt: row.created_at || now,
+          updatedAt: row.updated_at || now,
+        };
+
+        const db = await loadDb();
+        db.orders = [formattedOrder, ...(db.orders || []).filter((x) => x.id !== formattedOrder.id && x.orderNumber !== formattedOrder.orderNumber)];
+        await saveDb(db);
+        return formattedOrder;
       }
     } catch (sbErr) {
       console.warn('[ServerDb] Supabase updateOrderStatus note:', sbErr);
     }
 
+    // 2. Local database fallback
     const db = await loadDb();
-    const o = (db.orders || []).find((x) => x.id === cleanId || x.orderNumber === cleanId);
-    if (o) {
-      o.status = status;
-      o.updatedAt = now;
+    const localOrder = (db.orders || []).find((x) => x.id === cleanId || x.orderNumber === cleanId);
+    if (localOrder) {
+      localOrder.status = normalizedStatus;
+      localOrder.updatedAt = now;
       await saveDb(db);
-      return o;
+      return localOrder;
     }
+
+    // 3. Fallback: Search all orders in case ID format differed
+    try {
+      const all = await this.getAllOrders();
+      const existing = all.find((x) => x.id === cleanId || x.orderNumber === cleanId || x.id.replace(/-/g, '') === cleanId.replace(/-/g, ''));
+      if (existing) {
+        existing.status = normalizedStatus;
+        existing.updatedAt = now;
+        db.orders = [existing, ...(db.orders || []).filter((x) => x.id !== existing.id && x.orderNumber !== existing.orderNumber)];
+        await saveDb(db);
+        return existing;
+      }
+    } catch (_) {}
+
     return null;
   },
 
