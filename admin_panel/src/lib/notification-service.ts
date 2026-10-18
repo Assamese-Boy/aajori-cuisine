@@ -386,7 +386,16 @@ export class NotificationService {
 
   public getNotifications(userId?: string, role?: string, limit: number = 50): NotificationPayload[] {
     const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_OWNER', 'RESTAURANT_MANAGER'];
-    const isAdmin = Boolean(role && adminRoles.includes(role));
+    const roleUpper = (role || '').toUpperCase();
+    const isCustomer = roleUpper === 'CUSTOMER';
+    const isAdmin =
+      !isCustomer &&
+      (!role ||
+        adminRoles.includes(roleUpper) ||
+        roleUpper.includes('ADMIN') ||
+        roleUpper.includes('SUPER') ||
+        roleUpper.includes('MANAGER') ||
+        roleUpper.includes('OWNER'));
 
     return this.notifications
       .filter((n) => {
@@ -402,7 +411,7 @@ export class NotificationService {
 
         // If notification is for CUSTOMER
         if (n.recipientRole === 'CUSTOMER') {
-          return !isAdmin || role === 'CUSTOMER' || role === 'ALL';
+          return isCustomer || roleUpper === 'ALL';
         }
 
         // If notification is for ALL
@@ -426,7 +435,16 @@ export class NotificationService {
 
   public markAllAsRead(userId?: string, role?: string): number {
     const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_OWNER', 'RESTAURANT_MANAGER'];
-    const isAdmin = Boolean(role && adminRoles.includes(role));
+    const roleUpper = (role || '').toUpperCase();
+    const isCustomer = roleUpper === 'CUSTOMER';
+    const isAdmin =
+      !isCustomer &&
+      (!role ||
+        adminRoles.includes(roleUpper) ||
+        roleUpper.includes('ADMIN') ||
+        roleUpper.includes('SUPER') ||
+        roleUpper.includes('MANAGER') ||
+        roleUpper.includes('OWNER'));
     let count = 0;
 
     for (const n of this.notifications) {
@@ -434,7 +452,7 @@ export class NotificationService {
       if (n.recipientRole === 'ADMIN') {
         matches = isAdmin;
       } else if (n.recipientRole === 'CUSTOMER') {
-        matches = !isAdmin || role === 'CUSTOMER';
+        matches = isCustomer;
       } else if (n.recipientUserId && userId) {
         matches = n.recipientUserId === userId;
       } else if (n.recipientRole === 'ALL') {

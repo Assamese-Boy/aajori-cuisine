@@ -162,19 +162,51 @@ function urlBase64ToUint8Array(base64String: string) {
     }
   }, [toast]);
 
+  const lastKnownOrderIdRef = useRef<string | null>(null);
+
   // Load existing notifications
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await apiRequest<{ notifications: AdminNotificationItem[]; unreadCount: number }>('/notifications?role=SUPER_ADMIN');
+      const user = getCurrentStoredUser();
+      const roleParam = user?.role || 'SUPER_ADMIN';
+      const res = await apiRequest<{ notifications: AdminNotificationItem[]; unreadCount: number }>(
+        `/notifications?role=${encodeURIComponent(roleParam)}`
+      );
       if (res?.success && res.data) {
-        setNotifications(res.data.notifications || []);
+        const items = res.data.notifications || [];
+        setNotifications(items);
         setUnreadCount(res.data.unreadCount || 0);
+
+        // Check for latest incoming order notification
+        const latestOrderNotif = items.find(
+          (n) => n.event === 'NEW_ORDER_RECEIVED' || n.event === 'ORDER_CREATED'
+        );
+        if (latestOrderNotif && latestOrderNotif.id !== lastKnownOrderIdRef.current) {
+          const isFresh =
+            Date.now() - new Date(latestOrderNotif.createdAt).getTime() < 30000;
+          if (isFresh && lastKnownOrderIdRef.current !== null) {
+            // Trigger high-priority order chime & toast
+            if (soundEnabled) {
+              soundService.playAdminOrderChime();
+            }
+            toast.info(latestOrderNotif.title, latestOrderNotif.message);
+            if (onNewOrderReceived) {
+              onNewOrderReceived();
+            }
+          }
+          lastKnownOrderIdRef.current = latestOrderNotif.id;
+        }
       }
     } catch (_) {}
-  }, []);
+  }, [soundEnabled, onNewOrderReceived, toast]);
 
   useEffect(() => {
     fetchNotifications();
+    // Active background polling interval (every 4 seconds) to guarantee real-time notifications even if SSE is interrupted
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 4000);
+    return () => clearInterval(interval);
   }, [fetchNotifications]);
 
   // Connect to SSE live stream for real-time order alerts

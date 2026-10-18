@@ -179,6 +179,25 @@ export const AdminLayout: React.FC<{ children?: React.ReactNode }> = ({ children
     onRefresh: handleManualRefresh,
   };
 
+  const isStandalone =
+    routerLocation.search.includes('standalone=true') ||
+    (typeof window !== 'undefined' && window.location.search.includes('standalone=true'));
+
+  if (isStandalone) {
+    return (
+      <AdminContext.Provider value={contextValue}>
+        <NotificationProvider onNewOrderReceived={handleManualRefresh}>
+          <div className="h-screen w-screen overflow-hidden bg-slate-950 font-sans">
+            <TopProgressBar isLoading={isLoading} />
+            <main className="h-full w-full overflow-y-auto">
+              {children}
+            </main>
+          </div>
+        </NotificationProvider>
+      </AdminContext.Provider>
+    );
+  }
+
   return (
     <AdminContext.Provider value={contextValue}>
       <NotificationProvider onNewOrderReceived={handleManualRefresh}>

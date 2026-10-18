@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
+  ArrowLeft,
+  CheckCircle2,
   Clock,
   MapPin,
-  CheckCircle2,
-  Bike,
   Phone,
-  RefreshCw,
-  ArrowLeft,
-  ShieldCheck,
   Package,
+  RefreshCw,
   XCircle,
-  ExternalLink,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { Order, OrderStatus } from '../types';
@@ -41,32 +38,55 @@ export const OrderTrackingPage: React.FC = () => {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
+  const cleanId = (id || '').trim().replace(/\/+$/, '');
+
   const fetchOrder = async (showLoading = false) => {
-    if (!id && !token) return;
+    if (!cleanId && !token) return;
     if (showLoading) setIsLoading(true);
     try {
-      // First try token endpoint if token present, or fallback to standard authenticated endpoint
-      const trackingTarget = token || id;
+      const trackingTarget = token || cleanId;
       let res = await apiRequest<{ order: Order; history: any[] }>(`/orders/${trackingTarget}`);
       if (!res.success && trackingTarget) {
-        // Try public token endpoint
         res = await apiRequest<any>(`/orders/track/${trackingTarget}`);
       }
 
       if (res.success && res.data) {
-        const orderData = (res.data as any).order || res.data;
-        setOrder(orderData);
+        const rawOrder = (res.data as any).order || res.data;
+        // Normalize pricing defensively to guarantee zero render crashes
+        const normalizedPricing = rawOrder.pricing || {
+          subtotal: Number(rawOrder.subtotal || 0),
+          deliveryFee: Number(rawOrder.deliveryFee ?? rawOrder.delivery_fee ?? 25),
+          packagingFee: Number(rawOrder.packagingFee ?? rawOrder.packaging_fee ?? 0),
+          tax: Number(rawOrder.tax ?? rawOrder.tax_amount ?? 0),
+          discount: Number(rawOrder.discount ?? rawOrder.discount_amount ?? 0),
+          total: Number(
+            rawOrder.total ??
+              rawOrder.total_price ??
+              rawOrder.totalCustomerPrice ??
+              0
+          ),
+          distanceKm: Number(rawOrder.deliveryDistanceKm ?? 2.0),
+        };
+
+        const normalizedOrder: Order = {
+          ...rawOrder,
+          pricing: normalizedPricing,
+          status: rawOrder.status || 'CREATED',
+          items: Array.isArray(rawOrder.items) ? rawOrder.items : [],
+        };
+
+        setOrder(normalizedOrder);
         setLastRefreshed(new Date());
 
-        if (orderData.restaurantId && !restaurant) {
-          const restRes = await apiRequest<any>(`/restaurants/${orderData.restaurantId}`);
+        if (normalizedOrder.restaurantId && !restaurant) {
+          const restRes = await apiRequest<any>(`/restaurants/${normalizedOrder.restaurantId}`);
           if (restRes.success && restRes.data) {
             setRestaurant(restRes.data);
           }
         }
       }
     } catch (err) {
-      console.error('Failed to poll order status', err);
+      console.warn('Failed to poll order status', err);
     } finally {
       if (showLoading) setIsLoading(false);
     }
@@ -74,7 +94,7 @@ export const OrderTrackingPage: React.FC = () => {
 
   useEffect(() => {
     fetchOrder(true);
-  }, [id]);
+  }, [cleanId]);
 
   // Real-time polling every 3 seconds to sync with Admin Panel!
   useEffect(() => {
@@ -83,7 +103,7 @@ export const OrderTrackingPage: React.FC = () => {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [id]);
+  }, [cleanId]);
 
   const handleConfirmCancelOrder = async () => {
     if (!order) return;
@@ -117,14 +137,30 @@ export const OrderTrackingPage: React.FC = () => {
 
   if (!order) {
     return (
-      <div className="p-8 text-center space-y-3 pt-20">
-        <h2 className="text-base font-bold text-slate-800">Order Not Found</h2>
-        <button
-          onClick={() => navigate('/')}
-          className="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold"
-        >
-          Return to Explore
-        </button>
+      <div className="p-8 text-center space-y-3 pt-24 animate-page-enter">
+        <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-3xl shadow-inner">
+          📦
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-base font-extrabold text-slate-800">Order Loading or Not Found</h2>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto">
+            We are fetching the latest status for your order.
+          </p>
+        </div>
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <button
+            onClick={() => fetchOrder(true)}
+            className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors cursor-pointer"
+          >
+            Return to Explore
+          </button>
+        </div>
       </div>
     );
   }
@@ -154,6 +190,15 @@ export const OrderTrackingPage: React.FC = () => {
 
   const isCancelled = order.status === 'CANCELLED' || order.status === 'REJECTED';
   const currentStageIndex = getStageIndex(order.status);
+  const pricing = order.pricing || {
+    subtotal: (order as any).subtotal || 0,
+    deliveryFee: (order as any).deliveryFee || 0,
+    packagingFee: (order as any).packagingFee || 0,
+    tax: (order as any).tax || 0,
+    discount: (order as any).discount || 0,
+    total: (order as any).total || 0,
+    distanceKm: (order as any).deliveryDistanceKm || 2.0,
+  };
 
   return (
     <div className="pb-28 animate-page-enter">
@@ -161,7 +206,7 @@ export const OrderTrackingPage: React.FC = () => {
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-2.5 flex items-center justify-between border-b border-stone-200 safe-top">
         <button
           onClick={() => navigate('/orders')}
-          className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-slate-700 btn-press"
+          className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-slate-700 btn-press cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -177,7 +222,7 @@ export const OrderTrackingPage: React.FC = () => {
 
         <button
           onClick={() => fetchOrder(false)}
-          className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-slate-700 btn-press"
+          className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-slate-700 btn-press cursor-pointer"
           title="Refresh"
         >
           <RefreshCw className="w-3.5 h-3.5" />
@@ -185,8 +230,6 @@ export const OrderTrackingPage: React.FC = () => {
       </div>
 
       <div className="p-4 space-y-4">
-
-
         {/* 3. Status & ETA Card */}
         <div className="p-5 bg-gradient-to-br from-stone-900 to-brand-950 text-white rounded-3xl shadow-lg space-y-3">
           <div className="flex items-start justify-between">
@@ -202,7 +245,7 @@ export const OrderTrackingPage: React.FC = () => {
                   : 'Arriving in ~25 mins'}
               </h2>
               <p className="text-xs text-stone-300 mt-0.5">
-                From: {restaurant?.name || 'Assam Kitchen Institution'}
+                From: {restaurant?.name || order.restaurantName || 'Aajori Kitchen'}
               </p>
             </div>
 
@@ -212,8 +255,12 @@ export const OrderTrackingPage: React.FC = () => {
           </div>
 
           <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-stone-300">
-            <span>Status: <strong className="text-amber-300">{order.status.replace(/_/g, ' ')}</strong></span>
-            <span>Total: <strong>₹{order.pricing.total}</strong></span>
+            <span>
+              Status: <strong className="text-amber-300">{order.status.replace(/_/g, ' ')}</strong>
+            </span>
+            <span>
+              Total: <strong>₹{pricing.total}</strong>
+            </span>
           </div>
         </div>
 
@@ -281,7 +328,11 @@ export const OrderTrackingPage: React.FC = () => {
                     <div className="min-w-0 pt-0.5">
                       <p
                         className={`text-xs font-bold ${
-                          isCurrent ? 'text-brand-700' : isDone ? 'text-slate-900' : 'text-slate-400'
+                          isCurrent
+                            ? 'text-brand-700'
+                            : isDone
+                            ? 'text-slate-900'
+                            : 'text-slate-400'
                         }`}
                       >
                         {step.label}
@@ -315,27 +366,37 @@ export const OrderTrackingPage: React.FC = () => {
                 <span>
                   <strong>{it.quantity}x</strong> {it.name || 'Dish'}
                 </span>
-                <span className="font-bold text-slate-900">₹{it.subtotal || ((it.unitPrice || 0) * (it.quantity || 1))}</span>
+                <span className="font-bold text-slate-900">
+                  ₹{it.subtotal || ((it.unitPrice || (it as any).price || 0) * (it.quantity || 1))}
+                </span>
               </div>
             ))}
           </div>
 
           <div className="pt-2 border-t border-stone-100 space-y-1 text-[11px] text-slate-500">
             <div className="flex justify-between">
-              <span>Delivery ({order.deliveryDistanceKm || 2.5} km)</span>
-              <span>₹{order.pricing?.deliveryFee ?? 25}</span>
+              <span>Delivery ({pricing.distanceKm || 2.0} km)</span>
+              <span>₹{pricing.deliveryFee}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Packaging</span>
-              <span>₹{order.pricing?.packagingFee ?? 20}</span>
-            </div>
+            {pricing.packagingFee > 0 && (
+              <div className="flex justify-between">
+                <span>Packaging</span>
+                <span>₹{pricing.packagingFee}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span>Taxes (5% GST)</span>
-              <span>₹{order.pricing?.tax ?? 0}</span>
+              <span>₹{pricing.tax}</span>
             </div>
+            {pricing.discount > 0 && (
+              <div className="flex justify-between text-emerald-600 font-bold">
+                <span>Coupon Discount</span>
+                <span>-₹{pricing.discount}</span>
+              </div>
+            )}
             <div className="pt-1 border-t border-stone-100 flex justify-between font-black text-slate-900 text-xs">
               <span>Total Paid</span>
-              <span className="text-brand-700">₹{order.pricing?.total ?? (order as any).totalCustomerPrice ?? (order as any).total ?? 0}</span>
+              <span className="text-brand-700">₹{pricing.total}</span>
             </div>
           </div>
         </div>
@@ -370,7 +431,7 @@ export const OrderTrackingPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowCancelConfirm(false)}
-                  className="px-3.5 py-2 rounded-xl border border-stone-200 text-slate-700 font-bold text-xs hover:bg-stone-50"
+                  className="px-3.5 py-2 rounded-xl border border-stone-200 text-slate-700 font-bold text-xs hover:bg-stone-50 cursor-pointer"
                 >
                   Keep Order
                 </button>
@@ -378,7 +439,7 @@ export const OrderTrackingPage: React.FC = () => {
                   type="button"
                   onClick={handleConfirmCancelOrder}
                   disabled={isCancelling}
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm shadow-rose-600/20 disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm shadow-rose-600/20 disabled:opacity-50 cursor-pointer"
                 >
                   {isCancelling ? 'Cancelling...' : 'Confirm Cancel'}
                 </button>
@@ -390,3 +451,5 @@ export const OrderTrackingPage: React.FC = () => {
     </div>
   );
 };
+
+export default OrderTrackingPage;

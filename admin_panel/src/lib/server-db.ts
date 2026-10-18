@@ -1088,8 +1088,30 @@ export const ServerDb = {
   },
 
   async getOrderById(id: string): Promise<Order | null> {
+    const cleanId = (id || '').trim().replace(/\/+$/, '');
     const list = await this.getAllOrders();
-    return list.find((o) => o.id === id) || null;
+    const found = list.find((o) => o.id === cleanId || o.orderNumber === cleanId || o.id === id);
+    if (!found) return null;
+
+    const pricing = {
+      subtotal: Number(found.subtotal) || 0,
+      deliveryFee: Number(found.deliveryFee) || 0,
+      packagingFee: Number(
+        (found as any).packagingFee ?? (found as any).pricing_breakdown?.packagingFee ?? 0
+      ),
+      tax: Number(found.tax) || 0,
+      discount: Number(found.discount) || 0,
+      total: Number(found.total) || 0,
+      distanceKm: Number(
+        (found as any).deliveryDistanceKm ?? (found as any).pricing_breakdown?.distanceKm ?? 2.0
+      ),
+    };
+
+    return {
+      ...found,
+      pricing,
+      totalCustomerPrice: found.total,
+    } as any;
   },
 
   async createOrder(

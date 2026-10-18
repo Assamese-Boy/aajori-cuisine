@@ -14,7 +14,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const order = await ServerDb.getOrderById(params.id);
+    const cleanId = (params.id || '').trim().replace(/\/+$/, '');
+    const order = await ServerDb.getOrderById(cleanId);
     if (!order) {
       return apiError('Order not found', 404);
     }
@@ -29,8 +30,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const cleanId = (params.id || '').trim().replace(/\/+$/, '');
     const body = await req.json();
-    const updated = await ServerDb.updateOrderStatus(params.id, body.status);
+    const updated = await ServerDb.updateOrderStatus(cleanId, body.status);
     if (!updated) {
       return apiError('Order not found or update failed', 404);
     }
