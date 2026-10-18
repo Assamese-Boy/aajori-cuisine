@@ -19,7 +19,8 @@ export async function PATCH(
       return apiError('Status is required', 400);
     }
 
-    const updated = await ServerDb.updateOrderStatus(params.id, status);
+    const cleanId = decodeURIComponent(params.id || '').trim().replace(/\/+$/, '');
+    const updated = await ServerDb.updateOrderStatus(cleanId, status);
     if (!updated) {
       return apiError('Order not found', 404);
     }

@@ -16,6 +16,7 @@ import {
   Compass,
   BarChart3,
   Sliders,
+  Layers,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -33,8 +34,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ appSettings }) => {
     { path: '/live-map', label: 'Live GIS Operations Map', icon: MapPin },
     { path: '/restaurants', label: 'Restaurant Partners', icon: Store },
     { path: '/delivery-zones', label: 'Zones & Charges', icon: Compass },
-    { path: '/promotions', label: 'Coupons & Promos', icon: Tag },
-    { path: '/settings', label: 'App Customizer & Branding', icon: Sliders },
+    { path: '/banners', label: 'Hero Promo Banners', icon: Image },
+    { path: '/categories', label: 'Culinary Categories', icon: Layers },
+    { path: '/promotions', label: 'Vouchers & Discounts', icon: Tag },
+    { path: '/settings', label: 'Storefront & District Bar', icon: Sliders },
     { path: '/reports', label: 'Reports & Reconciliation', icon: BarChart3 },
     { path: '/delivery-partners', label: 'Delivery Fleet', icon: Bike },
     { path: '/users', label: 'Users & Customers', icon: Users },

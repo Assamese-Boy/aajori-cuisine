@@ -1303,21 +1303,40 @@ export const ServerDb = {
   },
 
   async updateOrderStatus(id: string, status: string): Promise<Order | null> {
-    const res = await sbFetch(`/orders?id=eq.${id}`, {
-      method: 'PATCH',
-      headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ status, updated_at: new Date().toISOString() }),
-    });
+    const cleanId = (id || '').trim().replace(/\/+$/, '');
+    if (!cleanId) return null;
 
-    if (res.ok && Array.isArray(res.data) && res.data[0]) {
-      return (await this.getOrderById(id)) || null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+    const queryField = isUuid ? 'id' : 'order_number';
+    const now = new Date().toISOString();
+
+    const patchPayload: Record<string, any> = {
+      status,
+      updated_at: now,
+    };
+    if (status === 'DELIVERED') {
+      patchPayload.delivered_at = now;
+    }
+
+    try {
+      const res = await sbFetch(`/orders?${queryField}=eq.${cleanId}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(patchPayload),
+      });
+
+      if (res.ok && Array.isArray(res.data) && res.data[0]) {
+        return (await this.getOrderById(cleanId)) || null;
+      }
+    } catch (sbErr) {
+      console.warn('[ServerDb] Supabase updateOrderStatus note:', sbErr);
     }
 
     const db = await loadDb();
-    const o = db.orders.find((x) => x.id === id);
+    const o = (db.orders || []).find((x) => x.id === cleanId || x.orderNumber === cleanId);
     if (o) {
       o.status = status;
-      o.updatedAt = new Date().toISOString();
+      o.updatedAt = now;
       await saveDb(db);
       return o;
     }

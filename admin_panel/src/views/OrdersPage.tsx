@@ -140,6 +140,44 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
     return lifecycleStages.findIndex((s) => s.key === status);
   };
 
+  const ALL_LIFECYCLE_OPTIONS = [
+    { value: 'CREATED', label: '1. Order Created' },
+    { value: 'PAYMENT_PENDING', label: '2. Payment Pending' },
+    { value: 'PAYMENT_CONFIRMED', label: '3. Payment Confirmed' },
+    { value: 'RESTAURANT_ACCEPTED', label: '4. Restaurant Accepted' },
+    { value: 'PREPARING', label: '5. In Kitchen (Preparing)' },
+    { value: 'READY_FOR_PICKUP', label: '6. Food Ready for Pickup' },
+    { value: 'RIDER_ASSIGNED', label: '7. Rider Assigned' },
+    { value: 'PICKED_UP', label: '8. Picked Up by Rider' },
+    { value: 'OUT_FOR_DELIVERY', label: '9. Out for Delivery' },
+    { value: 'DELIVERED', label: '10. Delivered' },
+    { value: 'CANCELLED', label: 'Cancelled / Rejected' },
+  ];
+
+  const getNextStageAction = (status: string) => {
+    switch (status) {
+      case 'CREATED':
+      case 'PAYMENT_PENDING':
+        return { toStatus: 'RESTAURANT_ACCEPTED', label: 'Accept Order', bg: 'bg-indigo-600 hover:bg-indigo-700' };
+      case 'PAYMENT_CONFIRMED':
+        return { toStatus: 'RESTAURANT_ACCEPTED', label: 'Accept Order', bg: 'bg-indigo-600 hover:bg-indigo-700' };
+      case 'RESTAURANT_ACCEPTED':
+        return { toStatus: 'PREPARING', label: 'Start Cooking', bg: 'bg-orange-600 hover:bg-orange-700' };
+      case 'PREPARING':
+        return { toStatus: 'READY_FOR_PICKUP', label: 'Mark Food Ready', bg: 'bg-amber-600 hover:bg-amber-700' };
+      case 'READY_FOR_PICKUP':
+        return { toStatus: 'RIDER_ASSIGNED', label: 'Assign Rider', bg: 'bg-cyan-600 hover:bg-cyan-700' };
+      case 'RIDER_ASSIGNED':
+        return { toStatus: 'PICKED_UP', label: 'Confirm Picked Up', bg: 'bg-purple-600 hover:bg-purple-700' };
+      case 'PICKED_UP':
+        return { toStatus: 'OUT_FOR_DELIVERY', label: 'Dispatch Order', bg: 'bg-sky-600 hover:bg-sky-700' };
+      case 'OUT_FOR_DELIVERY':
+        return { toStatus: 'DELIVERED', label: 'Confirm Delivered', bg: 'bg-emerald-600 hover:bg-emerald-700' };
+      default:
+        return null;
+    }
+  };
+
   const currentStageIndex = selectedOrder ? getStageIndex(selectedOrder.status) : -1;
 
   return (
@@ -249,85 +287,105 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
                   </p>
                 </div>
 
-                {/* Status Action Buttons */}
-                <div className="flex items-center gap-2">
-                  {selectedOrder.status === 'PAYMENT_CONFIRMED' && (
-                    <button
-                      onClick={() => handleTransition('RESTAURANT_ACCEPTED')}
+                {/* Status Action Buttons & Manual Overrides */}
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {/* Manual Status Dropdown Changer */}
+                  <div className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/80 transition-colors border border-slate-300 rounded-lg px-2.5 py-1.5 shadow-2xs">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Status:</span>
+                    <select
+                      value={selectedOrder.status}
                       disabled={isUpdating}
-                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm"
+                      onChange={(e) => handleTransition(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer pr-1"
+                      title="Directly change order status to any stage"
                     >
-                      Accept Order
-                    </button>
-                  )}
-                  {selectedOrder.status === 'RESTAURANT_ACCEPTED' && (
-                    <button
-                      onClick={() => handleTransition('PREPARING')}
-                      disabled={isUpdating}
-                      className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-semibold shadow-sm"
-                    >
-                      Start Cooking
-                    </button>
-                  )}
-                  {selectedOrder.status === 'PREPARING' && (
-                    <button
-                      onClick={() => handleTransition('READY_FOR_PICKUP')}
-                      disabled={isUpdating}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm"
-                    >
-                      Mark Ready
-                    </button>
-                  )}
-                  {selectedOrder.status === 'READY_FOR_PICKUP' && (
-                    <button
-                      onClick={() => handleTransition('RIDER_ASSIGNED')}
-                      disabled={isUpdating}
-                      className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-semibold shadow-sm"
-                    >
-                      Assign Rider
-                    </button>
-                  )}
-                  {selectedOrder.status === 'OUT_FOR_DELIVERY' && (
-                    <button
-                      onClick={() => handleTransition('DELIVERED')}
-                      disabled={isUpdating}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm"
-                    >
-                      Confirm Delivered
-                    </button>
-                  )}
-                  {selectedOrder.status !== 'DELIVERED' &&
-                    selectedOrder.status !== 'CANCELLED' && (
+                      {ALL_LIFECYCLE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Smart Next Stage Advance Button */}
+                  {(() => {
+                    const nextAct = getNextStageAction(selectedOrder.status);
+                    if (!nextAct) return null;
+                    return (
                       <button
-                        onClick={() => handleTransition('CANCELLED', 'Admin emergency override')}
+                        onClick={() => handleTransition(nextAct.toStatus)}
                         disabled={isUpdating}
-                        className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold"
+                        className={`px-3 py-1.5 ${nextAct.bg} text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:scale-102 flex items-center gap-1.5`}
+                        title={`Advance order to ${nextAct.toStatus.replace(/_/g, ' ')}`}
                       >
-                        Cancel Order
+                        <span>{nextAct.label}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
-                    )}
+                    );
+                  })()}
+
+                  {/* Direct Mark as Delivered Button */}
+                  {selectedOrder.status !== 'DELIVERED' && selectedOrder.status !== 'CANCELLED' && (
+                    <button
+                      onClick={() => handleTransition('DELIVERED', 'Admin one-click delivery confirmation')}
+                      disabled={isUpdating}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all hover:scale-102"
+                      title="Directly mark order as successfully delivered"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Mark Delivered</span>
+                    </button>
+                  )}
+
+                  {/* Direct Cancel Button */}
+                  {selectedOrder.status !== 'DELIVERED' && selectedOrder.status !== 'CANCELLED' && (
+                    <button
+                      onClick={() => {
+                        const reason = window.prompt('Reason for order cancellation (optional):', 'Customer or kitchen cancellation');
+                        if (reason !== null) {
+                          handleTransition('CANCELLED', reason || 'Admin cancelled');
+                        }
+                      }}
+                      disabled={isUpdating}
+                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-all"
+                    >
+                      Cancel Order
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* Visual Order Lifecycle Progression */}
               <div>
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                  Order Transition Lifecycle
-                </h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Order Transition Lifecycle
+                  </h4>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    (Click any stage circle to jump status directly)
+                  </span>
+                </div>
                 <div className="grid grid-cols-3 sm:grid-cols-9 gap-1 text-center">
                   {lifecycleStages.map((stage, idx) => {
                     const isDone = currentStageIndex >= idx;
                     const isCurrent = currentStageIndex === idx;
 
                     return (
-                      <div key={stage.key} className="flex flex-col items-center">
+                      <button
+                        key={stage.key}
+                        type="button"
+                        onClick={() => handleTransition(stage.key)}
+                        disabled={isUpdating}
+                        title={`Click to set order status directly to ${stage.label}`}
+                        className="flex flex-col items-center p-1 rounded-lg hover:bg-slate-50 transition-all cursor-pointer group focus:outline-none"
+                      >
                         <div
                           className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1 transition-all ${
                             isCurrent
-                              ? 'bg-brand-600 text-white ring-4 ring-brand-100'
+                              ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-sm scale-110'
                               : isDone
-                              ? 'bg-emerald-500 text-white'
-                              : 'bg-slate-200 text-slate-500'
+                              ? 'bg-emerald-500 text-white group-hover:scale-105'
+                              : 'bg-slate-200 text-slate-500 group-hover:bg-slate-300'
                           }`}
                         >
                           {isDone ? '✓' : idx + 1}
@@ -337,13 +395,13 @@ export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
                             isCurrent
                               ? 'text-brand-700 font-bold'
                               : isDone
-                              ? 'text-slate-800'
-                              : 'text-slate-400'
+                              ? 'text-slate-800 font-semibold'
+                              : 'text-slate-400 group-hover:text-slate-700'
                           }`}
                         >
                           {stage.label}
                         </span>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

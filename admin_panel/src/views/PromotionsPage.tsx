@@ -12,9 +12,13 @@ import {
   Trash2,
   Clock,
   Sparkles,
+  Image,
+  Layers,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { HeroBannersManager } from '../components/HeroBannersManager';
+import { CulinaryCategoriesManager } from '../components/CulinaryCategoriesManager';
 
 interface Coupon {
   id: string;
@@ -31,8 +35,23 @@ interface Coupon {
   isActive: boolean;
 }
 
-export const PromotionsPage: React.FC = () => {
+interface PromotionsPageProps {
+  defaultTab?: 'BANNERS' | 'CATEGORIES' | 'COUPONS';
+}
+
+export const PromotionsPage: React.FC<PromotionsPageProps> = ({ defaultTab }) => {
   const toast = useToast();
+  const [activeTab, setActiveTab] = useState<'BANNERS' | 'CATEGORIES' | 'COUPONS'>(() => {
+    if (defaultTab) return defaultTab;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = (params.get('tab') || '').toUpperCase();
+      if (tabParam === 'COUPONS') return 'COUPONS';
+      if (tabParam === 'CATEGORIES') return 'CATEGORIES';
+    }
+    return 'BANNERS';
+  });
+
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -142,26 +161,77 @@ export const PromotionsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Tag className="w-6 h-6 text-brand-600" />
-            Promotions & Vouchers Engine
-          </h2>
-          <p className="text-sm text-slate-500">
-            Configure server-validated coupon discounts, minimum order thresholds & campaign limits
-          </p>
-        </div>
+      {/* Primary Tab Switcher */}
+      <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200 shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab('BANNERS')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'BANNERS'
+              ? 'bg-white text-slate-900 shadow-sm font-black'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Image className="w-4 h-4 text-brand-600" />
+          <span>Hero Promo Banners</span>
+        </button>
 
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-600/20 transition-colors"
+          type="button"
+          onClick={() => setActiveTab('CATEGORIES')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'CATEGORIES'
+              ? 'bg-white text-slate-900 shadow-sm font-black'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
         >
-          <Plus className="w-4 h-4" />
-          Create New Voucher
+          <Layers className="w-4 h-4 text-brand-600" />
+          <span>Culinary Categories</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('COUPONS')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'COUPONS'
+              ? 'bg-white text-slate-900 shadow-sm font-black'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Tag className="w-4 h-4 text-brand-600" />
+          <span>Discount Vouchers ({coupons.length})</span>
         </button>
       </div>
+
+      {/* Tab 1: Hero Carousel Banners */}
+      {activeTab === 'BANNERS' && <HeroBannersManager />}
+
+      {/* Tab 2: Culinary Categories */}
+      {activeTab === 'CATEGORIES' && <CulinaryCategoriesManager />}
+
+      {/* Tab 3: Discount Vouchers & Coupons */}
+      {activeTab === 'COUPONS' && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <Tag className="w-6 h-6 text-brand-600" />
+                Promotions & Vouchers Engine
+              </h2>
+              <p className="text-sm text-slate-500">
+                Configure server-validated coupon discounts, minimum order thresholds & campaign limits
+              </p>
+            </div>
+
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-600/20 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create New Voucher
+            </button>
+          </div>
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -410,6 +480,8 @@ export const PromotionsPage: React.FC = () => {
               </div>
             </form>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>

@@ -21,6 +21,8 @@ import {
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { MediaUploadInput } from '../components/MediaUploadInput';
+import { HeroBannersManager } from '../components/HeroBannersManager';
+import { CulinaryCategoriesManager } from '../components/CulinaryCategoriesManager';
 
 interface HeroBanner {
   id: string;
@@ -62,7 +64,15 @@ export const SettingsPage: React.FC = () => {
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'BRANDING' | 'BANNERS' | 'CATEGORIES'>('BRANDING');
+  const [activeTab, setActiveTab] = useState<'BRANDING' | 'BANNERS' | 'CATEGORIES'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = (params.get('tab') || '').toUpperCase();
+      if (tab === 'BANNERS') return 'BANNERS';
+      if (tab === 'CATEGORIES') return 'CATEGORIES';
+    }
+    return 'BRANDING';
+  });
 
   const [settings, setSettings] = useState<AppSettings>({
     brandName: 'Aajori Cuisine',
@@ -421,177 +431,10 @@ export const SettingsPage: React.FC = () => {
       )}
 
       {/* TAB 2: Hero Promo Banners */}
-      {activeTab === 'BANNERS' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-extrabold text-base text-slate-900">Customer Home Carousel Banners</h3>
-              <p className="text-xs text-slate-500">
-                These slides auto-rotate at the top of the mobile home page
-              </p>
-            </div>
-            <button
-              onClick={handleAddBanner}
-              className="flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Promo Banner</span>
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {settings.heroBanners?.map((banner, index) => (
-              <div
-                key={banner.id || index}
-                className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4"
-              >
-                <div className="flex items-center justify-between border-b pb-3 border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center font-black text-xs">
-                      {index + 1}
-                    </span>
-                    <h4 className="font-bold text-sm text-slate-800">{banner.title || 'Untitled Banner'}</h4>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteBanner(index)}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">Banner Title</label>
-                    <input
-                      type="text"
-                      value={banner.title}
-                      onChange={(e) => handleUpdateBanner(index, { title: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">Subtitle</label>
-                    <input
-                      type="text"
-                      value={banner.subtitle}
-                      onChange={(e) => handleUpdateBanner(index, { subtitle: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">Tag Badge</label>
-                    <input
-                      type="text"
-                      value={banner.tag}
-                      onChange={(e) => handleUpdateBanner(index, { tag: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">Coupon Code</label>
-                    <input
-                      type="text"
-                      value={banner.code}
-                      onChange={(e) => handleUpdateBanner(index, { code: e.target.value.toUpperCase() })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-brand-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">Discount Pill</label>
-                    <input
-                      type="text"
-                      value={banner.discount}
-                      onChange={(e) => handleUpdateBanner(index, { discount: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">Condition Text</label>
-                    <input
-                      type="text"
-                      value={banner.condition}
-                      onChange={(e) => handleUpdateBanner(index, { condition: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand-500"
-                    />
-                  </div>
-                </div>
-
-                <MediaUploadInput
-                  label="Banner Background Photograph"
-                  value={banner.image}
-                  onChange={(url) => handleUpdateBanner(index, { image: url })}
-                  placeholder="https://images.unsplash.com/..."
-                  helperText="High-resolution food photo displayed on the right of the mobile card"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {activeTab === 'BANNERS' && <HeroBannersManager />}
 
       {/* TAB 3: Culinary Categories */}
-      {activeTab === 'CATEGORIES' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-extrabold text-base text-slate-900">Curated Culinary Categories</h3>
-              <p className="text-xs text-slate-500">
-                Tappable category chips rendered on the customer mobile discovery feed
-              </p>
-            </div>
-            <button
-              onClick={handleAddCategory}
-              className="flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Category</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {settings.culinaryCategories?.map((cat, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex items-center justify-between gap-3"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <input
-                    type="text"
-                    value={cat.icon}
-                    onChange={(e) => handleUpdateCategory(index, { icon: e.target.value })}
-                    className="w-10 h-10 text-xl text-center bg-slate-100 rounded-xl border border-slate-200 shrink-0"
-                    title="Emoji Icon"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <input
-                      type="text"
-                      value={cat.name}
-                      onChange={(e) => handleUpdateCategory(index, { name: e.target.value })}
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800"
-                      placeholder="Category Name"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleDeleteCategory(index)}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {activeTab === 'CATEGORIES' && <CulinaryCategoriesManager />}
     </div>
   );
 };

@@ -80,8 +80,14 @@ async function loadPersistedSettings() {
   try {
     const raw = await fs.readFile(SETTINGS_FILE_PATH, 'utf-8');
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      heroBanners: Array.isArray(parsed.heroBanners) ? parsed.heroBanners : DEFAULT_SETTINGS.heroBanners,
+      culinaryCategories: Array.isArray(parsed.culinaryCategories) ? parsed.culinaryCategories : DEFAULT_SETTINGS.culinaryCategories,
+    };
   } catch {
+    await savePersistedSettings(DEFAULT_SETTINGS);
     return DEFAULT_SETTINGS;
   }
 }
