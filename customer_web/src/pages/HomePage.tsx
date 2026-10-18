@@ -164,18 +164,34 @@ export const HomePage: React.FC<HomePageProps> = ({
         if (res.success && res.data) {
           setRestaurants(res.data);
 
-          if (res.data.length > 0) {
-            const menuPromises = res.data.map((r) =>
-              apiRequest<{ categories: any[]; items: MenuItem[] }>(`/restaurants/${r.id}/menu`)
-            );
-            const results = await Promise.all(menuPromises);
-            const combined: MenuItem[] = [];
-            results.forEach((r) => {
-              if (r.success && r.data?.items) {
-                combined.push(...r.data.items);
-              }
-            });
+          // Instant inline dish extraction: restaurants pre-load dishes from the server
+          const combined: MenuItem[] = [];
+          res.data.forEach((r) => {
+            if (r.menu && Array.isArray(r.menu) && r.menu.length > 0) {
+              combined.push(...r.menu);
+            }
+          });
+
+          if (combined.length > 0) {
             setFeaturedDishes(combined);
+          } else if (res.data.length > 0) {
+            // Background fallback without blocking page render
+            const sampleRestaurants = res.data.slice(0, 3);
+            Promise.all(
+              sampleRestaurants.map((r) =>
+                apiRequest<{ categories: any[]; items: MenuItem[] }>(`/restaurants/${r.id}/menu`)
+              )
+            )
+              .then((results) => {
+                const lazyDishes: MenuItem[] = [];
+                results.forEach((subRes) => {
+                  if (subRes.success && subRes.data?.items) {
+                    lazyDishes.push(...subRes.data.items);
+                  }
+                });
+                if (lazyDishes.length > 0) setFeaturedDishes(lazyDishes);
+              })
+              .catch(() => {});
           }
         }
 

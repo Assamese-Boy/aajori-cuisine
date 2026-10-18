@@ -160,16 +160,21 @@ function urlBase64ToUint8Array(base64String: string) {
     }
   }, [toast, user?.id]);
 
-  // Load existing notifications history
+  // Load existing notifications history (strictly for customer)
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await apiRequest<{ notifications: NotificationItem[]; unreadCount: number }>('/notifications');
+      const q = user?.id ? `?role=CUSTOMER&userId=${user.id}` : '?role=CUSTOMER';
+      const res = await apiRequest<{ notifications: NotificationItem[]; unreadCount: number }>(`/notifications${q}`);
       if (res.success && res.data) {
-        setNotifications(res.data.notifications || []);
-        setUnreadCount(res.data.unreadCount || 0);
+        // Exclude any unexpected admin notifications
+        const customerOnly = (res.data.notifications || []).filter(
+          (n: any) => n.recipientRole !== 'ADMIN'
+        );
+        setNotifications(customerOnly);
+        setUnreadCount(res.data.unreadCount || customerOnly.filter((n) => !n.isRead).length);
       }
     } catch (_) {}
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchNotifications();
@@ -200,45 +205,50 @@ function urlBase64ToUint8Array(base64String: string) {
       eventSourceRef.current = es;
 
       es.onmessage = (event) => {
-      try {
-        const item: NotificationItem = JSON.parse(event.data);
-        if (!item || !item.id) return;
+        try {
+          const item: NotificationItem & { recipientRole?: string } = JSON.parse(event.data);
+          if (!item || !item.id) return;
 
-        // Check if matching recipient
-        if (item.recipientUserId && user?.id && item.recipientUserId !== user.id) {
-          return;
+          // Strictly drop any administrative or operations alert
+          if (item.recipientRole === 'ADMIN') {
+            return;
+          }
+
+          // Check if specifically targeted to another user
+          if (item.recipientUserId && user?.id && item.recipientUserId !== user.id) {
+            return;
+          }
+
+          // 1. Play audio chime
+          if (soundEnabled) {
+            soundService.playCustomerChime();
+          }
+
+          // 2. Show native system notification if permitted
+          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(item.title, {
+                body: item.message,
+                icon: '/icon-192.png',
+                tag: item.data?.orderId || 'aajori-order',
+              });
+            } catch (_) {}
+          }
+
+          // 3. Show in-app Toast
+          toast.info(item.title, item.message);
+
+          // 4. Update local state
+          setNotifications((prev) => [item, ...prev]);
+          setUnreadCount((c) => c + 1);
+        } catch (e) {
+          console.warn('[SSE Parse Error]', e);
         }
+      };
 
-        // 1. Play audio chime
-        if (soundEnabled) {
-          soundService.playCustomerChime();
-        }
-
-        // 2. Show native system notification if permitted
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          try {
-            new Notification(item.title, {
-              body: item.message,
-              icon: '/icon-192.png',
-              tag: item.data?.orderId || 'aajori-order',
-            });
-          } catch (_) {}
-        }
-
-        // 3. Show in-app Toast
-        toast.info(item.title, item.message);
-
-        // 4. Update local state
-        setNotifications((prev) => [item, ...prev]);
-        setUnreadCount((c) => c + 1);
-      } catch (e) {
-        console.warn('[SSE Parse Error]', e);
-      }
-    };
-
-    es.onerror = () => {
-      // Browser EventSource automatically handles reconnection
-    };
+      es.onerror = () => {
+        // Browser EventSource automatically handles reconnection
+      };
 
       return () => {
         es.close();
@@ -252,6 +262,10 @@ function urlBase64ToUint8Array(base64String: string) {
   // Listen for foreground Firebase Cloud Messaging push events
   useEffect(() => {
     const unsub = listenForFcmMessages((payload) => {
+      const dataRole = (payload.data as any)?.recipientRole || (payload.data as any)?.role;
+      // Strictly drop any admin-only push notifications
+      if (dataRole === 'ADMIN') return;
+
       const title = payload.notification?.title || (payload.data as any)?.title || 'Aajori Cuisine Alert';
       const body = payload.notification?.body || (payload.data as any)?.message || 'Update on your food order.';
 

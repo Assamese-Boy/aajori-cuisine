@@ -313,6 +313,55 @@ async function sbFetch(
 // LIVE SUPABASE DATABASE REPOSITORY
 // ============================================================================
 
+let cachedRestaurants: { data: Restaurant[]; timestamp: number } | null = null;
+let cachedCoupons: { data: Coupon[]; timestamp: number } | null = null;
+
+function formatRestaurantRow(r: any): Restaurant {
+  return {
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    tagline: r.tagline || '',
+    description: r.description || '',
+    phone: r.phone,
+    email: r.email || '',
+    commissionRate: Number(r.commission_rate) || 12,
+    isActive: r.is_active ?? true,
+    isOpen: r.is_accepting_orders ?? true,
+    isAcceptingOrders: r.is_accepting_orders ?? true,
+    isBusy: Boolean(r.is_busy),
+    address: r.address_line || '',
+    addressLine: r.address_line || '',
+    ownerName: r.owner_name || r.name,
+    city: r.city || 'Guwahati',
+    district: r.district || 'Kamrup Metropolitan',
+    postalCode: r.postal_code || '',
+    location: parsePostGisPoint(r.location),
+    latitude: parsePostGisPoint(r.location)?.latitude,
+    longitude: parsePostGisPoint(r.location)?.longitude,
+    cuisineTypes: r.cuisine_types || ['Assamese Ethnic'],
+    logoUrl: r.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200',
+    bannerUrl: r.cover_url || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1000',
+    rating: Number(r.rating) || 4.8,
+    ratingCount: 24,
+    avgPreparationTimeMinutes: r.avg_prep_time_minutes || 25,
+    minimumOrderValue: Number(r.min_order_amount) || 100,
+    deliveryFee: Number(r.packaging_fee) || 20,
+    menu: (r.menu_items || []).map((m: any) => ({
+      id: m.id,
+      restaurantId: m.restaurant_id || r.id,
+      name: m.name,
+      description: m.description || '',
+      price: Number(m.price) || 0,
+      isVeg: Boolean(m.is_veg),
+      isAvailable: Boolean(m.is_available),
+      category: 'Dishes',
+      imageUrl: m.image_url,
+    })),
+    createdAt: r.created_at || new Date().toISOString(),
+  };
+}
+
 export const ServerDb = {
   // --------------------------------------------------------------------------
   // USERS
@@ -604,63 +653,51 @@ export const ServerDb = {
   // RESTAURANTS
   // --------------------------------------------------------------------------
   async getAllRestaurants(): Promise<Restaurant[]> {
-    const res = await sbFetch('/restaurants?select=*,menu_items(*)&order=created_at.desc');
-    if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
-      return res.data.map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        slug: r.slug,
-        tagline: r.tagline || '',
-        description: r.description || '',
-        phone: r.phone,
-        email: r.email || '',
-        commissionRate: Number(r.commission_rate) || 12,
-        isActive: r.is_active ?? true,
-        isOpen: r.is_accepting_orders ?? true,
-        isAcceptingOrders: r.is_accepting_orders ?? true,
-        isBusy: Boolean(r.is_busy),
-        address: r.address_line || '',
-        addressLine: r.address_line || '',
-        ownerName: r.owner_name || r.name,
-        city: r.city || 'Guwahati',
-        district: r.district || 'Kamrup Metropolitan',
-        postalCode: r.postal_code || '',
-        location: parsePostGisPoint(r.location),
-        latitude: parsePostGisPoint(r.location)?.latitude,
-        longitude: parsePostGisPoint(r.location)?.longitude,
-        cuisineTypes: r.cuisine_types || ['Assamese Ethnic'],
-        logoUrl: r.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200',
-        bannerUrl: r.cover_url || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1000',
-        rating: Number(r.rating) || 4.8,
-        ratingCount: 24,
-        avgPreparationTimeMinutes: r.avg_prep_time_minutes || 25,
-        minimumOrderValue: Number(r.min_order_amount) || 100,
-        deliveryFee: Number(r.packaging_fee) || 20,
-        menu: (r.menu_items || []).map((m: any) => ({
-          id: m.id,
-          restaurantId: m.restaurant_id || r.id,
-          name: m.name,
-          description: m.description || '',
-          price: Number(m.price) || 0,
-          isVeg: Boolean(m.is_veg),
-          isAvailable: Boolean(m.is_available),
-          category: 'Dishes',
-          imageUrl: m.image_url,
-        })),
-        createdAt: r.created_at || new Date().toISOString(),
-      }));
+    const now = Date.now();
+    if (cachedRestaurants && now - cachedRestaurants.timestamp < 30000) {
+      return cachedRestaurants.data;
+    }
+
+    try {
+      const res = await sbFetch('/restaurants?select=*,menu_items(*)&order=created_at.desc');
+      if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
+        const formatted = res.data.map(formatRestaurantRow);
+        cachedRestaurants = { data: formatted, timestamp: now };
+        return formatted;
+      }
+    } catch (err) {
+      console.warn('[ServerDb] getAllRestaurants fetch note:', err);
     }
 
     const db = await loadDb();
-    return db.restaurants;
+    if (db.restaurants && db.restaurants.length > 0) {
+      cachedRestaurants = { data: db.restaurants, timestamp: now };
+      return db.restaurants;
+    }
+    return [];
   },
 
   async getRestaurantById(id: string): Promise<Restaurant | null> {
-    const list = await this.getAllRestaurants();
-    return list.find((r) => r.id === id) || null;
+    // 1. Check in-memory cache first for instant response
+    if (cachedRestaurants && cachedRestaurants.data.length > 0) {
+      const found = cachedRestaurants.data.find((r) => r.id === id);
+      if (found) return found;
+    }
+
+    // 2. Fetch specific restaurant from Supabase directly
+    try {
+      const res = await sbFetch(`/restaurants?id=eq.${id}&select=*,menu_items(*)&limit=1`);
+      if (res.ok && Array.isArray(res.data) && res.data[0]) {
+        return formatRestaurantRow(res.data[0]);
+      }
+    } catch (_) {}
+
+    const db = await loadDb();
+    return db.restaurants.find((r) => r.id === id) || null;
   },
 
   async saveRestaurant(restaurant: Partial<Restaurant> & { name: string }): Promise<Restaurant> {
+    cachedRestaurants = null; // Invalidate cache on modification
     const isUpdate = Boolean(restaurant.id && !restaurant.id.startsWith('rest_'));
 
     const payload: any = {
@@ -723,6 +760,7 @@ export const ServerDb = {
   },
 
   async deleteRestaurant(id: string): Promise<boolean> {
+    cachedRestaurants = null;
     try {
       // 1. Clean up associated orders, order items, and status history
       const ordersRes = await sbFetch(`/orders?restaurant_id=eq.${id}&select=id`);
@@ -756,6 +794,7 @@ export const ServerDb = {
   },
 
   async toggleRestaurantAccepting(id: string, isAccepting: boolean): Promise<boolean> {
+    cachedRestaurants = null;
     const res = await sbFetch(`/restaurants?id=eq.${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ is_accepting_orders: isAccepting, updated_at: new Date().toISOString() }),
@@ -1216,34 +1255,45 @@ export const ServerDb = {
   // COUPONS / PROMOTIONS
   // --------------------------------------------------------------------------
   async getAllCoupons(): Promise<Coupon[]> {
-    const res = await sbFetch('/coupons?select=*&order=created_at.desc');
-    if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
-      return res.data.map((c: any) => ({
-        id: c.id,
-        code: c.code,
-        title: `${c.code} Discount`,
-        description: c.description || '',
-        discountType: c.discount_type || 'PERCENTAGE',
-        discountValue: Number(c.discount_value) || 0,
-        discountPercentage: c.discount_type === 'PERCENTAGE' ? Number(c.discount_value) : 0,
-        discountAmount: c.discount_type === 'FLAT' ? Number(c.discount_value) : 0,
-        minOrderAmount: Number(c.min_order_amount) || 0,
-        minOrderValue: Number(c.min_order_amount) || 0,
-        maxDiscountAmount: Number(c.max_discount_amount) || 0,
-        validFrom: c.valid_from || c.created_at,
-        validUntil: c.valid_until || new Date(Date.now() + 30 * 86400000).toISOString(),
-        maxUses: c.max_uses || 1000,
-        currentUses: c.current_uses || 0,
-        isActive: Boolean(c.is_active),
-        createdAt: c.created_at,
-      }));
+    const now = Date.now();
+    if (cachedCoupons && now - cachedCoupons.timestamp < 30000) {
+      return cachedCoupons.data;
     }
 
+    try {
+      const res = await sbFetch('/coupons?select=*&order=created_at.desc');
+      if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
+        const mapped: Coupon[] = res.data.map((c: any) => ({
+          id: c.id,
+          code: c.code,
+          title: `${c.code} Discount`,
+          description: c.description || '',
+          discountType: c.discount_type || 'PERCENTAGE',
+          discountValue: Number(c.discount_value) || 0,
+          discountPercentage: c.discount_type === 'PERCENTAGE' ? Number(c.discount_value) : 0,
+          discountAmount: c.discount_type === 'FLAT' ? Number(c.discount_value) : 0,
+          minOrderAmount: Number(c.min_order_amount) || 0,
+          minOrderValue: Number(c.min_order_amount) || 0,
+          maxDiscountAmount: Number(c.max_discount_amount) || 0,
+          validFrom: c.valid_from || c.created_at,
+          validUntil: c.valid_until || new Date(Date.now() + 30 * 86400000).toISOString(),
+          maxUses: c.max_uses || 1000,
+          currentUses: c.current_uses || 0,
+          isActive: Boolean(c.is_active),
+          createdAt: c.created_at,
+        }));
+        cachedCoupons = { data: mapped, timestamp: now };
+        return mapped;
+      }
+    } catch (_) {}
+
     const db = await loadDb();
+    cachedCoupons = { data: db.coupons, timestamp: now };
     return db.coupons;
   },
 
   async saveCoupon(coupon: any): Promise<Coupon | null> {
+    cachedCoupons = null;
     const isPercentage = Boolean(coupon.discountPercentage && coupon.discountPercentage > 0);
     const payload: any = {
       code: coupon.code.toUpperCase().trim(),
@@ -1278,6 +1328,7 @@ export const ServerDb = {
   },
 
   async deleteCoupon(codeOrId: string): Promise<boolean> {
+    cachedCoupons = null;
     const res = await sbFetch(`/coupons?or=(id.eq.${codeOrId},code.eq.${codeOrId})`, {
       method: 'DELETE',
     });

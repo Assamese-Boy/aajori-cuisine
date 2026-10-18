@@ -9,7 +9,7 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
-  let targetRole: any = 'ALL';
+  let targetRole: any = 'ADMIN';
   let targetUserId: string | undefined;
   let title = '🔔 Test Web Push Notification';
   let message = 'Live real-time push alert verified from Aajori Cuisine platform.';

@@ -60,6 +60,8 @@ export interface Restaurant {
   rating?: number;
   isBusy?: boolean;
   distanceKm?: number;
+  bannerUrl?: string;
+  menu?: MenuItem[];
 }
 
 export interface MenuItemVariant {
