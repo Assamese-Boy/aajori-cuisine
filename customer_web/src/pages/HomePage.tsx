@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Star,
@@ -39,59 +39,6 @@ interface HomePageProps {
   onTogglePureVeg?: () => void;
 }
 
-// Full set of authentic Assamese culinary categories as specified in Master Architecture
-const STORY_CATEGORIES = [
-  { name: 'All', icon: '🍲', color: 'from-amber-500 to-brand-500' },
-  { name: 'Khorikaa', icon: '🍖', color: 'from-orange-500 to-red-600' },
-  { name: 'Thalis', icon: '🍛', color: 'from-yellow-500 to-amber-600' },
-  { name: 'Masor Tenga', icon: '🐟', color: 'from-teal-500 to-cyan-600' },
-  { name: 'Duck Curry', icon: '🦆', color: 'from-stone-600 to-stone-900' },
-  { name: 'Smoked Meat', icon: '🥓', color: 'from-rose-600 to-amber-700' },
-  { name: 'Rice and Staples', icon: '🍚', color: 'from-amber-400 to-yellow-600' },
-  { name: 'Vegetarian', icon: '🥬', color: 'from-emerald-500 to-green-600' },
-  { name: 'Snacks', icon: '🥟', color: 'from-orange-400 to-amber-500' },
-  { name: 'Beverages', icon: '🍵', color: 'from-teal-600 to-emerald-700' },
-];
-
-const MOBILE_PROMO_SLIDES = [
-  {
-    title: 'Authentic Assam Khorikaa',
-    subtitle: 'Smoked pork with bamboo shoot & Joha rice',
-    tag: '⚡ 25 Mins Express',
-    code: '',
-    discount: 'Fresh Kitchens',
-    condition: 'Authentic Assamese flavors',
-    bg: 'from-brand-900 via-stone-900 to-amber-950',
-    accent: 'text-amber-400',
-    image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600',
-    restaurantId: '',
-  },
-  {
-    title: 'Paradise Heritage Thalis',
-    subtitle: 'Parampara non-veg thali with Kaji Nemu',
-    tag: '👑 Pioneer Since 1984',
-    code: '',
-    discount: 'Artisan Platters',
-    condition: 'Heritage recipes',
-    bg: 'from-stone-950 via-amber-950 to-stone-900',
-    accent: 'text-amber-300',
-    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600',
-    restaurantId: '',
-  },
-  {
-    title: 'Riverfront Duck & Fish',
-    subtitle: 'Duck curry with roasted black sesame',
-    tag: '🔥 Charcoal Roasted',
-    code: '',
-    discount: 'Traditional Taste',
-    condition: 'Locally sourced dishes',
-    bg: 'from-slate-950 via-teal-950 to-stone-900',
-    accent: 'text-emerald-400',
-    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600',
-    restaurantId: '',
-  },
-];
-
 export const HomePage: React.FC<HomePageProps> = ({
   onOpenAiAssistant,
   searchQuery,
@@ -103,14 +50,51 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { currentLocation } = useLocationContext();
   const { settings } = useSettings();
 
-  const categories =
-    settings.culinaryCategories && settings.culinaryCategories.length > 0
-      ? settings.culinaryCategories
-      : STORY_CATEGORIES;
-  const promoSlides =
-    settings.heroBanners && settings.heroBanners.length > 0
-      ? settings.heroBanners
-      : MOBILE_PROMO_SLIDES;
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [featuredDishes, setFeaturedDishes] = useState<MenuItem[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState(isPureVeg ? 'Vegetarian' : 'All');
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeCoupons, setActiveCoupons] = useState<any[]>([]);
+
+  const categories = useMemo(() => {
+    if (settings.culinaryCategories && settings.culinaryCategories.length > 0) {
+      return settings.culinaryCategories;
+    }
+    const allCuisines = new Set<string>(['All']);
+    restaurants.forEach((r) => (r.cuisineTypes || []).forEach((c) => allCuisines.add(c)));
+    return Array.from(allCuisines).map((name) => ({
+      name,
+      icon: '🍲',
+      color: 'from-amber-500 to-brand-500',
+    }));
+  }, [settings.culinaryCategories, restaurants]);
+
+  const promoSlides = useMemo(() => {
+    if (settings.heroBanners && settings.heroBanners.length > 0) {
+      return settings.heroBanners;
+    }
+    return restaurants.map((r, idx) => ({
+      title: r.name,
+      subtitle: r.addressLine || 'Artisan kitchen & express delivery',
+      tag: '⚡ 25 Mins Express',
+      code: '',
+      discount: 'Fresh Delivery',
+      condition: 'Artisan Kitchen',
+      bg:
+        idx % 2 === 0
+          ? 'from-brand-900 via-stone-900 to-amber-950'
+          : 'from-stone-950 via-amber-950 to-stone-900',
+      accent: 'text-amber-400',
+      image:
+        (r as any).imageUrl ||
+        r.coverUrl ||
+        r.logoUrl ||
+        'https://images.unsplash.com/photo-1544025162-d76694265947?w=600',
+      restaurantId: r.id,
+    }));
+  }, [settings.heroBanners, restaurants]);
+
   const trendingDishes = (settings.trendingDishes || []).filter((d) => {
     if (!d || !d.name) return false;
     if (d.restaurantId?.startsWith('d0000000-')) return false;
@@ -118,13 +102,6 @@ export const HomePage: React.FC<HomePageProps> = ({
     if (isPureVeg && !d.isVeg) return false;
     return true;
   });
-
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [featuredDishes, setFeaturedDishes] = useState<MenuItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState(isPureVeg ? 'Vegetarian' : 'All');
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeCoupons, setActiveCoupons] = useState<any[]>([]);
 
   // Calculate dynamic driving distance in km from user's current GPS/selected locality
   const getRestaurantDistance = (r: Restaurant): number | null => {
@@ -284,7 +261,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* 1. Horizontal Circular Category Stories (Native Food Delivery Pattern) */}
       <section className="px-4 stagger-1">
         <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
-          {categories.map((cat) => {
+          {categories.map((cat: any) => {
             const isSelected = selectedCategory === cat.name;
             return (
               <button
@@ -378,7 +355,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                     {/* Dots */}
                     <div className="flex gap-1.5">
-                      {promoSlides.map((_, i) => (
+                      {promoSlides.map((_: any, i: number) => (
                         <button
                           key={i}
                           onClick={() => setCurrentSlide(i)}
