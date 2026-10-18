@@ -96,6 +96,20 @@ export interface DeliveryPartner {
   createdAt: string;
 }
 
+export interface MenuItemVariant {
+  id?: string;
+  name: string;
+  price: number;
+  isAvailable?: boolean;
+}
+
+export interface MenuItemAddon {
+  id?: string;
+  name: string;
+  price: number;
+  isAvailable?: boolean;
+}
+
 export interface RestaurantItem {
   id: string;
   restaurantId: string;
@@ -105,7 +119,11 @@ export interface RestaurantItem {
   isVeg: boolean;
   isAvailable: boolean;
   category: string;
+  categoryId?: string;
   imageUrl?: string;
+  hasCustomizations?: boolean;
+  variants?: MenuItemVariant[];
+  addons?: MenuItemAddon[];
 }
 
 export interface Restaurant {
@@ -370,7 +388,25 @@ function formatRestaurantRow(r: any): Restaurant {
       isVeg: Boolean(m.is_veg),
       isAvailable: Boolean(m.is_available),
       category: m.category || m.category_name || '',
+      categoryId: m.category_id || '',
       imageUrl: m.image_url || '',
+      hasCustomizations: Boolean(m.has_customizations),
+      variants: Array.isArray(m.menu_item_variants)
+        ? m.menu_item_variants.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            price: Number(v.price) || 0,
+            isAvailable: v.is_available ?? true,
+          }))
+        : [],
+      addons: Array.isArray(m.menu_item_addons)
+        ? m.menu_item_addons.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            price: Number(a.price) || 0,
+            isAvailable: a.is_available ?? true,
+          }))
+        : [],
     })),
     createdAt: r.created_at || new Date().toISOString(),
   };
@@ -678,7 +714,9 @@ export const ServerDb = {
     }
 
     try {
-      const res = await sbFetch('/restaurants?select=*,menu_items(*)&order=created_at.desc');
+      const res = await sbFetch(
+        '/restaurants?select=*,menu_items(*,menu_item_variants(*),menu_item_addons(*))&order=created_at.desc'
+      );
       if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
         const formatted = res.data.map(formatRestaurantRow);
         cachedRestaurants = { data: formatted, timestamp: now };
@@ -696,16 +734,18 @@ export const ServerDb = {
     return [];
   },
 
-  async getRestaurantById(id: string): Promise<Restaurant | null> {
-    // 1. Check in-memory cache first for instant response
-    if (cachedRestaurants && cachedRestaurants.data.length > 0) {
+  async getRestaurantById(id: string, bypassCache = false): Promise<Restaurant | null> {
+    // 1. Check in-memory cache first unless bypassCache is requested
+    if (!bypassCache && cachedRestaurants && cachedRestaurants.data.length > 0) {
       const found = cachedRestaurants.data.find((r) => r.id === id);
       if (found) return found;
     }
 
     // 2. Fetch specific restaurant from Supabase directly
     try {
-      const res = await sbFetch(`/restaurants?id=eq.${id}&select=*,menu_items(*)&limit=1`);
+      const res = await sbFetch(
+        `/restaurants?id=eq.${id}&select=*,menu_items(*,menu_item_variants(*),menu_item_addons(*))&limit=1`
+      );
       if (res.ok && Array.isArray(res.data) && res.data[0]) {
         return formatRestaurantRow(res.data[0]);
       }
@@ -889,11 +929,17 @@ export const ServerDb = {
       imageUrl?: string;
       category?: string;
       categoryName?: string;
+      variants?: MenuItemVariant[];
+      addons?: MenuItemAddon[];
     }
   ): Promise<RestaurantItem | null> {
     cachedRestaurants = null; // Invalidate cache so changes reflect immediately
 
     const catName = item.categoryName || item.category || 'Signature Dishes';
+    const hasCustomizations = Boolean(
+      (item.variants && item.variants.length > 0) || (item.addons && item.addons.length > 0)
+    );
+
     const payload: any = {
       restaurant_id: restaurantId,
       name: item.name,
@@ -902,6 +948,7 @@ export const ServerDb = {
       is_veg: item.isVeg ?? false,
       is_available: item.isAvailable ?? true,
       image_url: item.imageUrl,
+      has_customizations: hasCustomizations,
       updated_at: new Date().toISOString(),
     };
 
@@ -924,6 +971,7 @@ export const ServerDb = {
           isAvailable: Boolean(res.data[0].is_available),
           category: catName,
           imageUrl: res.data[0].image_url,
+          hasCustomizations,
         };
       }
     } else {
@@ -964,7 +1012,83 @@ export const ServerDb = {
           isAvailable: Boolean(res.data[0].is_available),
           category: catName,
           imageUrl: res.data[0].image_url,
+          hasCustomizations,
         };
+      }
+    }
+
+    // Handle nested Variants and Addons if dish record exists
+    if (savedItem?.id) {
+      // 1. Variants
+      if (Array.isArray(item.variants)) {
+        try {
+          await sbFetch(`/menu_item_variants?menu_item_id=eq.${savedItem.id}`, { method: 'DELETE' });
+          const createdVars: MenuItemVariant[] = [];
+          for (const v of item.variants) {
+            if (!v.name || !v.name.trim()) continue;
+            const vRes = await sbFetch('/menu_item_variants', {
+              method: 'POST',
+              headers: { Prefer: 'return=representation' },
+              body: JSON.stringify({
+                menu_item_id: savedItem.id,
+                name: v.name.trim(),
+                price: Number(v.price) || 0,
+                is_available: v.isAvailable ?? true,
+              }),
+            });
+            if (vRes.ok && Array.isArray(vRes.data) && vRes.data[0]) {
+              createdVars.push({
+                id: vRes.data[0].id,
+                name: vRes.data[0].name,
+                price: Number(vRes.data[0].price),
+                isAvailable: vRes.data[0].is_available ?? true,
+              });
+            } else {
+              createdVars.push({
+                name: v.name.trim(),
+                price: Number(v.price) || 0,
+                isAvailable: v.isAvailable ?? true,
+              });
+            }
+          }
+          savedItem.variants = createdVars;
+        } catch (_) {}
+      }
+
+      // 2. Add-ons
+      if (Array.isArray(item.addons)) {
+        try {
+          await sbFetch(`/menu_item_addons?menu_item_id=eq.${savedItem.id}`, { method: 'DELETE' });
+          const createdAdds: MenuItemAddon[] = [];
+          for (const a of item.addons) {
+            if (!a.name || !a.name.trim()) continue;
+            const aRes = await sbFetch('/menu_item_addons', {
+              method: 'POST',
+              headers: { Prefer: 'return=representation' },
+              body: JSON.stringify({
+                menu_item_id: savedItem.id,
+                name: a.name.trim(),
+                price: Number(a.price) || 0,
+                is_available: a.isAvailable ?? true,
+              }),
+            });
+            if (aRes.ok && Array.isArray(aRes.data) && aRes.data[0]) {
+              createdAdds.push({
+                id: aRes.data[0].id,
+                name: aRes.data[0].name,
+                price: Number(aRes.data[0].price),
+                isAvailable: aRes.data[0].is_available ?? true,
+              });
+            } else {
+              createdAdds.push({
+                name: a.name.trim(),
+                price: Number(a.price) || 0,
+                isAvailable: a.isAvailable ?? true,
+              });
+            }
+          }
+          savedItem.addons = createdAdds;
+        } catch (_) {}
       }
     }
 
@@ -984,6 +1108,9 @@ export const ServerDb = {
           isAvailable: item.isAvailable ?? true,
           category: catName,
           imageUrl: item.imageUrl,
+          hasCustomizations,
+          variants: item.variants || [],
+          addons: item.addons || [],
         };
         const existingIdx = rest.menu.findIndex((m) => m.id === finalDish.id);
         if (existingIdx !== -1) {

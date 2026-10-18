@@ -26,13 +26,6 @@ interface RestaurantDetailPageProps {
   isPureVeg?: boolean;
 }
 
-// Default regional add-ons for Assamese dishes if not explicitly configured in DB
-const DEFAULT_ASSAM_ADDONS: MenuItemAddon[] = [
-  { id: 'add_bamboo', name: 'Extra Fermented Bamboo Shoot Dip', price: 25 },
-  { id: 'add_joha', name: 'Side of Steamed Fragrant Joha Rice', price: 50 },
-  { id: 'add_nemu', name: 'Fresh Kaji Nemu & Bhut Jolokia Dip', price: 20 },
-];
-
 export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPureVeg = false }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -131,7 +124,11 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
 
   const handleOpenCustomization = (dish: MenuItem) => {
     setCustomizingItem(dish);
-    setSelectedPortion({ id: 'std', name: 'Regular Portion', price: dish.price });
+    if (dish.variants && dish.variants.length > 0) {
+      setSelectedPortion(dish.variants[0]);
+    } else {
+      setSelectedPortion(null);
+    }
     setSelectedAddons([]);
     setCustomInstructions('');
     setCustomQty(1);
@@ -139,17 +136,20 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
 
   const handleToggleAddon = (addon: MenuItemAddon) => {
     setSelectedAddons((prev) => {
-      const exists = prev.find((a) => a.id === addon.id);
-      if (exists) return prev.filter((a) => a.id !== addon.id);
+      const exists = prev.find((a) => (a.id && a.id === addon.id) || a.name === addon.name);
+      if (exists) return prev.filter((a) => (a.id && a.id === addon.id ? false : a.name !== addon.name));
       return [...prev, addon];
     });
   };
 
   const handleConfirmCustomization = () => {
     if (!customizingItem || !restaurant) return;
+    const hasVariants = Boolean(customizingItem.variants && customizingItem.variants.length > 0);
+    const finalVariant = hasVariants ? (selectedPortion || customizingItem.variants![0]) : undefined;
+
     addItem(restaurant, customizingItem, customQty, {
-      variant: selectedPortion,
-      addons: selectedAddons,
+      variant: finalVariant,
+      addons: selectedAddons.length > 0 ? selectedAddons : undefined,
       instructions: customInstructions.trim() || undefined,
     });
     setCustomizingItem(null);
@@ -157,8 +157,9 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
 
   const calculateCustomPrice = () => {
     if (!customizingItem) return 0;
-    const base = selectedPortion ? selectedPortion.price : customizingItem.price;
-    const addons = selectedAddons.reduce((sum, a) => sum + a.price, 0);
+    const hasVariants = Boolean(customizingItem.variants && customizingItem.variants.length > 0);
+    const base = hasVariants && selectedPortion ? selectedPortion.price : customizingItem.price;
+    const addons = selectedAddons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
     return (base + addons) * customQty;
   };
 
@@ -363,6 +364,9 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
           filteredItems.map((dish) => {
             const qty = getItemQuantity(dish.id);
             const isAvailable = dish.isAvailable !== false && restaurant.isAcceptingOrders;
+            const hasVariants = Boolean(dish.variants && dish.variants.length > 0);
+            const hasAddons = Boolean(dish.addons && dish.addons.length > 0);
+            const hasCustomizations = hasVariants || hasAddons;
 
             return (
               <div
@@ -402,14 +406,27 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
                     </p>
                   )}
 
-                  {/* Customizable pill */}
-                  <button
-                    onClick={() => handleOpenCustomization(dish)}
-                    className="text-[10px] font-bold text-brand-700 hover:text-brand-800 flex items-center gap-1 mt-1 underline"
-                  >
-                    <span>Customizable with portions & dips</span>
-                    <span>&rarr;</span>
-                  </button>
+                  {/* Customizable pill or kitchen note prompt */}
+                  {hasCustomizations ? (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCustomization(dish)}
+                      className="text-[10px] font-bold text-brand-700 hover:text-brand-800 flex items-center gap-1 mt-1 underline"
+                    >
+                      <span>
+                        Customizable with {hasVariants && hasAddons ? 'portions & add-ons' : hasVariants ? 'portion sizes' : 'add-ons'}
+                      </span>
+                      <span>&rarr;</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCustomization(dish)}
+                      className="text-[10px] font-medium text-slate-400 hover:text-slate-600 flex items-center gap-1 mt-0.5"
+                    >
+                      <span>+ Add cooking note</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Right Action: Dish Photo + Overlapping ADD / Stepper */}
@@ -453,7 +470,13 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
                       </div>
                     ) : (
                       <button
-                        onClick={() => handleOpenCustomization(dish)}
+                        onClick={() => {
+                          if (hasCustomizations) {
+                            handleOpenCustomization(dish);
+                          } else {
+                            addItem(restaurant, dish, 1);
+                          }
+                        }}
                         className="px-4 py-1.5 bg-white border border-brand-600 hover:bg-brand-50 text-brand-700 rounded-xl text-xs font-black btn-press shadow-md cursor-pointer tracking-wide"
                       >
                         ADD +
@@ -515,81 +538,97 @@ export const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({ isPu
 
             {/* Scrollable Customization Options */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Option 1: Portion Size */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                  Select Portion Size
-                </h4>
-                <div className="space-y-1.5">
-                  {[
-                    { id: 'std', name: 'Regular Portion', price: customizingItem.price },
-                    { id: 'large', name: 'Large / Feast Portion', price: customizingItem.price + 70 },
-                  ].map((portion) => (
-                    <label
-                      key={portion.id}
-                      onClick={() => setSelectedPortion(portion)}
-                      className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                        selectedPortion?.id === portion.id
-                          ? 'bg-brand-50 border-brand-500 text-brand-900 font-bold'
-                          : 'border-stone-200 bg-stone-50 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                            selectedPortion?.id === portion.id
-                              ? 'border-brand-600'
-                              : 'border-stone-400'
+              {/* Option 1: Portion Size (Only if dish has variants configured) */}
+              {customizingItem.variants && customizingItem.variants.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                    Select Portion Size
+                  </h4>
+                  <div className="space-y-1.5">
+                    {customizingItem.variants.map((portion) => {
+                      const isSelected =
+                        selectedPortion?.name === portion.name ||
+                        (portion.id && selectedPortion?.id === portion.id);
+
+                      return (
+                        <label
+                          key={portion.id || portion.name}
+                          onClick={() => setSelectedPortion(portion)}
+                          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-brand-50 border-brand-500 text-brand-900 font-bold'
+                              : 'border-stone-200 bg-stone-50 text-slate-700'
                           }`}
                         >
-                          {selectedPortion?.id === portion.id && (
-                            <div className="w-2 h-2 rounded-full bg-brand-600" />
-                          )}
-                        </div>
-                        <span className="text-xs">{portion.name}</span>
-                      </div>
-                      <span className="text-xs font-black">₹{portion.price}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Option 2: Regional Add-ons */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                  Traditional Add-ons & Dips
-                </h4>
-                <div className="space-y-1.5">
-                  {DEFAULT_ASSAM_ADDONS.map((addon) => {
-                    const isChecked = Boolean(selectedAddons.find((a) => a.id === addon.id));
-                    return (
-                      <label
-                        key={addon.id}
-                        onClick={() => handleToggleAddon(addon)}
-                        className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                          isChecked
-                            ? 'bg-amber-50 border-amber-500 text-amber-950 font-bold'
-                            : 'border-stone-200 bg-stone-50 text-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={`w-4 h-4 rounded-md border flex items-center justify-center ${
-                              isChecked
-                                ? 'bg-amber-600 border-amber-600 text-white'
-                                : 'border-stone-400 bg-white'
-                            }`}
-                          >
-                            {isChecked && <Check className="w-3 h-3" />}
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                isSelected ? 'border-brand-600' : 'border-stone-400'
+                              }`}
+                            >
+                              {isSelected && <div className="w-2 h-2 rounded-full bg-brand-600" />}
+                            </div>
+                            <span className="text-xs">{portion.name}</span>
                           </div>
-                          <span className="text-xs">{addon.name}</span>
-                        </div>
-                        <span className="text-xs font-black">+₹{addon.price}</span>
-                      </label>
-                    );
-                  })}
+                          <span className="text-xs font-black">₹{portion.price}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Option 2: Unique Dish Add-ons & Dips (Only if dish has add-ons configured) */}
+              {customizingItem.addons && customizingItem.addons.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                    Add-ons & Dips
+                  </h4>
+                  <div className="space-y-1.5">
+                    {customizingItem.addons.map((addon) => {
+                      const isChecked = Boolean(
+                        selectedAddons.find(
+                          (a) => (a.id && a.id === addon.id) || a.name === addon.name
+                        )
+                      );
+                      return (
+                        <label
+                          key={addon.id || addon.name}
+                          onClick={() => handleToggleAddon(addon)}
+                          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                            isChecked
+                              ? 'bg-amber-50 border-amber-500 text-amber-950 font-bold'
+                              : 'border-stone-200 bg-stone-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={`w-4 h-4 rounded-md border flex items-center justify-center ${
+                                isChecked
+                                  ? 'bg-amber-600 border-amber-600 text-white'
+                                  : 'border-stone-400 bg-white'
+                              }`}
+                            >
+                              {isChecked && <Check className="w-3 h-3" />}
+                            </div>
+                            <span className="text-xs">{addon.name}</span>
+                          </div>
+                          <span className="text-xs font-black">+₹{addon.price}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Note when dish has no portion or addon options */}
+              {(!customizingItem.variants || customizingItem.variants.length === 0) &&
+                (!customizingItem.addons || customizingItem.addons.length === 0) && (
+                  <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 text-xs text-slate-600 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-brand-600 shrink-0" />
+                    <span>Standard single portion served at ₹{customizingItem.price}.</span>
+                  </div>
+                )}
 
               {/* Option 3: Special instructions */}
               <div className="space-y-1.5">

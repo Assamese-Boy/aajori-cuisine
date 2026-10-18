@@ -92,7 +92,17 @@ export const RestaurantPortalPage: React.FC = () => {
   // Add/Edit Dish Modal State
   const [isDishModalOpen, setIsDishModalOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<any>(null);
-  const [dishForm, setDishForm] = useState({
+  const [dishForm, setDishForm] = useState<{
+    name: string;
+    description: string;
+    price: string;
+    category: string;
+    isVeg: boolean;
+    imageUrl: string;
+    spiceLevel: string;
+    variants: Array<{ name: string; price: number }>;
+    addons: Array<{ name: string; price: number }>;
+  }>({
     name: '',
     description: '',
     price: '',
@@ -100,6 +110,8 @@ export const RestaurantPortalPage: React.FC = () => {
     isVeg: false,
     imageUrl: '',
     spiceLevel: 'MILD',
+    variants: [],
+    addons: [],
   });
 
   // Settings Form State
@@ -336,6 +348,8 @@ export const RestaurantPortalPage: React.FC = () => {
       isVeg: false,
       imageUrl: '',
       spiceLevel: 'MILD',
+      variants: [],
+      addons: [],
     });
     setIsDishModalOpen(true);
   };
@@ -350,8 +364,58 @@ export const RestaurantPortalPage: React.FC = () => {
       isVeg: Boolean(dish.isVeg),
       imageUrl: dish.imageUrl || '',
       spiceLevel: dish.spiceLevel || 'MILD',
+      variants: Array.isArray(dish.variants)
+        ? dish.variants.map((v: any) => ({ name: v.name, price: Number(v.price) || 0 }))
+        : [],
+      addons: Array.isArray(dish.addons)
+        ? dish.addons.map((a: any) => ({ name: a.name, price: Number(a.price) || 0 }))
+        : [],
     });
     setIsDishModalOpen(true);
+  };
+
+  const handleAddPortalVariant = () => {
+    setDishForm((prev) => ({
+      ...prev,
+      variants: [...prev.variants, { name: '', price: Number(prev.price) || 0 }],
+    }));
+  };
+
+  const handleUpdatePortalVariant = (index: number, field: 'name' | 'price', value: any) => {
+    setDishForm((prev) => {
+      const copy = [...prev.variants];
+      copy[index] = { ...copy[index], [field]: field === 'price' ? Number(value) || 0 : value };
+      return { ...prev, variants: copy };
+    });
+  };
+
+  const handleRemovePortalVariant = (index: number) => {
+    setDishForm((prev) => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddPortalAddon = () => {
+    setDishForm((prev) => ({
+      ...prev,
+      addons: [...prev.addons, { name: '', price: 30 }],
+    }));
+  };
+
+  const handleUpdatePortalAddon = (index: number, field: 'name' | 'price', value: any) => {
+    setDishForm((prev) => {
+      const copy = [...prev.addons];
+      copy[index] = { ...copy[index], [field]: field === 'price' ? Number(value) || 0 : value };
+      return { ...prev, addons: copy };
+    });
+  };
+
+  const handleRemovePortalAddon = (index: number) => {
+    setDishForm((prev) => ({
+      ...prev,
+      addons: prev.addons.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSaveDish = async (e: React.FormEvent) => {
@@ -372,6 +436,8 @@ export const RestaurantPortalPage: React.FC = () => {
         imageUrl: dishForm.imageUrl.trim() || undefined,
         spiceLevel: dishForm.spiceLevel,
         isAvailable: editingDish ? editingDish.isAvailable : true,
+        variants: dishForm.variants.filter((v) => v.name.trim()),
+        addons: dishForm.addons.filter((a) => a.name.trim()),
       };
 
       if (editingDish) {
@@ -385,8 +451,11 @@ export const RestaurantPortalPage: React.FC = () => {
         );
         if (res.success) {
           toast.success('Dish Updated', `${payload.name} has been updated.`);
+          if (res.data) {
+            setMenuItems((prev) => prev.map((item) => (item.id === editingDish.id ? res.data : item)));
+          }
           setIsDishModalOpen(false);
-          loadPortalData(true);
+          await loadPortalData(true);
         } else {
           toast.error('Failed', res.error?.message || 'Could not update dish');
         }
@@ -398,8 +467,11 @@ export const RestaurantPortalPage: React.FC = () => {
         });
         if (res.success) {
           toast.success('Dish Added', `${payload.name} added to restaurant catalog.`);
+          if (res.data) {
+            setMenuItems((prev) => [res.data, ...prev]);
+          }
           setIsDishModalOpen(false);
-          loadPortalData(true);
+          await loadPortalData(true);
         } else {
           toast.error('Failed', res.error?.message || 'Could not add dish');
         }
@@ -1322,6 +1394,120 @@ export const RestaurantPortalPage: React.FC = () => {
                   placeholder="Ethnic spices, fresh ginger, traditional Assamese preparation..."
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium focus:outline-none focus:ring-1 focus:ring-brand-500"
                 />
+              </div>
+
+              {/* Portion Sizes & Variants */}
+              <div className="p-3 bg-slate-800/70 rounded-2xl border border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Portion Sizes & Variants</h4>
+                    <p className="text-[10px] text-slate-400">
+                      Optional (e.g. Half / Full plate, Small / Large portion)
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddPortalVariant}
+                    className="px-2.5 py-1 bg-brand-600/30 hover:bg-brand-600/50 text-brand-300 border border-brand-500/40 rounded-lg text-[10px] font-bold flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Portion</span>
+                  </button>
+                </div>
+
+                {dishForm.variants.length === 0 ? (
+                  <p className="text-[10px] text-slate-400 italic">
+                    No custom portions. The base price (₹{dishForm.price || '0'}) will be used.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {dishForm.variants.map((v, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. Full Plate"
+                          value={v.name}
+                          onChange={(e) => handleUpdatePortalVariant(idx, 'name', e.target.value)}
+                          className="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                        />
+                        <div className="flex items-center gap-1 w-24">
+                          <span className="text-xs text-slate-400">₹</span>
+                          <input
+                            type="number"
+                            placeholder="Price"
+                            value={v.price}
+                            onChange={(e) => handleUpdatePortalVariant(idx, 'price', e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-mono"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePortalVariant(idx)}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Custom Add-ons & Dips */}
+              <div className="p-3 bg-slate-800/70 rounded-2xl border border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Custom Add-ons & Dips</h4>
+                    <p className="text-[10px] text-slate-400">
+                      Optional extra side items unique to this dish
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddPortalAddon}
+                    className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] font-bold flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Add-on</span>
+                  </button>
+                </div>
+
+                {dishForm.addons.length === 0 ? (
+                  <p className="text-[10px] text-slate-400 italic">
+                    No custom add-ons configured for this dish.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {dishForm.addons.map((a, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. Extra Chutney"
+                          value={a.name}
+                          onChange={(e) => handleUpdatePortalAddon(idx, 'name', e.target.value)}
+                          className="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                        />
+                        <div className="flex items-center gap-1 w-24">
+                          <span className="text-xs text-slate-400">+₹</span>
+                          <input
+                            type="number"
+                            placeholder="Price"
+                            value={a.price}
+                            onChange={(e) => handleUpdatePortalAddon(idx, 'price', e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-mono"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePortalAddon(idx)}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="pt-2 flex items-center justify-between border-t border-slate-800">

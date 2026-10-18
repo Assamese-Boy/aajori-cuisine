@@ -99,7 +99,18 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
   // Menu Item Add/Edit Modal
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
-  const [itemFormData, setItemFormData] = useState({
+  const [itemFormData, setItemFormData] = useState<{
+    name: string;
+    description: string;
+    price: number;
+    isVeg: boolean;
+    categoryName: string;
+    imageUrl: string;
+    prepTimeMinutes: number;
+    isAvailable: boolean;
+    variants: { id?: string; name: string; price: number }[];
+    addons: { id?: string; name: string; price: number }[];
+  }>({
     name: '',
     description: '',
     price: 180,
@@ -108,6 +119,8 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
     imageUrl: '',
     prepTimeMinutes: 20,
     isAvailable: true,
+    variants: [],
+    addons: [],
   });
 
   // Mobile Customer Review Preview states
@@ -151,8 +164,8 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
   const inspectMenu = async (restaurantId: string) => {
     setActiveRestaurantId(restaurantId);
     try {
-      const res = await apiRequest(`/restaurants/${restaurantId}/menu`);
-      if (res.success) {
+      const res = await apiRequest(`/restaurants/${restaurantId}/menu?_t=${Date.now()}`);
+      if (res.success && res.data) {
         setSelectedRestaurantMenu(res.data);
       }
     } catch (e) {
@@ -370,6 +383,8 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       imageUrl: '',
       prepTimeMinutes: 20,
       isAvailable: true,
+      variants: [],
+      addons: [],
     });
     setFormError(null);
     setShowItemModal(true);
@@ -386,9 +401,59 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
       imageUrl: item.imageUrl || '',
       prepTimeMinutes: item.prepTimeMinutes || 20,
       isAvailable: item.isAvailable,
+      variants: Array.isArray(item.variants)
+        ? item.variants.map((v: any) => ({ name: v.name, price: Number(v.price) || 0 }))
+        : [],
+      addons: Array.isArray(item.addons)
+        ? item.addons.map((a: any) => ({ name: a.name, price: Number(a.price) || 0 }))
+        : [],
     });
     setFormError(null);
     setShowItemModal(true);
+  };
+
+  const handleAddVariant = () => {
+    setItemFormData((prev) => ({
+      ...prev,
+      variants: [...prev.variants, { name: '', price: prev.price }],
+    }));
+  };
+
+  const handleUpdateVariant = (index: number, field: 'name' | 'price', value: any) => {
+    setItemFormData((prev) => {
+      const copy = [...prev.variants];
+      copy[index] = { ...copy[index], [field]: field === 'price' ? Number(value) || 0 : value };
+      return { ...prev, variants: copy };
+    });
+  };
+
+  const handleRemoveVariant = (index: number) => {
+    setItemFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddAddon = () => {
+    setItemFormData((prev) => ({
+      ...prev,
+      addons: [...prev.addons, { name: '', price: 30 }],
+    }));
+  };
+
+  const handleUpdateAddon = (index: number, field: 'name' | 'price', value: any) => {
+    setItemFormData((prev) => {
+      const copy = [...prev.addons];
+      copy[index] = { ...copy[index], [field]: field === 'price' ? Number(value) || 0 : value };
+      return { ...prev, addons: copy };
+    });
+  };
+
+  const handleRemoveAddon = (index: number) => {
+    setItemFormData((prev) => ({
+      ...prev,
+      addons: prev.addons.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSaveItem = async (e: React.FormEvent) => {
@@ -409,7 +474,21 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
         );
         if (res.success) {
           setShowItemModal(false);
-          inspectMenu(activeRestaurantId);
+          toast.success('Dish Updated', `${itemFormData.name} updated.`);
+          const updatedDish = res.data;
+          if (updatedDish) {
+            setSelectedRestaurantMenu((prev: any) => {
+              if (!prev) return prev;
+              const categories = (prev.categories || []).map((c: any) => ({
+                ...c,
+                items: (c.items || []).map((i: any) => (i.id === editingItem.id ? updatedDish : i)),
+              }));
+              const items = (prev.items || []).map((i: any) => (i.id === editingItem.id ? updatedDish : i));
+              return { ...prev, categories, items };
+            });
+          }
+          await inspectMenu(activeRestaurantId);
+          onRefresh();
         } else {
           setFormError(res.error?.message || 'Failed to update item');
         }
@@ -420,7 +499,25 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
         });
         if (res.success) {
           setShowItemModal(false);
-          inspectMenu(activeRestaurantId);
+          toast.success('Dish Added', `${itemFormData.name} added to catalog.`);
+          const savedDish = res.data;
+          if (savedDish) {
+            setSelectedRestaurantMenu((prev: any) => {
+              if (!prev) return prev;
+              const catName = savedDish.category || itemFormData.categoryName || 'Signature Dishes';
+              const categories = [...(prev.categories || [])];
+              let cat = categories.find((c: any) => c.name.toLowerCase() === catName.toLowerCase());
+              if (!cat) {
+                cat = { id: `cat_${catName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`, name: catName, items: [] };
+                categories.push(cat);
+              }
+              cat.items = [savedDish, ...(cat.items || []).filter((i: any) => i.id !== savedDish.id)];
+              const items = [savedDish, ...(prev.items || []).filter((i: any) => i.id !== savedDish.id)];
+              return { ...prev, categories, items };
+            });
+          }
+          await inspectMenu(activeRestaurantId);
+          onRefresh();
         } else {
           setFormError(res.error?.message || 'Failed to add item');
         }
@@ -443,7 +540,17 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
         { method: 'DELETE' }
       );
       if (res.success) {
-        inspectMenu(activeRestaurantId);
+        setSelectedRestaurantMenu((prev: any) => {
+          if (!prev) return prev;
+          const categories = (prev.categories || []).map((c: any) => ({
+            ...c,
+            items: (c.items || []).filter((i: any) => i.id !== itemId),
+          }));
+          const items = (prev.items || []).filter((i: any) => i.id !== itemId);
+          return { ...prev, categories, items };
+        });
+        await inspectMenu(activeRestaurantId);
+        onRefresh();
         toast.success('Dish Deleted', `"${itemName}" removed successfully.`);
       } else {
         toast.error('Delete Failed', res.error?.message || 'Failed to delete dish');
@@ -1245,6 +1352,120 @@ export const RestaurantsPage: React.FC<RestaurantsPageProps> = (props) => {
                     />
                     <span className="text-xs font-semibold text-slate-700">In Stock</span>
                   </label>
+                </div>
+
+                {/* Portion Sizes / Variants Section */}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">Portion Sizes & Variants</h4>
+                      <p className="text-[10px] text-slate-500">
+                        Optional (e.g. Half / Full plate, Small / Large portion)
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddVariant}
+                      className="px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded-lg text-[11px] font-bold flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Portion</span>
+                    </button>
+                  </div>
+
+                  {itemFormData.variants.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 italic">
+                      No custom portions. The base price (₹{itemFormData.price}) will be used.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {itemFormData.variants.map((v, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="e.g. Full Plate"
+                            value={v.name}
+                            onChange={(e) => handleUpdateVariant(idx, 'name', e.target.value)}
+                            className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                          />
+                          <div className="flex items-center gap-1 w-28">
+                            <span className="text-xs text-slate-400">₹</span>
+                            <input
+                              type="number"
+                              placeholder="Price"
+                              value={v.price}
+                              onChange={(e) => handleUpdateVariant(idx, 'price', e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariant(idx)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Add-ons & Dips Section */}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">Custom Add-ons & Dips</h4>
+                      <p className="text-[10px] text-slate-500">
+                        Optional side items unique to this dish (e.g. Extra Gravy, Special Dip)
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddAddon}
+                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[11px] font-bold flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Add-on</span>
+                    </button>
+                  </div>
+
+                  {itemFormData.addons.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 italic">
+                      No custom add-ons configured for this dish.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {itemFormData.addons.map((a, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="e.g. Extra Gravy"
+                            value={a.name}
+                            onChange={(e) => handleUpdateAddon(idx, 'name', e.target.value)}
+                            className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                          />
+                          <div className="flex items-center gap-1 w-28">
+                            <span className="text-xs text-slate-400">+₹</span>
+                            <input
+                              type="number"
+                              placeholder="Price"
+                              value={a.price}
+                              onChange={(e) => handleUpdateAddon(idx, 'price', e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAddon(idx)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">

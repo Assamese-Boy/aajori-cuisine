@@ -13,7 +13,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const restaurant = await ServerDb.getRestaurantById(params.id);
+    const restaurant = await ServerDb.getRestaurantById(params.id, true);
     if (!restaurant) {
       return apiError('Restaurant not found', 404);
     }
@@ -32,7 +32,7 @@ export async function GET(
       categoriesMap.get(catName)!.items.push(item);
     });
 
-    return apiSuccess({
+    const response = apiSuccess({
       restaurant: {
         id: restaurant.id,
         name: restaurant.name,
@@ -40,6 +40,10 @@ export async function GET(
       categories: Array.from(categoriesMap.values()),
       items,
     });
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    return response;
   } catch (err: any) {
     return apiError(err?.message || 'Failed to retrieve menu', 500);
   }
