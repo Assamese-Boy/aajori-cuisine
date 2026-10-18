@@ -23,7 +23,7 @@ const LIFECYCLE_STEPS: Array<{ key: OrderStatus; label: string; desc: string }> 
   { key: 'RESTAURANT_ACCEPTED', label: 'Kitchen Accepted', desc: 'Order entered queue' },
   { key: 'PREPARING', label: 'Preparing Delicacies', desc: 'Charcoal & ethnic spices' },
   { key: 'READY_FOR_PICKUP', label: 'Ready for Pickup', desc: 'Packaged & hot' },
-  { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', desc: 'Rider en route via PostGIS' },
+  { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', desc: 'Rider en route to your delivery location' },
   { key: 'DELIVERED', label: 'Delivered', desc: 'Enjoy your authentic meal!' },
 ];
 

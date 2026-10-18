@@ -14,7 +14,7 @@ function calculateHaversineDistanceKm(
   lat2: number,
   lon2: number
 ): number {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 2.5;
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 2.0;
   const R = 6371; // Radius of earth in km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -36,9 +36,9 @@ export async function POST(req: NextRequest) {
 
     let subtotal = 0;
 
-    // Fetch restaurant details & menu if available
+    // Fetch restaurant details & menu
     let restaurant: any = null;
-    let menuItemsMap = new Map<string, any>();
+    const menuItemsMap = new Map<string, any>();
 
     if (restaurantId) {
       try {
@@ -53,34 +53,54 @@ export async function POST(req: NextRequest) {
     if (Array.isArray(items) && items.length > 0) {
       for (const it of items) {
         const qty = Number(it.quantity) || 1;
-        const menuItem = menuItemsMap.get(it.menuItemId);
-        const unitPrice = Number(it.price || menuItem?.price || 180);
+        const menuItem = menuItemsMap.get(it.menuItemId || it.id);
+        const unitPrice = Number(it.price || menuItem?.price || 0);
         subtotal += unitPrice * qty;
       }
     }
 
-    // Default distance if no GPS
-    let distanceKm = 2.5;
-    if (customerLocation?.latitude && customerLocation?.longitude && restaurant?.location) {
-      distanceKm = calculateHaversineDistanceKm(
-        restaurant.location.latitude,
-        restaurant.location.longitude,
-        customerLocation.latitude,
-        customerLocation.longitude
-      );
+    // Accurate Haversine Distance calculation
+    let distanceKm = 2.0;
+    const restLat = Number(restaurant?.latitude ?? restaurant?.location?.latitude);
+    const restLng = Number(restaurant?.longitude ?? restaurant?.location?.longitude);
+    const custLat = Number(
+      customerLocation?.latitude ?? customerLocation?.lat ?? customerLocation?.location?.latitude
+    );
+    const custLng = Number(
+      customerLocation?.longitude ?? customerLocation?.lng ?? customerLocation?.location?.longitude
+    );
+
+    if (
+      !isNaN(restLat) &&
+      !isNaN(restLng) &&
+      !isNaN(custLat) &&
+      !isNaN(custLng) &&
+      restLat !== 0 &&
+      custLat !== 0
+    ) {
+      distanceKm = calculateHaversineDistanceKm(restLat, restLng, custLat, custLng);
     }
 
-    // Delivery fee logic: base ₹25 for first 3km, ₹8/km thereafter
-    const baseDeliveryFee = 25;
-    const baseKm = 3;
-    const perKmRate = 8;
-    const deliveryFee =
-      distanceKm <= baseKm
-        ? baseDeliveryFee
-        : baseDeliveryFee + Math.ceil(distanceKm - baseKm) * perKmRate;
+    // Distance-based delivery fee rules (Base fee + per-km thereafter or delivery zones)
+    let baseDeliveryFee = 25;
+    let baseKm = 3;
+    let perKmRate = 8;
 
-    // Packaging fee from restaurant or default ₹20
-    const packagingFee = Number(restaurant?.packagingFee) || 20;
+    try {
+      const zones = await ServerDb.getAllDeliveryZones();
+      const activeZone = zones.find((z) => z.isActive);
+      if (activeZone) {
+        if (Number(activeZone.baseFee) > 0) baseDeliveryFee = Number(activeZone.baseFee);
+        if (Number(activeZone.baseDistanceKm) > 0) baseKm = Number(activeZone.baseDistanceKm);
+        if (Number(activeZone.perKmFee) > 0) perKmRate = Number(activeZone.perKmFee);
+      }
+    } catch (_) {}
+
+    const extraKm = Math.max(0, distanceKm - baseKm);
+    const deliveryFee = Math.round(baseDeliveryFee + extraKm * perKmRate);
+
+    // Packaging fee from restaurant (0 if not set, no hardcoded fallback)
+    const packagingFee = Number(restaurant?.packagingFee) || 0;
 
     // Govt taxes (5% GST for restaurants)
     const tax = Math.round(subtotal * 0.05);
@@ -89,14 +109,26 @@ export async function POST(req: NextRequest) {
     let discount = 0;
     if (couponCode) {
       const code = String(couponCode).toUpperCase().trim();
-      if (code === 'AAJORI50' && subtotal >= 200) {
-        discount = 50;
-      } else if (code === 'BIHU20' && subtotal >= 250) {
-        discount = Math.min(100, Math.round(subtotal * 0.2));
-      } else if (code === 'FIRSTMEAL' && subtotal >= 150) {
-        discount = 75;
-      } else if (subtotal >= 300) {
-        discount = 50;
+      try {
+        const coupons = await ServerDb.getAllCoupons();
+        const foundCoupon = coupons.find((c) => c.code.toUpperCase() === code && c.isActive);
+        if (foundCoupon && subtotal >= Number(foundCoupon.minOrderAmount || 0)) {
+          if (foundCoupon.discountType === 'PERCENTAGE') {
+            const calculated = Math.round((subtotal * Number(foundCoupon.discountValue)) / 100);
+            discount = foundCoupon.maxDiscountAmount
+              ? Math.min(Number(foundCoupon.maxDiscountAmount), calculated)
+              : calculated;
+          } else {
+            discount = Number(foundCoupon.discountValue) || 0;
+          }
+        }
+      } catch (_) {}
+
+      // Fallback standard promotions if not in DB
+      if (discount === 0) {
+        if (code === 'AAJORI50' && subtotal >= 200) discount = 50;
+        else if (code === 'BIHU20' && subtotal >= 250) discount = Math.min(100, Math.round(subtotal * 0.2));
+        else if (code === 'FIRSTMEAL' && subtotal >= 150) discount = 75;
       }
     }
 
@@ -114,7 +146,6 @@ export async function POST(req: NextRequest) {
         total,
         distanceKm,
       },
-      // Flat properties for compatibility with different client parsers
       subtotal,
       deliveryFee,
       packagingFee,

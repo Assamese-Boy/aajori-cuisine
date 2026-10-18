@@ -80,11 +80,13 @@ export const AppContent: React.FC = () => {
           </RouteErrorBoundary>
         </main>
 
-        {/* Native Mobile Bottom Navigation Bar */}
-        <BottomNavBar
-          onOpenAi={() => setIsAiModalOpen(true)}
-          onOpenSearch={() => {}}
-        />
+        {/* Native Mobile Bottom Navigation Bar - only displayed on home / main menu */}
+        {isHomePage && (
+          <BottomNavBar
+            onOpenAi={() => setIsAiModalOpen(true)}
+            onOpenSearch={() => {}}
+          />
+        )}
 
         {/* Native Mobile Hamburger Navigation Drawer */}
         <HamburgerDrawer

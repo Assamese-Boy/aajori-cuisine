@@ -31,7 +31,9 @@ export interface CustomerAddress {
   city: string;
   district: string;
   postalCode: string;
-  location: GeoLocation;
+  location?: GeoLocation;
+  latitude?: number;
+  longitude?: number;
   deliveryInstructions?: string;
   isDefault: boolean;
 }

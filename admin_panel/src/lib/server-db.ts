@@ -1022,35 +1022,56 @@ export const ServerDb = {
   // ORDERS
   // --------------------------------------------------------------------------
   async getAllOrders(): Promise<Order[]> {
-    const res = await sbFetch('/orders?select=*,order_items(*),restaurants(name),users(full_name,phone)&order=created_at.desc');
-    if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
-      return res.data.map((o: any) => ({
-        id: o.id,
-        orderNumber: o.order_number,
-        customerId: o.customer_id,
-        customerName: o.users?.full_name || o.customer_name || 'Customer',
-        customerPhone: o.users?.phone || o.customer_phone || '',
-        restaurantId: o.restaurant_id,
-        restaurantName: o.restaurants?.name || o.restaurant_name || 'Kitchen Partner',
-        deliveryPartnerId: o.delivery_partner_id,
-        items: o.order_items || [],
-        subtotal: Number(o.subtotal) || 0,
-        tax: Number(o.tax_amount) || 0,
-        deliveryFee: Number(o.delivery_fee) || 0,
-        discount: Number(o.discount_amount) || 0,
-        total: Number(o.total_price || o.total_amount) || 0,
-        paymentMethod: o.payment_method || 'CASH_ON_DELIVERY',
-        paymentStatus: o.payment_status || 'PENDING',
-        status: o.status || 'CREATED',
-        deliveryAddress: o.delivery_address || {},
-        customerInstructions: o.customer_instructions || '',
-        createdAt: o.created_at || new Date().toISOString(),
-        updatedAt: o.updated_at || new Date().toISOString(),
-      }));
-    }
+    let supabaseOrders: Order[] = [];
+    try {
+      const res = await sbFetch(
+        '/orders?select=*,order_items(*),restaurants(name),users(full_name,phone)&order=created_at.desc'
+      );
+      if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
+        supabaseOrders = res.data.map((o: any) => ({
+          id: o.id,
+          orderNumber: o.order_number,
+          customerId: o.customer_id,
+          customerName: o.users?.full_name || o.customer_name || 'Customer',
+          customerPhone: o.users?.phone || o.customer_phone || '',
+          restaurantId: o.restaurant_id,
+          restaurantName: o.restaurants?.name || o.restaurant_name || 'Kitchen Partner',
+          deliveryPartnerId: o.delivery_partner_id,
+          items: o.order_items || [],
+          subtotal: Number(o.subtotal) || 0,
+          tax: Number(o.tax_amount) || 0,
+          deliveryFee: Number(o.delivery_fee) || 0,
+          discount: Number(o.discount_amount) || 0,
+          total: Number(o.total_price || o.total_amount) || 0,
+          paymentMethod: o.payment_method || 'CASH_ON_DELIVERY',
+          paymentStatus: o.payment_status || 'PENDING',
+          status: o.status || 'CREATED',
+          deliveryAddress: o.delivery_address || {},
+          customerInstructions: o.customer_instructions || '',
+          createdAt: o.created_at || new Date().toISOString(),
+          updatedAt: o.updated_at || new Date().toISOString(),
+        }));
+      }
+    } catch (_) {}
 
     const db = await loadDb();
-    return db.orders;
+    const localOrders = db.orders || [];
+
+    // Merge Supabase and local orders without duplicate IDs or order numbers
+    const seenIds = new Set<string>();
+    const seenNumbers = new Set<string>();
+    const merged: Order[] = [];
+
+    for (const o of [...supabaseOrders, ...localOrders]) {
+      if (!seenIds.has(o.id) && !seenNumbers.has(o.orderNumber)) {
+        seenIds.add(o.id);
+        seenNumbers.add(o.orderNumber);
+        merged.push(o);
+      }
+    }
+
+    merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return merged;
   },
 
   async getOrdersByRestaurant(restaurantId: string): Promise<Order[]> {
@@ -1071,50 +1092,171 @@ export const ServerDb = {
     return list.find((o) => o.id === id) || null;
   },
 
-  async createOrder(input: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>): Promise<Order> {
+  async createOrder(
+    input: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'> & {
+      packagingFee?: number;
+      deliveryDistanceKm?: number;
+      platformFee?: number;
+      restaurantCommissionAmount?: number;
+      riderPayoutAmount?: number;
+      pricingBreakdown?: any;
+      idempotencyKey?: string;
+    }
+  ): Promise<Order> {
     const orderNumber = `AJR-${Date.now().toString().slice(-6)}`;
+
+    // Resolve valid customer UUID (required by Supabase FK users(id))
+    let customerUuid = input.customerId;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerUuid);
+    if (!isUuid) {
+      try {
+        const users = await this.getAllUsers();
+        const found = users.find(
+          (u) =>
+            (input.customerPhone && u.phone === input.customerPhone) ||
+            (u.role === 'CUSTOMER' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u.id))
+        );
+        if (found) {
+          customerUuid = found.id;
+        } else {
+          const created = await this.createUser({
+            fullName: input.customerName || 'Customer',
+            phone: input.customerPhone || `91${Date.now().toString().slice(-10)}`,
+            email: `cust_${Date.now()}@aajori.in`,
+            role: 'CUSTOMER',
+          });
+          customerUuid = created.id;
+        }
+      } catch (_) {}
+    }
+
+    // Resolve valid restaurant UUID
+    let restaurantUuid = input.restaurantId;
+    const isRestUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(restaurantUuid);
+    if (!isRestUuid) {
+      try {
+        const rests = await this.getAllRestaurants();
+        if (rests.length > 0 && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rests[0].id)) {
+          restaurantUuid = rests[0].id;
+        }
+      } catch (_) {}
+    }
+
+    const subtotal = Number(input.subtotal) || 0;
+    const packagingFee = Number((input as any).packagingFee) || 0;
+    const deliveryFee = Number(input.deliveryFee) || 0;
+    const platformFee = Number((input as any).platformFee) || 0;
+    const tax = Number(input.tax) || 0;
+    const discount = Number(input.discount) || 0;
+    const total =
+      Number(input.total) ||
+      Math.max(0, subtotal + packagingFee + deliveryFee + platformFee + tax - discount);
+    const distanceKm = Number((input as any).deliveryDistanceKm) || 2.0;
+
+    let pm = (input.paymentMethod || 'UPI').toUpperCase();
+    if (pm === 'COD') pm = 'CASH_ON_DELIVERY';
+    if (!['UPI', 'CARD', 'NETBANKING', 'CASH_ON_DELIVERY'].includes(pm)) {
+      pm = 'UPI';
+    }
+
+    const commissionAmount =
+      Number((input as any).restaurantCommissionAmount) || Math.round(subtotal * 0.12);
+    const riderPayout =
+      Number((input as any).riderPayoutAmount) || Math.max(20, Math.round(deliveryFee * 0.8));
+
+    const pricingBreakdown = (input as any).pricingBreakdown || {
+      subtotal,
+      packagingFee,
+      deliveryFee,
+      platformFee,
+      tax,
+      discount,
+      total,
+      distanceKm,
+    };
+
     const res = await sbFetch('/orders', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
       body: JSON.stringify({
         order_number: orderNumber,
-        customer_id: input.customerId,
-        restaurant_id: input.restaurantId,
+        customer_id: customerUuid,
+        restaurant_id: restaurantUuid,
         status: 'CREATED',
-        subtotal: input.subtotal,
-        tax_amount: input.tax,
-        delivery_fee: input.deliveryFee,
-        discount_amount: input.discount,
-        total_price: input.total,
-        payment_method: input.paymentMethod || 'CASH_ON_DELIVERY',
+        subtotal,
+        packaging_fee: packagingFee,
+        delivery_fee: deliveryFee,
+        platform_fee: platformFee,
+        tax_amount: tax,
+        discount_amount: discount,
+        total_price: total,
+        delivery_distance_km: distanceKm,
+        restaurant_commission_amount: commissionAmount,
+        rider_payout_amount: riderPayout,
+        pricing_breakdown: pricingBreakdown,
+        payment_method: pm,
         payment_status: input.paymentStatus || 'PENDING',
         delivery_address: input.deliveryAddress || {},
+        customer_instructions: input.customerInstructions || null,
+        ...(input.idempotencyKey ? { idempotency_key: input.idempotencyKey } : {}),
       }),
     });
 
+    let createdOrder: Order;
     if (res.ok && Array.isArray(res.data) && res.data[0]) {
       const r = res.data[0];
-      return {
+      createdOrder = {
         ...input,
         id: r.id,
         orderNumber: r.order_number,
+        customerId: r.customer_id,
+        restaurantId: r.restaurant_id,
         status: r.status,
+        subtotal,
+        tax,
+        deliveryFee,
+        discount,
+        total,
+        paymentMethod: pm,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
+      };
+
+      if (Array.isArray(input.items) && input.items.length > 0) {
+        const orderItemsPayload = input.items.map((it: any) => ({
+          order_id: r.id,
+          menu_item_id: it.menuItemId || it.id || 'd0000000-0000-0000-0000-000000000001',
+          name: it.name || 'Dish',
+          unit_price: Number(it.price) || 0,
+          quantity: Number(it.quantity) || 1,
+          subtotal: (Number(it.price) || 0) * (Number(it.quantity) || 1),
+        }));
+        await sbFetch('/order_items', {
+          method: 'POST',
+          body: JSON.stringify(orderItemsPayload),
+        }).catch(() => {});
+      }
+    } else {
+      createdOrder = {
+        ...input,
+        id: `ord_${Date.now()}`,
+        orderNumber,
+        subtotal,
+        tax,
+        deliveryFee,
+        discount,
+        total,
+        paymentMethod: pm,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
     }
 
     const db = await loadDb();
-    const newOrder: Order = {
-      ...input,
-      id: `ord_${Date.now()}`,
-      orderNumber,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    db.orders.unshift(newOrder);
+    db.orders = [createdOrder, ...(db.orders || []).filter((o) => o.id !== createdOrder.id)];
     await saveDb(db);
-    return newOrder;
+
+    return createdOrder;
   },
 
   async updateOrderStatus(id: string, status: string): Promise<Order | null> {

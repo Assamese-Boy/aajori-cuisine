@@ -348,17 +348,26 @@ export class NotificationService {
     for (const [id, client] of this.sseControllers.entries()) {
       try {
         let shouldSend = false;
-        const clientIsAdmin = Boolean(client.role && adminRoles.includes(client.role));
+        const clientRoleUpper = (client.role || '').toUpperCase();
+        const clientIsCustomer = clientRoleUpper === 'CUSTOMER';
+        const clientIsAdmin =
+          !clientIsCustomer &&
+          (!client.role ||
+            adminRoles.includes(clientRoleUpper) ||
+            clientRoleUpper.includes('ADMIN') ||
+            clientRoleUpper.includes('MANAGER') ||
+            clientRoleUpper.includes('OWNER') ||
+            clientRoleUpper.includes('SUPER'));
 
         if (notification.recipientRole === 'ADMIN') {
-          // Strictly only deliver to admin clients!
+          // Deliver to operations & admin clients
           shouldSend = clientIsAdmin;
         } else if (notification.recipientRole === 'CUSTOMER') {
           // Customer targeted: order updates or customer promotions
           if (notification.recipientUserId) {
             shouldSend = client.userId === notification.recipientUserId;
           } else {
-            shouldSend = !clientIsAdmin;
+            shouldSend = clientIsCustomer;
           }
         } else if (notification.recipientRole === 'ALL') {
           shouldSend = true;
