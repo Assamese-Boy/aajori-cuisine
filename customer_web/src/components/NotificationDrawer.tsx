@@ -6,7 +6,6 @@ import {
   Volume2,
   VolumeX,
   Package,
-  Sparkles,
   ChevronRight,
   ShieldCheck,
   AlertCircle,
@@ -29,7 +28,6 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
     requestNotificationPermission,
     markAsRead,
     markAllAsRead,
-    triggerTestNotification,
   } = useNotifications();
 
   const navigate = useNavigate();
@@ -108,41 +106,18 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
           </div>
         </div>
 
-        {/* Test Notification Action Bar - Always visible */}
-        <div className="p-3 bg-stone-50 border-b border-stone-200 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-xs text-slate-700">
-            <span className={`w-2 h-2 rounded-full ${isPermissionGranted ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-            <span className="text-[11px] font-semibold text-slate-600">
-              Push Alerts: {isPermissionGranted ? 'Active 🟢' : 'Permission Needed 🟡'}
-            </span>
-          </div>
-          <button
-            onClick={async () => {
-              if (!isPermissionGranted) {
-                const granted = await requestNotificationPermission();
-                if (!granted) return;
-              }
-              await triggerTestNotification();
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-xs shadow-xs transition-colors cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Test Web Push</span>
-          </button>
-        </div>
-
         {/* Permission Request Prompt if not granted */}
         {!isPermissionGranted && (
           <div className="p-3 bg-amber-50 border-b border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Enable browser push alerts for background delivery updates.</span>
+              <span className="text-[11px] font-medium leading-tight">Enable push alerts for live order updates.</span>
             </div>
             <button
               onClick={requestNotificationPermission}
-              className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px] shrink-0 cursor-pointer"
+              className="px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-[11px] shrink-0 cursor-pointer transition-colors shadow-2xs"
             >
-              Enable Push
+              Enable
             </button>
           </div>
         )}
@@ -150,7 +125,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
         {/* Notifications List Body */}
         <div className="flex-1 overflow-y-auto divide-y divide-stone-100 p-2">
           {notifications.length === 0 ? (
-            <div className="py-12 px-4 text-center space-y-3">
+            <div className="py-14 px-4 text-center space-y-3">
               <div className="w-14 h-14 rounded-full bg-stone-100 text-stone-400 mx-auto flex items-center justify-center">
                 <Bell className="w-6 h-6" />
               </div>
@@ -160,13 +135,6 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
                   When you place an order, live alerts will appear here in real time.
                 </p>
               </div>
-              <button
-                onClick={triggerTestNotification}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-50 text-brand-700 hover:bg-brand-100 text-xs font-bold transition-colors cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Send Test Web Push</span>
-              </button>
             </div>
           ) : (
             notifications.map((item) => (
@@ -226,17 +194,9 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
           )}
         </div>
 
-        {/* Footer with Clear All & Test actions */}
+        {/* Footer with Clear All actions */}
         {notifications.length > 0 && (
-          <div className="p-3 border-t border-stone-100 bg-stone-50 flex items-center justify-between text-xs">
-            <button
-              onClick={triggerTestNotification}
-              className="text-[11px] font-bold text-slate-500 hover:text-brand-600 cursor-pointer flex items-center gap-1"
-            >
-              <Sparkles className="w-3 h-3 text-amber-500" />
-              <span>Test Push</span>
-            </button>
-
+          <div className="p-3 border-t border-stone-100 bg-stone-50 flex items-center justify-end text-xs">
             <button
               onClick={markAllAsRead}
               className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-700 hover:underline cursor-pointer"
