@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   XCircle,
   Flame,
+  Sparkles,
+  BarChart3,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -73,21 +75,96 @@ export const TrendingDishesManager: React.FC = () => {
   }, []);
 
   const handleAddDish = () => {
-    const defaultRestId = restaurants[0]?.id || 'd0000000-0000-0000-0000-000000000001';
-    const defaultRestName = restaurants[0]?.name || 'Heritage Kitchen';
+    const defaultRest = restaurants[0];
+    const firstMenuItem = defaultRest?.menu?.[0];
     const newDish: TrendingDish = {
       id: `trend-${Date.now()}`,
-      name: 'Featured Artisan Dish',
-      tagline: 'Over 120+ plates ordered this week in your area',
-      price: 250,
-      imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600',
-      restaurantId: defaultRestId,
-      restaurantName: defaultRestName,
-      isVeg: false,
-      orderCountText: '🔥 120+ orders this week',
+      name: firstMenuItem?.name || 'Featured Artisan Dish',
+      tagline: firstMenuItem?.description || 'Popular choice ordered this week in your area',
+      price: firstMenuItem?.price || 250,
+      imageUrl: firstMenuItem?.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600',
+      restaurantId: defaultRest?.id || '',
+      restaurantName: defaultRest?.name || 'Heritage Kitchen',
+      isVeg: firstMenuItem?.isVeg ?? false,
+      orderCountText: '🔥 Popular Choice',
       isActive: true,
     };
     setDishes((prev) => [...prev, newDish]);
+  };
+
+  const handlePickFromMenu = (index: number, menuItemId: string) => {
+    const dish = dishes[index];
+    const currentRest = restaurants.find((r) => r.id === dish.restaurantId);
+    if (!currentRest || !Array.isArray(currentRest.menu)) return;
+    const foundItem = currentRest.menu.find((m: any) => m.id === menuItemId);
+    if (!foundItem) return;
+
+    handleUpdate(index, {
+      name: foundItem.name,
+      price: foundItem.price,
+      isVeg: Boolean(foundItem.isVeg),
+      imageUrl: foundItem.imageUrl || dish.imageUrl,
+      tagline: foundItem.description || dish.tagline || `Authentic specialty from ${currentRest.name}`,
+    });
+    toast.success('Live Menu Synced', `Imported "${foundItem.name}" from ${currentRest.name}`);
+  };
+
+  const handleAutoDetectFromOrders = async () => {
+    try {
+      const ordersRes = await apiRequest('/orders');
+      if (!ordersRes.success || !Array.isArray(ordersRes.data) || ordersRes.data.length === 0) {
+        toast.info('No Real Orders Yet', 'Place customer orders first to calculate live sales volumes.');
+        return;
+      }
+
+      // Aggregate item counts across all real customer orders
+      const counts: Record<string, { name: string; count: number; price: number; restaurantId: string; restaurantName: string }> = {};
+      for (const order of ordersRes.data) {
+        for (const item of order.items || []) {
+          const key = item.name;
+          if (!counts[key]) {
+            counts[key] = {
+              name: item.name,
+              count: 0,
+              price: item.price || 0,
+              restaurantId: order.restaurantId,
+              restaurantName: order.restaurantName,
+            };
+          }
+          counts[key].count += item.quantity || 1;
+        }
+      }
+
+      const sorted = Object.values(counts).sort((a, b) => b.count - a.count);
+      if (sorted.length === 0) {
+        toast.info('No Order Data', 'No ordered menu items found in current orders.');
+        return;
+      }
+
+      const generated: TrendingDish[] = sorted.slice(0, 6).map((item, idx) => {
+        const existing = dishes.find((d) => d.name.toLowerCase() === item.name.toLowerCase());
+        const matchedRest = restaurants.find((r) => r.id === item.restaurantId);
+        const menuItem = matchedRest?.menu?.find((m: any) => m.name.toLowerCase() === item.name.toLowerCase());
+
+        return {
+          id: existing?.id || `trend-auto-${Date.now()}-${idx}`,
+          name: item.name,
+          tagline: `Ordered ${item.count} times live by customers`,
+          price: item.price || menuItem?.price || 250,
+          imageUrl: menuItem?.imageUrl || existing?.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600',
+          restaurantId: item.restaurantId || restaurants[0]?.id || '',
+          restaurantName: item.restaurantName || restaurants[0]?.name || '',
+          isVeg: menuItem?.isVeg ?? existing?.isVeg ?? false,
+          orderCountText: `🔥 ${item.count}+ orders placed`,
+          isActive: true,
+        };
+      });
+
+      setDishes(generated);
+      toast.success('Live Order Sync Complete', `Ranked ${generated.length} dishes from real customer orders.`);
+    } catch {
+      toast.error('Sync Error', 'Could not compute order analytics.');
+    }
   };
 
   const handleUpdate = (index: number, patch: Partial<TrendingDish>) => {
@@ -167,7 +244,16 @@ export const TrendingDishesManager: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleAutoDetectFromOrders}
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-colors"
+            title="Compute top selling items from customer orders"
+          >
+            <BarChart3 className="w-4 h-4 text-purple-600" />
+            <span>Auto-Rank from Orders</span>
+          </button>
           <button
             onClick={handleAddDish}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors"
@@ -231,9 +317,8 @@ export const TrendingDishesManager: React.FC = () => {
                   <div className="space-y-0.5 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span
-                        className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                          dish.isVeg ? 'bg-emerald-500' : 'bg-red-500'
-                        }`}
+                        className={`w-2.5 h-2.5 rounded-full shrink-0 ${dish.isVeg ? 'bg-emerald-500' : 'bg-red-500'
+                          }`}
                         title={dish.isVeg ? 'Vegetarian' : 'Non-Vegetarian'}
                       />
                       <h4 className="text-xs font-black text-slate-900 truncate">{dish.name}</h4>
@@ -263,9 +348,8 @@ export const TrendingDishesManager: React.FC = () => {
           return (
             <div
               key={dish.id || index}
-              className={`bg-white rounded-2xl border p-5 transition-all shadow-xs space-y-4 ${
-                isDishActive ? 'border-slate-200' : 'border-slate-200 opacity-60 bg-slate-50/50'
-              }`}
+              className={`bg-white rounded-2xl border p-5 transition-all shadow-xs space-y-4 ${isDishActive ? 'border-slate-200' : 'border-slate-200 opacity-60 bg-slate-50/50'
+                }`}
             >
               {/* Header & Controls */}
               <div className="flex items-center justify-between border-b pb-3 border-slate-100">
@@ -286,11 +370,10 @@ export const TrendingDishesManager: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleUpdate(index, { isActive: !isDishActive })}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
-                      isDishActive
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${isDishActive
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : 'bg-slate-100 text-slate-500 border border-slate-200'
-                    }`}
+                      }`}
                   >
                     {isDishActive ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
                     <span>{isDishActive ? 'Active' : 'Hidden'}</span>
@@ -377,11 +460,10 @@ export const TrendingDishesManager: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleUpdate(index, { isVeg: true })}
-                      className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
-                        dish.isVeg === true
+                      className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${dish.isVeg === true
                           ? 'bg-emerald-50 border-emerald-400 text-emerald-800 ring-2 ring-emerald-100'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                       <span>Veg</span>
@@ -389,11 +471,10 @@ export const TrendingDishesManager: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleUpdate(index, { isVeg: false })}
-                      className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
-                        dish.isVeg === false
+                      className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${dish.isVeg === false
                           ? 'bg-rose-50 border-rose-400 text-rose-800 ring-2 ring-rose-100'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
                       <span>Non-Veg</span>
@@ -434,6 +515,38 @@ export const TrendingDishesManager: React.FC = () => {
                 </select>
               </div>
 
+              {/* Real Menu Item Quick-Select from Database */}
+              {(() => {
+                const currentRest = restaurants.find((r) => r.id === dish.restaurantId);
+                const menuItems = currentRest?.menu || [];
+                if (menuItems.length === 0) return null;
+                return (
+                  <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-200/80 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-purple-900 uppercase tracking-wide flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Sync from {currentRest.name}'s Kitchen Menu ({menuItems.length} items)</span>
+                      </label>
+                      <span className="text-[10px] text-purple-700 font-medium">Auto-fills dish name, price & image</span>
+                    </div>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) handlePickFromMenu(index, e.target.value);
+                      }}
+                      defaultValue=""
+                      className="w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="" disabled>-- Select a live dish from this restaurant's menu --</option>
+                      {menuItems.map((m: any) => (
+                        <option key={m.id} value={m.id}>
+                          {m.isVeg ? '🥬 [Veg]' : '🍖 [Non-Veg]'} {m.name} — ₹{m.price}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
+
               {/* Photo Presets & Custom Upload */}
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
@@ -445,11 +558,10 @@ export const TrendingDishesManager: React.FC = () => {
                       key={photo.url}
                       type="button"
                       onClick={() => handleUpdate(index, { imageUrl: photo.url })}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${
-                        dish.imageUrl === photo.url
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${dish.imageUrl === photo.url
                           ? 'border-purple-600 bg-purple-50 text-purple-800'
                           : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <img src={photo.url} alt="" className="w-4 h-4 rounded object-cover" />
                       <span>{photo.label}</span>
